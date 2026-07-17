@@ -387,6 +387,127 @@ class Trips extends AdminController
         ]);
     }
 
+    // ── PWA manifest for the driver page (public, per-token so start_url
+    // reopens straight into this trip's tracker when launched from the
+    // home-screen icon) ────────────────────────────────────────────────────
+    public function manifest($token)
+    {
+        header('Content-Type: application/manifest+json');
+
+        $start_url = site_url('admin/fleet/trips/driver_gps/' . $token);
+
+        echo json_encode([
+            'name'             => 'Trip Tracker',
+            'short_name'       => 'Trip Tracker',
+            'start_url'        => $start_url,
+            'scope'            => site_url('admin/fleet/trips/driver_gps/'),
+            'display'          => 'standalone',
+            'orientation'      => 'portrait',
+            'background_color' => '#0d1b2a',
+            'theme_color'      => '#0d1b2a',
+            'icons'            => [
+                ['src' => site_url('admin/fleet/trips/icon/192'), 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any maskable'],
+                ['src' => site_url('admin/fleet/trips/icon/512'), 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any maskable'],
+            ],
+        ]);
+    }
+
+    // ── Service worker (public, fixed path so its default scope covers
+    // every driver_gps/{token} URL beneath admin/fleet/trips/) ────────────
+    public function sw()
+    {
+        header('Content-Type: application/javascript');
+        header('Service-Worker-Allowed: /');
+
+        $cache_name = 'trip-tracker-v1';
+        echo <<<JS
+const CACHE_NAME = '{$cache_name}';
+
+self.addEventListener('install', function (event) {
+    self.skipWaiting();
+});
+
+self.addEventListener('activate', function (event) {
+    event.waitUntil(
+        caches.keys().then(function (keys) {
+            return Promise.all(keys.filter(function (k) { return k !== CACHE_NAME; }).map(function (k) { return caches.delete(k); }));
+        }).then(function () { return self.clients.claim(); })
+    );
+});
+
+// App-shell caching: the driver page itself is cached on first load so it
+// still opens (from the home-screen icon) even with a momentarily flaky
+// connection. GPS-ping POST requests are never cached — those go straight
+// to the network, since a queued location is only useful sent live.
+self.addEventListener('fetch', function (event) {
+    if (event.request.method !== 'GET') {
+        return;
+    }
+    event.respondWith(
+        caches.match(event.request).then(function (cached) {
+            var fetchPromise = fetch(event.request).then(function (response) {
+                if (response && response.status === 200) {
+                    var clone = response.clone();
+                    caches.open(CACHE_NAME).then(function (cache) { cache.put(event.request, clone); });
+                }
+                return response;
+            }).catch(function () { return cached; });
+            return cached || fetchPromise;
+        })
+    );
+});
+JS;
+    }
+
+    // ── Simple generated map-pin icon (public) — avoids shipping binary
+    // asset files just for PWA install-ability; drawn on the fly with GD. ──
+    public function icon($size = 192)
+    {
+        $size = (int) $size;
+        if (!in_array($size, [192, 512], true)) {
+            $size = 192;
+        }
+
+        header('Content-Type: image/png');
+
+        if (!function_exists('imagecreatetruecolor')) {
+            // GD isn't available on this PHP build — fail quietly with a 1x1
+            // transparent pixel rather than a broken image icon.
+            $img = imagecreatetruecolor(1, 1);
+            imagepng($img);
+            imagedestroy($img);
+            return;
+        }
+
+        $img = imagecreatetruecolor($size, $size);
+        imagesavealpha($img, true);
+        $transparent = imagecolorallocatealpha($img, 0, 0, 0, 127);
+        imagefill($img, 0, 0, $transparent);
+
+        $bg = imagecolorallocate($img, 13, 27, 42); // matches the driver page background
+        imagefilledellipse($img, (int) ($size / 2), (int) ($size / 2), $size, $size, $bg);
+
+        $white = imagecolorallocate($img, 255, 255, 255);
+        $cx = $size / 2;
+        $pin_top = $size * 0.22;
+        $pin_r = $size * 0.20;
+
+        imagefilledellipse($img, (int) $cx, (int) ($pin_top + $pin_r), (int) ($pin_r * 2), (int) ($pin_r * 2), $white);
+
+        $tail = [
+            (int) ($cx - $pin_r * 0.75), (int) ($pin_top + $pin_r * 1.4),
+            (int) ($cx + $pin_r * 0.75), (int) ($pin_top + $pin_r * 1.4),
+            (int) $cx,                   (int) ($size * 0.82),
+        ];
+        imagefilledpolygon($img, $tail, 3, $white);
+
+        $hole_r = $pin_r * 0.45;
+        imagefilledellipse($img, (int) $cx, (int) ($pin_top + $pin_r), (int) ($hole_r * 2), (int) ($hole_r * 2), $bg);
+
+        imagepng($img);
+        imagedestroy($img);
+    }
+
     // ── Cancel (AJAX POST) ─────────────────────────────────────────────────────
     public function cancel($trip_id)
     {
