@@ -471,11 +471,9 @@ JS;
         header('Content-Type: image/png');
 
         if (!function_exists('imagecreatetruecolor')) {
-            // GD isn't available on this PHP build — fail quietly with a 1x1
-            // transparent pixel rather than a broken image icon.
-            $img = imagecreatetruecolor(1, 1);
-            imagepng($img);
-            imagedestroy($img);
+            // GD isn't available on this PHP build — a 1x1 transparent GIF is
+            // valid with no GD dependency at all, unlike a "broken image" PNG.
+            echo base64_decode('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBTAA7');
             return;
         }
 
