@@ -60,18 +60,36 @@
 </head>
 <body>
     <h1>Trip #<?php echo (int) $trip->id; ?></h1>
-    <div class="trip-info">
-        Vehicle status: <?php echo htmlspecialchars(ucfirst(str_replace('_', ' ', $trip->status ?? 'booked'))); ?><br>
+    <div class="trip-info" id="trip_status_line">
+        Vehicle status: <span id="trip_status_text"><?php echo htmlspecialchars(ucfirst(str_replace('_', ' ', $trip->status ?? 'booked'))); ?></span><br>
         Keep this open and your screen on while you drive — location is sent automatically.
     </div>
 
-    <div>
-        <span id="status_dot" class="status-dot"></span>
-        <span id="status_text">Not sharing location</span>
+    <?php $already_started = in_array($trip->status, ['started', 'offloading', 'completed'], true); ?>
+
+    <!-- ── Step 1: Start Trip (odometer reading) — skipped if already started ── -->
+    <div id="start_trip_section" style="<?php echo $already_started ? 'display:none;' : ''; ?>">
+        <label style="display:block; font-size:13px; color:#cbd5e1; margin-bottom:8px;">
+            Starting odometer reading (km)
+        </label>
+        <input type="number" id="start_odometer_input" placeholder="e.g. 45800"
+               style="font-size:18px; padding:14px; border-radius:10px; border:none; width:260px; text-align:center; margin-bottom:14px;">
+        <br>
+        <button id="start_trip_btn" onclick="startTrip()" style="background:#3b82f6; color:#fff;">Start Trip</button>
+        <div id="start_trip_error" style="display:none; margin-top:12px; background:#7f1d1d; color:#fecaca; padding:10px 14px; border-radius:8px; font-size:13px; max-width:300px;"></div>
     </div>
 
-    <button id="start_btn" onclick="startSharing()">Start Sharing Location</button>
-    <button id="stop_btn" onclick="stopSharing()">Stop Sharing</button>
+    <!-- ── Step 2: Share location — shown once the trip has started ──────────── -->
+    <div id="sharing_section" style="<?php echo $already_started ? '' : 'display:none;'; ?>">
+        <div>
+            <span id="status_dot" class="status-dot"></span>
+            <span id="status_text">Not sharing location</span>
+        </div>
+
+        <button id="start_btn" onclick="startSharing()">Start Sharing Location</button>
+        <button id="stop_btn" onclick="stopSharing()">Stop Sharing</button>
+    </div>
+
     <br>
     <button id="install_btn" onclick="installApp()">📲 Install App to Home Screen</button>
 
