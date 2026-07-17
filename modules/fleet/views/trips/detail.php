@@ -168,6 +168,133 @@ $ltype_labels   = ['full'=>'Full Load','half'=>'Half Load','part'=>'Part Load'];
               <?php endif; ?>
             </div>
 
+            <!-- ── Live Location ─────────────────────────────────────────────── -->
+            <?php if (!in_array($t->status, ['completed', 'cancelled'])): ?>
+            <div class="action-panel" style="margin-bottom:16px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+                <h5 style="font-weight:700;margin:0;"><i class="fa fa-map-marker" style="color:#e53935;"></i> Live Location</h5>
+                <div>
+                  <?php if ($driver_gps_url): ?>
+                  <button type="button" class="btn btn-default btn-xs" onclick="copyDriverLink()">
+                    <i class="fa fa-link"></i> Copy Driver Link
+                  </button>
+                  <?php endif; ?>
+                  <span id="live_map_updated" class="text-muted" style="font-size:12px;margin-left:10px;">Waiting for driver to share location…</span>
+                </div>
+              </div>
+              <div id="live_map" style="width:100%;height:320px;border-radius:8px;background:#eee;"></div>
+            </div>
+
+            <script>
+            var DRIVER_GPS_URL = <?php echo json_encode($driver_gps_url); ?>;
+            var LATEST_LOCATION_URL = <?php echo json_encode(site_url('admin/fleet/trips/latest_location/' . $t->id)); ?>;
+            var MAP_PROVIDER = <?php echo json_encode($map_provider); ?>;
+            var GOOGLE_API_KEY = <?php echo json_encode($google_api_key); ?>;
+
+            function copyDriverLink() {
+                if (!DRIVER_GPS_URL) { return; }
+                navigator.clipboard.writeText(DRIVER_GPS_URL).then(function () {
+                    alert_float('success', 'Driver tracking link copied — send it to the driver (WhatsApp, SMS, etc).');
+                }).catch(function () {
+                    prompt('Copy this link and send it to the driver:', DRIVER_GPS_URL);
+                });
+            }
+
+            (function () {
+                var map, marker, polyline;
+                var leafletReady = false, googleReady = false;
+
+                function timeAgo(iso) {
+                    var seconds = Math.floor((Date.now() - new Date(iso.replace(' ', 'T')).getTime()) / 1000);
+                    if (seconds < 60) return seconds + 's ago';
+                    if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
+                    return Math.floor(seconds / 3600) + 'h ago';
+                }
+
+                function initLeaflet(lat, lng) {
+                    map = L.map('live_map').setView([lat, lng], 14);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '&copy; OpenStreetMap contributors'
+                    }).addTo(map);
+                    marker = L.marker([lat, lng]).addTo(map);
+                    polyline = L.polyline([], { color: '#1976d2', weight: 4 }).addTo(map);
+                    leafletReady = true;
+                }
+
+                function updateLeaflet(lat, lng, trail) {
+                    marker.setLatLng([lat, lng]);
+                    map.panTo([lat, lng]);
+                    if (trail && trail.length) {
+                        polyline.setLatLngs(trail.map(function (p) { return [p.latitude, p.longitude]; }));
+                    }
+                }
+
+                function initGoogle(lat, lng) {
+                    map = new google.maps.Map(document.getElementById('live_map'), {
+                        center: { lat: lat, lng: lng }, zoom: 14
+                    });
+                    marker = new google.maps.Marker({ position: { lat: lat, lng: lng }, map: map });
+                    polyline = new google.maps.Polyline({ path: [], strokeColor: '#1976d2', strokeWeight: 4 });
+                    polyline.setMap(map);
+                    googleReady = true;
+                }
+
+                function updateGoogle(lat, lng, trail) {
+                    var pos = { lat: lat, lng: lng };
+                    marker.setPosition(pos);
+                    map.panTo(pos);
+                    if (trail && trail.length) {
+                        polyline.setPath(trail.map(function (p) { return { lat: p.latitude, lng: p.longitude }; }));
+                    }
+                }
+
+                function poll() {
+                    fetch(LATEST_LOCATION_URL).then(function (r) { return r.json(); }).then(function (res) {
+                        if (!res.success) { return; }
+
+                        document.getElementById('live_map_updated').textContent =
+                            'Updated ' + timeAgo(res.recorded_at) + (res.speed ? ' · ' + Math.round(res.speed * 3.6) + ' km/h' : '');
+
+                        if (MAP_PROVIDER === 'google' && GOOGLE_API_KEY) {
+                            if (!googleReady) { initGoogle(res.latitude, res.longitude); } else { updateGoogle(res.latitude, res.longitude, res.trail); }
+                        } else {
+                            if (!leafletReady) { initLeaflet(res.latitude, res.longitude); } else { updateLeaflet(res.latitude, res.longitude, res.trail); }
+                        }
+                    }).catch(function () {});
+                }
+
+                function loadLeafletAssets(cb) {
+                    if (window.L) { cb(); return; }
+                    var css = document.createElement('link');
+                    css.rel = 'stylesheet';
+                    css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+                    document.head.appendChild(css);
+                    var js = document.createElement('script');
+                    js.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+                    js.onload = cb;
+                    document.head.appendChild(js);
+                }
+
+                function loadGoogleAssets(cb) {
+                    if (window.google && window.google.maps) { cb(); return; }
+                    var js = document.createElement('script');
+                    js.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(GOOGLE_API_KEY);
+                    js.onload = cb;
+                    js.onerror = function () {
+                        document.getElementById('live_map_updated').textContent = 'Google Maps failed to load — check the API key in Setup > Settings, or switch to the free map provider in Courier Settings.';
+                    };
+                    document.head.appendChild(js);
+                }
+
+                if (MAP_PROVIDER === 'google' && GOOGLE_API_KEY) {
+                    loadGoogleAssets(function () { poll(); setInterval(poll, 8000); });
+                } else {
+                    loadLeafletAssets(function () { poll(); setInterval(poll, 8000); });
+                }
+            })();
+            </script>
+            <?php endif; ?>
+
             <!-- Fuel info bar -->
             <?php if ($fuel_request): ?>
             <div style="background:#fff3e0;border:1px solid #ffe0b2;border-radius:6px;padding:10px 16px;margin-bottom:14px;font-size:13px;">
