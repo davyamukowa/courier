@@ -1,5 +1,5 @@
 <div class="row">
-    <?php echo form_open('admin/courier/settings/save_appearance', ['id' => 'set-appearance-settings-form']); ?>
+    <?php echo form_open('admin/courier_goshipping/settings/save_appearance', ['id' => 'set-appearance-settings-form']); ?>
     <div class="col-md-12">
         <div class="panel_s">
             <div class="panel-heading"><h4 class="panel-title">Theme Colors</h4></div>
