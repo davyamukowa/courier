@@ -975,8 +975,6 @@ class Fulfilment extends AdminController
             $this->db->limit($length, $start);
         }
 
-        file_put_contents(FCPATH . 'orders_query.log', "GET QUERY:\n" . $this->db->get_compiled_select('', FALSE) . "\n\n", FILE_APPEND);
-
         $rows = $this->db->get()->result();
         $db_error = $this->db->error();
         if (!empty($db_error['message'])) {
