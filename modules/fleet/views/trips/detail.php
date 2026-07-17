@@ -46,7 +46,7 @@ $ltype_labels   = ['full'=>'Full Load','half'=>'Half Load','part'=>'Part Load'];
 .offload-opt.selected{border-color:#1976d2;background:#e3f2fd;}
 </style>
 
-<div id="fleet-page-wrapper">
+<div id="wrapper">
   <div class="content">
     <div class="row">
       <div class="col-md-12">

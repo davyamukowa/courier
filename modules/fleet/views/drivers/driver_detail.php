@@ -1,6 +1,6 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed'); ?>
 <?php init_head(); ?>
-<div id="fleet-page-wrapper" class="customer_profile">
+<div id="wrapper" class="customer_profile">
     <div class="content">
         <div class="row">
             <div class="col-md-3">

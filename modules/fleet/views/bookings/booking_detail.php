@@ -2,7 +2,7 @@
 <?php init_head();
 $status = fleet_render_status_html($booking->id, 'booking', $booking->status, true);   
 ?>
-<div id="fleet-page-wrapper">
+<div id="wrapper">
   <div class="content">
    <div class="row">
     <div class="col-md-12">

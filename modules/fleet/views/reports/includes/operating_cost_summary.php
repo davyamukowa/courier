@@ -1,6 +1,6 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed'); ?>
 <?php init_head();?>
-<div id="fleet-page-wrapper">
+<div id="wrapper">
   <div class="content">
     <div class="row">
       <div class="panel_s">

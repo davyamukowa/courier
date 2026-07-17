@@ -50,7 +50,7 @@
 .section-sub{font-size:11px;color:#888;margin-bottom:4px;}
 </style>
 
-<div id="fleet-page-wrapper">
+<div id="wrapper">
   <div class="content">
     <div class="row">
       <div class="col-md-9 col-md-offset-1">
