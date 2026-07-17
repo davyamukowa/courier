@@ -1070,7 +1070,16 @@ class Fulfilment extends AdminController
             ajax_access_denied();
         }
 
-        $result = $this->create_courier_shipment((int) $order_id);
+        try {
+            $result = $this->create_courier_shipment((int) $order_id);
+        } catch (\Throwable $e) {
+            $this->write_integration_log('error', 'shipment', 'Manual shipment creation crashed: ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine(), [
+                'shopify_db_order_id' => (int) $order_id,
+                'trace' => $e->getTraceAsString(),
+            ]);
+            $result = ['success' => false, 'error' => $e->getMessage() . ' @ line ' . $e->getLine()];
+        }
+
         echo json_encode($result);
     }
 
