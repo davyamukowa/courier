@@ -77,11 +77,44 @@ class Trips extends AdminController
         ]);
 
         if ($trip_id) {
+            // Assigning a driver/vehicle to a shipment means it's now dispatched —
+            // advance the linked courier shipment's status to reflect that.
+            if ($shipment_id) {
+                $this->_advance_shipment_status($shipment_id, 4); // 'dispatched'
+            }
+
             echo json_encode(['success' => true, 'trip_id' => $trip_id,
                 'redirect' => admin_url('fleet/trips/detail/' . $trip_id)]);
         } else {
             echo json_encode(['success' => false, 'message' => 'Failed to create booking.']);
         }
+    }
+
+    /**
+     * Advances a linked courier shipment's status_id forward only (never
+     * regresses a shipment that's already further along), mirroring what
+     * Shipments::update_status() does — so dispatch progress made via Fleet
+     * trip actions (booking, starting a trip) shows up consistently on the
+     * shipment/waybill and Salibay order views without staff re-entering it.
+     */
+    private function _advance_shipment_status($shipment_id, $new_status_id)
+    {
+        $shipments_table = db_prefix() . '_shipments';
+        if (!$this->db->table_exists($shipments_table)) {
+            return;
+        }
+
+        $shipment = $this->db->select('id, status_id')->where('id', (int) $shipment_id)->get($shipments_table)->row();
+        if (!$shipment || (int) $shipment->status_id >= $new_status_id) {
+            return;
+        }
+
+        $this->db->where('id', $shipment_id)->update($shipments_table, ['status_id' => $new_status_id]);
+        $this->db->insert(db_prefix() . '_shipment_status_history', [
+            'shipment_id' => $shipment_id,
+            'status_id'   => $new_status_id,
+            'changed_at'  => date('Y-m-d H:i:s'),
+        ]);
     }
 
     // ── Detail ─────────────────────────────────────────────────────────────────
