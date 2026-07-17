@@ -94,13 +94,14 @@
     }
 
     $(function () {
-        $('.table-fulfilment-inventory').DataTable({
+        var $table = $('.table-fulfilment-inventory').DataTable({
             processing: true,
             serverSide: true,
             ajax: {
                 url: admin_url + 'courier_goshipping/fulfilment/get_inventory_datatable',
                 type: 'POST',
                 data: function(d) {
+                    d.stock_status = $('#inventory_stock_filter').val();
                     if (typeof csrfData !== 'undefined') {
                         d[csrfData['token_name']] = csrfData['hash'];
                     }
@@ -110,6 +111,10 @@
             initComplete: function (settings, json) {
                 $(this).parents('.table-loading').removeClass('table-loading');
             }
+        });
+
+        $('#inventory_stock_filter').on('change', function () {
+            $table.ajax.reload();
         });
     });
 })();
