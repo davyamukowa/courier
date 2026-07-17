@@ -1050,6 +1050,7 @@ class Fulfilment extends AdminController
                 htmlspecialchars((string) ($row->fulfillment_model ?: '-')),
                 '<span class="label label-' . $badge_class . '">' . ucfirst((string) $row->order_status) . '</span>',
                 $shipment_cell,
+                $driver_cell,
                 htmlspecialchars((string) ($row->tracking_number ?: '-')),
                 _dt($row->created_at),
                 $actions,
