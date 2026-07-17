@@ -5,7 +5,7 @@ class Trips extends AdminController
     // Public, token-authenticated actions — no staff login. A driver opens
     // these from a link on their own phone, so they can't go through the
     // normal admin auth flow.
-    private $public_actions = ['driver_gps', 'record_location'];
+    private $public_actions = ['driver_gps', 'record_location', 'manifest', 'sw', 'icon'];
 
     public function __construct()
     {
