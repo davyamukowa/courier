@@ -104,7 +104,7 @@ class Companies extends AdminController
                 $this->session->set_flashdata($key . '_error', form_error($key));
             }
 
-            redirect('admin/courier/companies/main?group=create_company');
+            redirect('admin/courier_goshipping/companies/main?group=create_company');
         } else {
             // Validation passed; proceed with data processing
 
@@ -119,7 +119,7 @@ class Companies extends AdminController
 
             if ($company_id === false) {
                 set_alert('danger', 'Failed to add company.');
-                redirect('admin/courier/companies/main?group=create_company');
+                redirect('admin/courier_goshipping/companies/main?group=create_company');
             }
 
             //store contact person data
@@ -133,7 +133,7 @@ class Companies extends AdminController
             $contact_person_id = $this->ContactPerson_model->add($contact_person_data);
 
             set_alert('success', 'Company added successfully.');
-            redirect('admin/courier/companies/main?group=list_companies');
+            redirect('admin/courier_goshipping/companies/main?group=list_companies');
         }
     }
 
@@ -146,7 +146,7 @@ class Companies extends AdminController
     {
         if (!$id) {
             set_alert('danger', 'Invalid company ID.');
-            redirect('admin/courier/companies/main?group=list_companies');
+            redirect('admin/courier_goshipping/companies/main?group=list_companies');
         }
 
         // Start a transaction
@@ -158,7 +158,7 @@ class Companies extends AdminController
         if (!$company) {
             set_alert('danger', 'Company not found.');
             $this->db->trans_rollback();
-            redirect('admin/courier/companies/main?group=list_companies');
+            redirect('admin/courier_goshipping/companies/main?group=list_companies');
         }
 
         // Delete the company
@@ -180,7 +180,7 @@ class Companies extends AdminController
             set_alert('danger', 'Failed to delete the company.');
         }
 
-        redirect('admin/courier/companies/main?group=list_companies');
+        redirect('admin/courier_goshipping/companies/main?group=list_companies');
     }
 
 

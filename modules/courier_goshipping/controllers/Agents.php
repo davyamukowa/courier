@@ -154,7 +154,7 @@ class Agents extends AdminController
                 $this->session->set_flashdata($key, $value);
             }
 
-            redirect('admin/courier/agents/main?group=create_agent');
+            redirect('admin/courier_goshipping/agents/main?group=create_agent');
         } else {
 
             $data = [];
@@ -283,7 +283,7 @@ class Agents extends AdminController
             }
 
             set_alert('success', 'Agent added successfully.');
-            redirect('admin/courier/agents/main?group=list_agents');
+            redirect('admin/courier_goshipping/agents/main?group=list_agents');
         }
     }
 
@@ -400,15 +400,15 @@ public function agent_number()
 
             if ($this->db->trans_status() === FALSE) {
                 set_alert('danger', 'Failed to delete agent and related records.');
-                redirect('admin/courier/agents/main?group=list_agents');
+                redirect('admin/courier_goshipping/agents/main?group=list_agents');
 
             } else {
                 set_alert('success', 'Agent and related records deleted successfully.');
-                redirect('admin/courier/agents/main?group=list_agents');
+                redirect('admin/courier_goshipping/agents/main?group=list_agents');
             }
         } else {
             set_alert('danger', 'Agent not found.');
-            redirect('admin/courier/agents/main?group=list_agents');
+            redirect('admin/courier_goshipping/agents/main?group=list_agents');
         }
     }
 
@@ -428,7 +428,7 @@ public function agent_number()
         $agent = $this->Agent_model->get_single($id);
         if (!$agent) {
             set_alert('danger', 'Agent not found.');
-            redirect('admin/courier/agents/main');
+            redirect('admin/courier_goshipping/agents/main');
         }
 
         $data['agent']       = $agent;
@@ -454,7 +454,7 @@ public function agent_number()
         $agent = $this->Agent_model->get_single($id);
         if (!$agent) {
             set_alert('danger', 'Agent not found.');
-            redirect('admin/courier/agents/main');
+            redirect('admin/courier_goshipping/agents/main');
         }
 
         $data['agent']     = $agent;
@@ -466,13 +466,13 @@ public function agent_number()
     public function update($id)
     {
         if (!$this->input->post()) {
-            redirect('admin/courier/agents/edit/' . $id);
+            redirect('admin/courier_goshipping/agents/edit/' . $id);
         }
 
         $agent = $this->Agent_model->get_single($id);
         if (!$agent) {
             set_alert('danger', 'Agent not found.');
-            redirect('admin/courier/agents/main');
+            redirect('admin/courier_goshipping/agents/main');
         }
 
         $data = [
@@ -492,25 +492,25 @@ public function agent_number()
             set_alert('danger', 'Failed to update agent.');
         }
 
-        redirect('admin/courier/agents/view/' . $id);
+        redirect('admin/courier_goshipping/agents/view/' . $id);
     }
 
     public function reset_password($id)
     {
         if (!$this->input->post()) {
-            redirect('admin/courier/agents/view/' . $id);
+            redirect('admin/courier_goshipping/agents/view/' . $id);
         }
 
         $agent = $this->Agent_model->get_single($id);
         if (!$agent) {
             set_alert('danger', 'Agent not found.');
-            redirect('admin/courier/agents/main');
+            redirect('admin/courier_goshipping/agents/main');
         }
 
         $new_password = $this->input->post('new_password');
         if (strlen($new_password) < 6) {
             set_alert('danger', 'Password must be at least 6 characters.');
-            redirect('admin/courier/agents/view/' . $id);
+            redirect('admin/courier_goshipping/agents/view/' . $id);
         }
 
         if ($this->Agent_model->reset_password($agent->staff_id, app_hash_password($new_password))) {
@@ -519,7 +519,7 @@ public function agent_number()
             set_alert('danger', 'Failed to reset password.');
         }
 
-        redirect('admin/courier/agents/view/' . $id);
+        redirect('admin/courier_goshipping/agents/view/' . $id);
     }
 
     public function suspend($id)
@@ -527,7 +527,7 @@ public function agent_number()
         $agent = $this->Agent_model->get_single($id);
         if (!$agent) {
             set_alert('danger', 'Agent not found.');
-            redirect('admin/courier/agents/main');
+            redirect('admin/courier_goshipping/agents/main');
         }
 
         $reason = $this->input->post('reason') ?: null;
@@ -541,7 +541,7 @@ public function agent_number()
         $this->db->update(db_prefix() . 'staff', ['active' => 0]);
 
         set_alert('success', 'Agent suspended.');
-        redirect('admin/courier/agents/view/' . $id);
+        redirect('admin/courier_goshipping/agents/view/' . $id);
     }
 
     public function activate($id)
@@ -549,7 +549,7 @@ public function agent_number()
         $agent = $this->Agent_model->get_single($id);
         if (!$agent) {
             set_alert('danger', 'Agent not found.');
-            redirect('admin/courier/agents/main');
+            redirect('admin/courier_goshipping/agents/main');
         }
 
         $this->Agent_model->update_agent($id, [
@@ -562,7 +562,7 @@ public function agent_number()
         $this->db->update(db_prefix() . 'staff', ['active' => 1]);
 
         set_alert('success', 'Agent activated.');
-        redirect('admin/courier/agents/view/' . $id);
+        redirect('admin/courier_goshipping/agents/view/' . $id);
     }
 
     public function save_permissions($id)

@@ -1,5 +1,5 @@
 <div class="row">
-    <?php echo form_open('admin/courier/companies/store', ['id' => 'create-company-form']); ?>
+    <?php echo form_open('admin/courier_goshipping/companies/store', ['id' => 'create-company-form']); ?>
     <div class="col-md-12">
         <div class="cgs-card">
                 <div class="cgs-card__header">

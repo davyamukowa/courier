@@ -37,7 +37,7 @@
                     <td class="align-left">
                         <div class="d-flex flex-row justify-content-center">
                             <!-- Delete Button -->
-                            <a href="<?php echo site_url('admin/courier/companies/delete/' . $company->id); ?>"
+                            <a href="<?php echo site_url('admin/courier_goshipping/companies/delete/' . $company->id); ?>"
                                class="text-danger font-weight-bold text-xs mx-2"
                                onclick="return confirm('Are you sure you want to delete this company?');"
                                data-bs-toggle="tooltip" title="Delete Company">

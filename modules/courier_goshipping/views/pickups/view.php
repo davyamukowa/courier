@@ -308,7 +308,7 @@
                     
                     <div class="row">
                         <div class="col-md-6">
-                            <?php echo form_open('admin/courier/pickups/update_status/', ['id' => 'update-status-pickup-form']); ?>
+                            <?php echo form_open('admin/courier_goshipping/pickups/update_status/', ['id' => 'update-status-pickup-form']); ?>
                             <input type="hidden" id="current_status" value="<?php echo htmlspecialchars($pickup['status'] ?? 'pending'); ?>">
                             <input type="hidden" value="<?php echo $pickup['id'] ?? ''; ?>" name="pickup_id">
                             <input type="hidden" value="" name="signature">

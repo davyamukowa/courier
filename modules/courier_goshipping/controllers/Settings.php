@@ -202,7 +202,7 @@ class Settings extends AdminController
         }
 
         set_alert('success', 'General settings updated successfully.');
-        redirect('admin/courier/settings/main?group=customization');
+        redirect('admin/courier_goshipping/settings/main?group=customization');
     }
 
     public function save_parcel_rate()
@@ -236,7 +236,7 @@ class Settings extends AdminController
             }
         }
         set_alert('success', 'Stamp settings updated.');
-        redirect('admin/courier/settings/main?group=invoice_info');
+        redirect('admin/courier_goshipping/settings/main?group=invoice_info');
     }
 
     public function save_appearance()
@@ -254,7 +254,7 @@ class Settings extends AdminController
         }
 
         set_alert('success', 'Appearance settings updated.');
-        redirect('admin/courier/settings/main?group=appearance');
+        redirect('admin/courier_goshipping/settings/main?group=appearance');
     }
 
     public function save_invoice_info()
@@ -268,7 +268,7 @@ class Settings extends AdminController
             }
         }
         set_alert('success', 'Invoice & Receipt info updated.');
-        redirect('admin/courier/settings/main?group=invoice_info');
+        redirect('admin/courier_goshipping/settings/main?group=invoice_info');
     }
 
     public function freight_rates()
@@ -290,7 +290,7 @@ class Settings extends AdminController
         }
 
         set_alert('success', 'Freight rates updated successfully.');
-        redirect('admin/courier/settings/main?group=customization');
+        redirect('admin/courier_goshipping/settings/main?group=customization');
     }
 
 
@@ -1195,7 +1195,7 @@ class Settings extends AdminController
             }
 
             set_alert('success', 'Dimensional Factors updated successfully.');
-            redirect('admin/courier/settings/main');
+            redirect('admin/courier_goshipping/settings/main');
 
         }
     }

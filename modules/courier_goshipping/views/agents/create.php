@@ -15,7 +15,7 @@ foreach ($countries as $c) {
 </style>
 
 <section id="creat_agent_section" style="display: block;" class="custom-section">
-    <?php echo form_open('admin/courier/agents/store', [
+    <?php echo form_open('admin/courier_goshipping/agents/store', [
             'id' => 'create-agent-form',
             'enctype' => 'multipart/form-data'
     ]); ?>

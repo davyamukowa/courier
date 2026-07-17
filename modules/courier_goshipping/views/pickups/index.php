@@ -249,7 +249,7 @@
 <div class="modal fade" id="update_status" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
-            <?php echo form_open('admin/courier/pickups/update_status/', ['id' => 'update-pickup-form']); ?>
+            <?php echo form_open('admin/courier_goshipping/pickups/update_status/', ['id' => 'update-pickup-form']); ?>
             <div class="modal-header">
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span>
                 </button>
