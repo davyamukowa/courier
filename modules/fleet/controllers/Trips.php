@@ -94,6 +94,7 @@ class Trips extends AdminController
 
         $trip_id = $this->Fleet_trips_model->create([
             'shipment_id'      => $shipment_id,
+            'tracking_token'   => bin2hex(random_bytes(24)),
             'trip_date'        => $trip_date,
             'vehicle_id'       => $vehicle_id,
             'driver_id'        => $driver_id,
