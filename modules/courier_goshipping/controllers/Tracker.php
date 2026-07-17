@@ -234,7 +234,7 @@ class Tracker extends App_Controller
         ]);
 
         // Store recipient
-        $this->load->model('ShipmentRecipient_model');
+        courier_load_model('ShipmentRecipient_model');
         $recipient_id = $this->ShipmentRecipient_model->add([
             'first_name'   => $recip_name,
             'last_name'    => '',
