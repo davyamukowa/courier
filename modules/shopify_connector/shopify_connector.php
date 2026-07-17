@@ -13,6 +13,7 @@ Requires at least: 2.3.*
 
 define('SHOPIFY_CONNECTOR_MODULE_NAME', 'shopify_connector');
 define('SHOPIFY_CONNECTOR_VERSION', '1.0.1');
+// sync test marker: 2026-07-17 12:30
 
 // Register activation and deactivation hooks
 register_activation_hook(SHOPIFY_CONNECTOR_MODULE_NAME, 'shopify_connector_activation_hook');
