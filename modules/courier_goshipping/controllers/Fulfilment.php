@@ -1080,6 +1080,7 @@ class Fulfilment extends AdminController
         $start = (int) $this->input->post('start');
         $length = (int) $this->input->post('length');
         $search = $this->input->post('search')['value'] ?? '';
+        $stock_status = $this->input->post('stock_status');
 
         $base_sql = "
             FROM {$prefix}shopify_product_mappings m
@@ -1101,14 +1102,23 @@ class Fulfilment extends AdminController
         $where = '';
         $params = [];
         if ($search !== '') {
-            $where = " AND (
+            $where .= " AND (
                 m.gs_sku LIKE ?
                 OR m.shopify_product_id LIKE ?
                 OR m.shopify_variant_id LIKE ?
                 OR p.name LIKE ?
             )";
             $like = '%' . $search . '%';
-            $params = [$like, $like, $like, $like];
+            $params = array_merge($params, [$like, $like, $like, $like]);
+        }
+
+        $available_expr = '(COALESCE(i.total_qty, 0) - COALESCE(i.reserved_qty, 0))';
+        if ($stock_status === 'out_of_stock') {
+            $where .= " AND {$available_expr} <= 0";
+        } elseif ($stock_status === 'low_stock') {
+            $where .= " AND {$available_expr} > 0 AND p.reorder_point > 0 AND {$available_expr} <= p.reorder_point";
+        } elseif ($stock_status === 'in_stock') {
+            $where .= " AND {$available_expr} > 0 AND (p.reorder_point <= 0 OR p.reorder_point IS NULL OR {$available_expr} > p.reorder_point)";
         }
 
         $total_records = (int) $this->db->query("SELECT COUNT(*) AS c {$base_sql}")->row()->c;
