@@ -21,26 +21,29 @@ class Shipments extends AdminController
             }
         }
         $this->load->helper('courier_goshipping/courier'); // Load the helper specific to the courier module
+        // MX's model loader lowercases the whole path then only ucfirst()'s
+        // the first letter before checking is_file(), so multi-capital
+        // filenames below never resolve on case-sensitive (Linux) fs.
         $this->load->model('Shipment_model');
-        $this->load->model('ShipmentRecipient_model');
-        $this->load->model('ShipmentSender_model');
+        courier_load_model('ShipmentRecipient_model');
+        courier_load_model('ShipmentSender_model');
         $this->load->model('Client_model');
-        $this->load->model('ShipmentPackage_model');
-        $this->load->model('CourierCompany_model');
-        $this->load->model('ShipmentCompany_model');
-        $this->load->model('ShipmentRecipientCompany_model');
-        $this->load->model('ShipmentFCLPackage_model');
-        $this->load->model('CommercialValueItems_model');
-        $this->load->model('ShipmentStatus_model');
-        $this->load->model('PickupContact_model');
+        courier_load_model('ShipmentPackage_model');
+        courier_load_model('CourierCompany_model');
+        courier_load_model('ShipmentCompany_model');
+        courier_load_model('ShipmentRecipientCompany_model');
+        courier_load_model('ShipmentFCLPackage_model');
+        courier_load_model('CommercialValueItems_model');
+        courier_load_model('ShipmentStatus_model');
+        courier_load_model('PickupContact_model');
         $this->load->model('Pickup_model');
-        $this->load->model('ShipmentStop_model');
+        courier_load_model('ShipmentStop_model');
         $this->load->model('Delivery_model');
         $this->load->model('Manifest_model');
-        $this->load->model('CountryState_model');
-        $this->load->model('DimensionalFactor_model');
+        courier_load_model('CountryState_model');
+        courier_load_model('DimensionalFactor_model');
         $this->load->model('Driver_model');
-        $this->load->model('DestinationOffice_model');
+        courier_load_model('DestinationOffice_model');
         $this->load->library('form_validation');
         $this->load->library('session');
         $this->load->model('Agent_model');
