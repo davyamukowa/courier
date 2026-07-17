@@ -302,6 +302,86 @@ class Trips extends AdminController
         echo json_encode(['success' => true, 'message' => 'Trip ended successfully.']);
     }
 
+    // ── Driver GPS page (public, token-authenticated, no staff login) ─────────
+    public function driver_gps($token)
+    {
+        $trip = $this->db->where('tracking_token', $token)->get(db_prefix() . 'fleet_trips')->row();
+        if (!$trip) {
+            echo 'Invalid or expired tracking link.';
+            return;
+        }
+
+        $data['title'] = 'Live Trip Tracking';
+        $data['trip']  = $trip;
+        $data['token'] = $token;
+        $this->load->view('fleet/trips/driver_gps', $data);
+    }
+
+    // ── Receive a GPS ping from the driver page (public POST) ─────────────────
+    public function record_location()
+    {
+        header('Content-Type: application/json');
+
+        $token = $this->input->post('token');
+        $trip = $token ? $this->db->where('tracking_token', $token)->get(db_prefix() . 'fleet_trips')->row() : null;
+        if (!$trip) {
+            echo json_encode(['success' => false, 'message' => 'Invalid tracking link.']);
+            return;
+        }
+
+        $lat = (float) $this->input->post('lat');
+        $lng = (float) $this->input->post('lng');
+        if ($lat === 0.0 && $lng === 0.0) {
+            echo json_encode(['success' => false, 'message' => 'Missing coordinates.']);
+            return;
+        }
+
+        $this->db->insert(db_prefix() . 'fleet_trip_locations', [
+            'trip_id'     => $trip->id,
+            'latitude'    => $lat,
+            'longitude'   => $lng,
+            'accuracy'    => (float) $this->input->post('accuracy') ?: null,
+            'speed'       => is_numeric($this->input->post('speed')) ? (float) $this->input->post('speed') : null,
+            'recorded_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        echo json_encode(['success' => true]);
+    }
+
+    // ── Latest location for the staff-facing live map (AJAX GET) ──────────────
+    public function latest_location($trip_id)
+    {
+        header('Content-Type: application/json');
+
+        $latest = $this->db->where('trip_id', (int) $trip_id)
+            ->order_by('recorded_at', 'DESC')
+            ->limit(1)
+            ->get(db_prefix() . 'fleet_trip_locations')
+            ->row();
+
+        if (!$latest) {
+            echo json_encode(['success' => false, 'message' => 'No location reported yet.']);
+            return;
+        }
+
+        // A short recent trail so the map can draw the path travelled, not just a dot.
+        $trail = $this->db->select('latitude, longitude, recorded_at')
+            ->where('trip_id', (int) $trip_id)
+            ->order_by('recorded_at', 'DESC')
+            ->limit(50)
+            ->get(db_prefix() . 'fleet_trip_locations')
+            ->result();
+
+        echo json_encode([
+            'success' => true,
+            'latitude' => (float) $latest->latitude,
+            'longitude' => (float) $latest->longitude,
+            'speed' => $latest->speed !== null ? (float) $latest->speed : null,
+            'recorded_at' => $latest->recorded_at,
+            'trail' => array_reverse($trail),
+        ]);
+    }
+
     // ── Cancel (AJAX POST) ─────────────────────────────────────────────────────
     public function cancel($trip_id)
     {
