@@ -211,4 +211,12 @@ if ($CI->db->table_exists(db_prefix() . 'shopify_product_mappings')) {
     if (!$CI->db->field_exists('shopify_inventory_item_id', db_prefix() . 'shopify_product_mappings')) {
         $CI->db->query("ALTER TABLE `" . db_prefix() . "shopify_product_mappings` ADD `shopify_inventory_item_id` VARCHAR(50) NULL AFTER `gs_inventory_item_id`;");
     }
+
+    // Tracks which Go Shipping branch a SKU's Salibay stock lives at, used to
+    // route auto-created shipments to the right origin branch. Referenced
+    // throughout courier_goshipping/Fulfilment.php and this controller, but
+    // was never actually added to the schema until now.
+    if (!$CI->db->field_exists('courier_branch_id', db_prefix() . 'shopify_product_mappings')) {
+        $CI->db->query("ALTER TABLE `" . db_prefix() . "shopify_product_mappings` ADD `courier_branch_id` INT NULL;");
+    }
 }
