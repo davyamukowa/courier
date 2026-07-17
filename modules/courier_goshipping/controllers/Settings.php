@@ -201,6 +201,11 @@ class Settings extends AdminController
             update_option('courier_default_payment_terms', trim($pt_default));
         }
 
+        $map_provider = $this->input->post('courier_map_provider');
+        if (in_array($map_provider, ['leaflet', 'google'], true)) {
+            update_option('courier_map_provider', $map_provider);
+        }
+
         set_alert('success', 'General settings updated successfully.');
         redirect('admin/courier_goshipping/settings/main?group=customization');
     }
