@@ -1,6 +1,6 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed'); ?>
 <?php init_head(); ?>
-<div id="wrapper">
+<div id="fleet-page-wrapper">
    <div class="content">
       <div class="panel_s">
         <?php $arrAtt = array();

@@ -13,7 +13,7 @@
 .stat-pill .num{font-size:26px;font-weight:700;line-height:1;}
 .stat-pill .lbl{font-size:11px;color:#888;margin-top:3px;}
 </style>
-<div id="wrapper">
+<div id="fleet-page-wrapper">
   <div class="content">
     <div class="row">
       <div class="col-md-12">

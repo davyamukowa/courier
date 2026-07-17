@@ -1,5 +1,5 @@
 <?php init_head();?>
-<div id="wrapper">
+<div id="fleet-page-wrapper">
   <div class="content">
     <div class="row">
       <div class="panel_s">
