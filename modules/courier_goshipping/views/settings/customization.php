@@ -46,6 +46,15 @@
                     <small class="text-muted">Short unique identifier that appears at the start of every waybill number (e.g. <strong>XETU</strong>220518).</small>
                 </div>
                 <div style="margin-top:15px;" class="mb-3">
+                    <label class="form-label">Live Tracking Map Provider</label>
+                    <select class="form-control" name="courier_map_provider" style="max-width:320px;">
+                        <?php $map_provider = get_option('courier_map_provider') ?: 'leaflet'; ?>
+                        <option value="leaflet" <?php echo $map_provider === 'leaflet' ? 'selected' : ''; ?>>Free (OpenStreetMap / Leaflet)</option>
+                        <option value="google" <?php echo $map_provider === 'google' ? 'selected' : ''; ?>>Google Maps</option>
+                    </select>
+                    <small class="text-muted">Used on the driver live-tracking map (Fleet &rarr; Trips). Google Maps requires a valid API key with the Maps JavaScript API enabled under Setup &rarr; Settings &rarr; General; switch back to the free option if it doesn't load.</small>
+                </div>
+                <div style="margin-top:15px;" class="mb-3">
                     <label class="form-label">Courier Invoice Theme Color</label>
                     <div style="display:flex; align-items:center; gap:12px;">
                         <input type="color" name="courier_invoice_color"
