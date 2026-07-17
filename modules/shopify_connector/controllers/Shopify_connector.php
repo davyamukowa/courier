@@ -27,6 +27,17 @@ class Shopify_connector extends AdminController
         if (!$this->db->table_exists(db_prefix() . 'shopify_orders')) {
             require_once(module_dir_path('shopify_connector', 'install.php'));
         }
+
+        // courier_branch_id was referenced here and in courier_goshipping's
+        // Fulfilment controller but was never actually added to the schema —
+        // self-heal it so branch resolution works instead of silently
+        // falling back to the org-wide default branch on every order.
+        if (
+            $this->db->table_exists(db_prefix() . 'shopify_product_mappings')
+            && !$this->db->field_exists('courier_branch_id', db_prefix() . 'shopify_product_mappings')
+        ) {
+            $this->db->query('ALTER TABLE `' . db_prefix() . 'shopify_product_mappings` ADD `courier_branch_id` INT NULL;');
+        }
     }
 
     public function index()
