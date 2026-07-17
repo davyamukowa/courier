@@ -986,6 +986,8 @@ class Fulfilment extends AdminController
         }
         $this->db->flush_cache();
 
+        $fleet_trips_exists = $this->db->table_exists("{$prefix}fleet_trips");
+
         $data = [];
         foreach ($rows as $row) {
             $this->db->db_debug = FALSE;
@@ -998,6 +1000,30 @@ class Fulfilment extends AdminController
             $shipment_cell = '-';
             if (!empty($row->gs_shipment_id)) {
                 $shipment_cell = '<a href="' . admin_url('courier_goshipping/shipments/waybill/' . $row->gs_shipment_id) . '">#' . (int) $row->gs_shipment_id . '</a>';
+            }
+
+            $driver_cell = '-';
+            if (!empty($row->gs_shipment_id) && $fleet_trips_exists) {
+                $trip = $this->db->select("t.status, v.name as vehicle_name, CONCAT(dr.firstname,' ',dr.lastname) as driver_name", false)
+                    ->from("{$prefix}fleet_trips t")
+                    ->join("{$prefix}fleet_vehicles v", 'v.id = t.vehicle_id', 'left')
+                    ->join("{$prefix}staff dr", 'dr.staffid = t.driver_id', 'left')
+                    ->where('t.shipment_id', $row->gs_shipment_id)
+                    ->order_by('t.created_at', 'DESC')
+                    ->limit(1)
+                    ->get()->row();
+
+                if ($trip) {
+                    $driver_name = trim((string) ($trip->driver_name ?? ''));
+                    $vehicle_name = trim((string) ($trip->vehicle_name ?? ''));
+                    $trip_status_class = ($trip->status ?? '') === 'completed' ? 'success' : (($trip->status ?? '') === 'cancelled' ? 'danger' : 'info');
+                    $driver_cell = '<span class="label label-' . $trip_status_class . '">' . ucfirst(str_replace('_', ' ', $trip->status ?? 'booked')) . '</span>';
+                    if ($driver_name !== '' || $vehicle_name !== '') {
+                        $driver_cell .= '<br><span style="font-size:11px;color:#777;">' . htmlspecialchars($driver_name ?: '—') . ($vehicle_name !== '' ? ' · ' . htmlspecialchars($vehicle_name) : '') . '</span>';
+                    }
+                } elseif (!empty($row->gs_shipment_id)) {
+                    $driver_cell = '<span class="text-muted" style="font-size:11px;">Not assigned</span>';
+                }
             }
 
             $actions = '<div class="btn-group">
