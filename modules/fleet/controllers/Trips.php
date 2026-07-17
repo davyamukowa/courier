@@ -165,6 +165,11 @@ class Trips extends AdminController
         $data['shipment']       = $trip->shipment_id ? $this->Fleet_trips_model->get_shipment($trip->shipment_id) : null;
         $data['service_points'] = $this->Fleet_trips_model->get_service_points();
         $data['staff']          = $this->Fleet_trips_model->get_staff();
+        $data['map_provider']   = get_option('courier_map_provider') ?: 'leaflet';
+        $data['google_api_key'] = get_option('google_api_key');
+        $data['driver_gps_url'] = !empty($trip->tracking_token)
+            ? site_url('admin/fleet/trips/driver_gps/' . $trip->tracking_token)
+            : null;
         $this->load->view('fleet/trips/detail', $data);
     }
 
