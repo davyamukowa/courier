@@ -1,6 +1,30 @@
 <?php
 defined('BASEPATH') or exit('No direct script access allowed');
 
+if (!function_exists('courier_load_model')) {
+    /**
+     * Loads a courier_goshipping model by its exact filename, bypassing MX's
+     * model loader ($this->load->model('courier_goshipping/Xxx_model')) —
+     * MX lowercases the whole path then only ucfirst()'s the first letter
+     * before checking is_file(), so any model filename with more than one
+     * internal capital (CourierBranch_model, CountryState_model, etc.) silently
+     * fails to resolve on case-sensitive (Linux) filesystems, even though it
+     * works by accident on case-insensitive Windows dev boxes.
+     */
+    function courier_load_model($model_name, $alias = null)
+    {
+        $CI = &get_instance();
+        $alias = $alias ?: $model_name;
+
+        if (!isset($CI->$alias)) {
+            if (!class_exists($model_name, false)) {
+                require_once(module_dir_path('courier_goshipping', 'models/' . $model_name . '.php'));
+            }
+            $CI->$alias = new $model_name();
+        }
+    }
+}
+
 if (!function_exists('load_courier_styles')) {
     function load_courier_styles()
     {
