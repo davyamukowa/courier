@@ -197,6 +197,10 @@ class Trips extends AdminController
             'trip_notes'          => 'Trip #' . $trip_id . ($trip->track_type === 'double' ? ' (Double Track)' : ''),
         ]);
 
+        if ($trip->shipment_id) {
+            $this->_advance_shipment_status($trip->shipment_id, 5); // 'in_transit'
+        }
+
         echo json_encode(['success' => true]);
     }
 
