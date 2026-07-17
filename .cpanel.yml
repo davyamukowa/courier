@@ -1,0 +1,12 @@
+---
+# cPanel Git Version Control deployment file.
+# When you click "Deploy HEAD Commit" (or a deploy is triggered via cron/webhook),
+# cPanel runs these commands from the repository's working copy.
+#
+# IMPORTANT: replace /home/CPANELUSER and the live path below with your real
+# cPanel username and the actual path to perfex_crm on the live server.
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/CPANELUSER/public_html/perfex_crm/
+    - /bin/cp -R modules/courier_goshipping/. $DEPLOYPATH/modules/courier_goshipping/
+    - /bin/cp -R modules/shopify_connector/. $DEPLOYPATH/modules/shopify_connector/

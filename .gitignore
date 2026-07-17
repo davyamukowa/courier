@@ -6,7 +6,6 @@ modules/*
 !modules/courier_goshipping/
 !modules/shopify_connector/
 !.cpanel.yml
-!deploy.php
 !.gitignore
 
 # Common junk inside the whitelisted modules
