@@ -2135,10 +2135,15 @@ class Fulfilment extends AdminController
         ];
         $client_id = $this->courier_client_model->insert_client($client_data);
         if (!$client_id) {
+            $db_error = $this->db->error();
+            $this->write_integration_log('error', 'shipment', 'Invoice creation stopped: insert_client() failed - ' . ($db_error['message'] ?? 'unknown error'), [
+                'shipment_id' => $shipment_id,
+                'client_data' => $client_data,
+            ]);
             return false;
         }
 
-        $invoice_id = $this->invoices_model->add([
+        $invoice_data = [
             'clientid' => $client_id,
             'number' => get_option('next_invoice_number'),
             'date' => date('Y-m-d'),
@@ -2150,8 +2155,24 @@ class Fulfilment extends AdminController
             'billing_street' => $recipient_data['address'],
             'billing_zip' => $recipient_data['zipcode'],
             'billing_country' => $recipient_data['country_id'] ?: 0,
-        ]);
+        ];
+        try {
+            $invoice_id = $this->invoices_model->add($invoice_data);
+        } catch (\Throwable $e) {
+            $this->write_integration_log('error', 'shipment', 'Invoice creation stopped: invoices_model->add() threw ' . get_class($e) . ': ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine(), [
+                'shipment_id' => $shipment_id,
+                'client_id' => $client_id,
+                'invoice_data' => $invoice_data,
+            ]);
+            return false;
+        }
         if (!$invoice_id) {
+            $db_error = $this->db->error();
+            $this->write_integration_log('error', 'shipment', 'Invoice creation stopped: invoices_model->add() returned falsy - ' . ($db_error['message'] ?? 'unknown error'), [
+                'shipment_id' => $shipment_id,
+                'client_id' => $client_id,
+                'invoice_data' => $invoice_data,
+            ]);
             return false;
         }
 
