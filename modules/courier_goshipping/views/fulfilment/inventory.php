@@ -51,6 +51,17 @@
             <?php endif; ?>
         </div>
 
+        <div class="row mbot15">
+            <div class="col-md-3">
+                <select id="inventory_stock_filter" class="form-control">
+                    <option value="">All Stock Statuses</option>
+                    <option value="in_stock">In Stock</option>
+                    <option value="low_stock">Low Stock</option>
+                    <option value="out_of_stock">Out of Stock</option>
+                </select>
+            </div>
+        </div>
+
         <div class="table-responsive">
             <table class="table table-fulfilment-inventory" data-order-col="11" data-order-type="desc">
                 <thead>
