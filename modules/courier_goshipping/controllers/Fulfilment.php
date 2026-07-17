@@ -1059,11 +1059,12 @@ class Fulfilment extends AdminController
             'recordsFiltered' => $total_filtered,
             'data' => $data,
         ]);
-        file_put_contents(FCPATH . 'orders_json.log', $json_out);
         echo $json_out;
         exit;
         } catch (\Throwable $e) {
-            file_put_contents(FCPATH . 'orders_error.log', $e->getMessage() . "\n" . $this->db->last_query() . "\n" . $e->getTraceAsString());
+            $this->write_integration_log('error', 'order', 'get_orders_datatable crashed: ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine(), [
+                'last_query' => $this->db->last_query(),
+            ]);
             echo json_encode(['error' => $e->getMessage(), 'query' => $this->db->last_query()]);
         }
     }
