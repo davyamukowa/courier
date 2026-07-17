@@ -18,6 +18,17 @@ class Fulfilment extends AdminController
         if (!$this->db->table_exists(db_prefix() . 'shopify_orders')) {
             require_once(module_dir_path('shopify_connector', 'install.php'));
         }
+
+        // courier_branch_id was referenced throughout this controller and
+        // shopify_connector's webhook handler but was never actually added
+        // to the schema — self-heal it here so both local and live pick it
+        // up without needing a manual module reactivation.
+        if (
+            $this->db->table_exists(db_prefix() . 'shopify_product_mappings')
+            && !$this->db->field_exists('courier_branch_id', db_prefix() . 'shopify_product_mappings')
+        ) {
+            $this->db->query('ALTER TABLE `' . db_prefix() . 'shopify_product_mappings` ADD `courier_branch_id` INT NULL;');
+        }
     }
 
     public function index()
