@@ -2,10 +2,42 @@
 
 class Trips extends AdminController
 {
+    // Public, token-authenticated actions — no staff login. A driver opens
+    // these from a link on their own phone, so they can't go through the
+    // normal admin auth flow.
+    private $public_actions = ['driver_gps', 'record_location'];
+
     public function __construct()
     {
-        parent::__construct();
+        $uri = load_class('URI', 'core');
+        if (in_array($uri->segment(3), $this->public_actions, true)) {
+            App_Controller::__construct();
+        } else {
+            parent::__construct();
+        }
+
         $this->load->model('fleet/Fleet_trips_model');
+
+        // Self-heal: these are referenced by code below but may not exist yet
+        // if this module was deployed by copying files rather than through
+        // the official Setup > Modules reactivation flow.
+        if (!$this->db->field_exists('tracking_token', db_prefix() . 'fleet_trips')) {
+            $this->db->query('ALTER TABLE `' . db_prefix() . 'fleet_trips` ADD COLUMN `tracking_token` VARCHAR(64) NULL DEFAULT NULL AFTER `id`, ADD UNIQUE KEY `tracking_token` (`tracking_token`)');
+        }
+        if (!$this->db->table_exists(db_prefix() . 'fleet_trip_locations')) {
+            $this->db->query('CREATE TABLE `' . db_prefix() . "fleet_trip_locations` (
+                `id`          INT(11)        NOT NULL AUTO_INCREMENT,
+                `trip_id`     INT(11)        NOT NULL,
+                `latitude`    DECIMAL(10,7)  NOT NULL,
+                `longitude`   DECIMAL(10,7)  NOT NULL,
+                `accuracy`    DECIMAL(10,2)  NULL DEFAULT NULL,
+                `speed`       DECIMAL(10,2)  NULL DEFAULT NULL,
+                `recorded_at` DATETIME       NOT NULL,
+                PRIMARY KEY (`id`),
+                KEY `trip_id` (`trip_id`),
+                KEY `trip_recorded` (`trip_id`, `recorded_at`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=" . $this->db->char_set . ';');
+        }
     }
 
     // ── List ───────────────────────────────────────────────────────────────────
