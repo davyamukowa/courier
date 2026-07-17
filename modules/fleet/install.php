@@ -1147,3 +1147,24 @@ if (!$CI->db->field_exists('service_point_id', db_prefix() . 'fleet_trip_offload
     $CI->db->query('ALTER TABLE `' . db_prefix() . 'fleet_trip_offloading` ADD COLUMN `service_point_id` INT(11) NULL DEFAULT NULL AFTER `trip_id`');
 }
 
+// Unguessable token so a driver can open a no-login mobile page and share
+// GPS location for their active trip, without needing a full staff account.
+if (!$CI->db->field_exists('tracking_token', db_prefix() . 'fleet_trips')) {
+    $CI->db->query('ALTER TABLE `' . db_prefix() . 'fleet_trips` ADD COLUMN `tracking_token` VARCHAR(64) NULL DEFAULT NULL AFTER `id`, ADD UNIQUE KEY `tracking_token` (`tracking_token`)');
+}
+
+if (!$CI->db->table_exists(db_prefix() . 'fleet_trip_locations')) {
+    $CI->db->query('CREATE TABLE `' . db_prefix() . "fleet_trip_locations` (
+        `id`          INT(11)        NOT NULL AUTO_INCREMENT,
+        `trip_id`     INT(11)        NOT NULL,
+        `latitude`    DECIMAL(10,7)  NOT NULL,
+        `longitude`   DECIMAL(10,7)  NOT NULL,
+        `accuracy`    DECIMAL(10,2)  NULL DEFAULT NULL,
+        `speed`       DECIMAL(10,2)  NULL DEFAULT NULL,
+        `recorded_at` DATETIME       NOT NULL,
+        PRIMARY KEY (`id`),
+        KEY `trip_id` (`trip_id`),
+        KEY `trip_recorded` (`trip_id`, `recorded_at`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=" . $CI->db->char_set . ';');
+}
+
