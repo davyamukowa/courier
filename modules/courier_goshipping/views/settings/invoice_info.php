@@ -1,6 +1,6 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed'); ?>
 
-<?php echo form_open('admin/courier/settings/save_invoice_info', ['id' => 'invoice-info-form']); ?>
+<?php echo form_open('admin/courier_goshipping/settings/save_invoice_info', ['id' => 'invoice-info-form']); ?>
 
 <div class="panel panel-default">
     <div class="panel-heading">
@@ -113,7 +113,7 @@
 <?php echo form_close(); ?>
 
 <!-- ── Stamp Settings ─────────────────────────────────────────────────── -->
-<?php echo form_open('admin/courier/settings/save_stamp_info', ['id' => 'stamp-info-form']); ?>
+<?php echo form_open('admin/courier_goshipping/settings/save_stamp_info', ['id' => 'stamp-info-form']); ?>
 
 <div class="panel panel-default" style="margin-top:24px;">
     <div class="panel-heading">
