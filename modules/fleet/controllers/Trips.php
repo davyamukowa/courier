@@ -468,14 +468,15 @@ JS;
             $size = 192;
         }
 
-        header('Content-Type: image/png');
-
         if (!function_exists('imagecreatetruecolor')) {
             // GD isn't available on this PHP build — a 1x1 transparent GIF is
             // valid with no GD dependency at all, unlike a "broken image" PNG.
+            header('Content-Type: image/gif');
             echo base64_decode('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBTAA7');
             return;
         }
+
+        header('Content-Type: image/png');
 
         $img = imagecreatetruecolor($size, $size);
         imagesavealpha($img, true);
