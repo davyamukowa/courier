@@ -127,6 +127,13 @@
                 $(this).parents('.table-loading').removeClass('table-loading');
             }
         });
+
+        // New Salibay orders land instantly via webhook — quietly reload the
+        // table every few seconds (keeping the current page/sort/filters) so
+        // staff see new orders without hitting refresh themselves.
+        setInterval(function () {
+            $('.table-fulfilment-orders').DataTable().ajax.reload(null, false);
+        }, 3000);
     });
 })();
 
