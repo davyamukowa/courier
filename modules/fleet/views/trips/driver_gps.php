@@ -105,12 +105,56 @@
     <script>
         var TOKEN = <?php echo json_encode($token); ?>;
         var RECORD_URL = <?php echo json_encode(site_url('admin/fleet/trips/record_location')); ?>;
+        var START_TRIP_URL = <?php echo json_encode(site_url('admin/fleet/trips/driver_start_trip')); ?>;
         var SW_URL = <?php echo json_encode(site_url('admin/fleet/trips/sw')); ?>;
         var QUEUE_KEY = 'trip_tracker_queue_' + TOKEN;
         var watchId = null;
         var wakeLock = null;
         var lastSentAt = 0;
         var MIN_INTERVAL_MS = 10000; // don't post more often than every 10s, even if GPS updates faster
+
+        function startTrip() {
+            var odo = document.getElementById('start_odometer_input').value;
+            var errBox = document.getElementById('start_trip_error');
+            errBox.style.display = 'none';
+
+            if (!odo || Number(odo) <= 0) {
+                errBox.textContent = 'Please enter a valid odometer reading.';
+                errBox.style.display = 'block';
+                return;
+            }
+
+            var btn = document.getElementById('start_trip_btn');
+            btn.disabled = true;
+            btn.textContent = 'Starting...';
+
+            fetch(START_TRIP_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ token: TOKEN, odometer: odo }).toString()
+            }).then(function (r) { return r.json(); }).then(function (res) {
+                if (!res.success) {
+                    errBox.textContent = res.message || 'Could not start the trip. Please try again.';
+                    errBox.style.display = 'block';
+                    btn.disabled = false;
+                    btn.textContent = 'Start Trip';
+                    return;
+                }
+
+                document.getElementById('trip_status_text').textContent = 'In transit';
+                document.getElementById('start_trip_section').style.display = 'none';
+                document.getElementById('sharing_section').style.display = 'block';
+
+                // Starting the trip means the driver is already moving — begin
+                // sharing location immediately rather than making them tap twice.
+                startSharing();
+            }).catch(function () {
+                errBox.textContent = 'Network error — please check your connection and try again.';
+                errBox.style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = 'Start Trip';
+            });
+        }
 
         // ── Service worker (installability + offline app-shell caching) ────────
         if ('serviceWorker' in navigator) {
