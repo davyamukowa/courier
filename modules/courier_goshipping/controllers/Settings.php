@@ -12,7 +12,10 @@ class Settings extends AdminController
             access_denied('Courier - Settings');
         }
         $this->load->helper('courier_goshipping/courier'); // Load the helper specific to the courier module
-        $this->load->model('DimensionalFactor_model');
+        // MX's model loader lowercases the whole path then only ucfirst()'s
+        // the first letter before checking is_file(), so this multi-capital
+        // filename never resolves on case-sensitive (Linux) fs.
+        courier_load_model('DimensionalFactor_model');
         $this->load->library('form_validation');
 
     }
