@@ -2756,6 +2756,16 @@ class Shipments extends AdminController
                 }
             }
 
+            // Mirror "Delivered" back onto the linked Salibay order, if any —
+            // otherwise it stays stuck showing as Pending Dispatch forever,
+            // since nothing else ever advances shopify_orders.order_status
+            // past 'processing' once a shipment exists.
+            if ($new_status_id === 8 && $this->db->table_exists(db_prefix() . 'shopify_orders')) {
+                $this->db->where('gs_shipment_id', (int) $id)->update(db_prefix() . 'shopify_orders', [
+                    'order_status' => 'delivered',
+                ]);
+            }
+
             // Commit the transaction if everything is successful
             $this->db->trans_commit();
 
