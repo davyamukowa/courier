@@ -7,11 +7,14 @@ class Courier extends AdminController
     public function __construct()
     {
         parent::__construct();
-        $this->load->model('CountryState_model');
+        $this->load->helper('courier_goshipping/courier'); // Load the helper specific to the courier module
+        // MX's model loader lowercases the whole path then only ucfirst()'s
+        // the first letter before checking is_file(), so multi-capital
+        // filenames like these never resolve on case-sensitive (Linux) fs.
+        courier_load_model('CountryState_model');
         $this->load->model('Pickup_model');
         $this->load->model('Shipment_model');
-        $this->load->model('CourierCompany_model');
-        $this->load->helper('courier_goshipping/courier'); // Load the helper specific to the courier module
+        courier_load_model('CourierCompany_model');
     }
 
     public function dashboard()
