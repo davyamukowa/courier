@@ -259,5 +259,31 @@ document.getElementById('branch_name').addEventListener('input', function() {
         document.getElementById('branch_code').value = buildBranchCodePreview(this.value);
     }
 });
+
+document.getElementById('branchForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    if (!document.getElementById('branch_name').value.trim()) {
+        alert_float('danger', 'Branch Name is required.');
+        return;
+    }
+
+    var $btn = $('#branchSaveBtn');
+    var originalText = $btn.html();
+    $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Saving...');
+
+    $.post(this.action, $(this).serialize(), function(res) {
+        if (res.success) {
+            alert_float('success', res.message || 'Saved successfully.');
+            window.location.reload();
+        } else {
+            alert_float('danger', res.message || 'Save failed.');
+            $btn.prop('disabled', false).html(originalText);
+        }
+    }, 'json').fail(function() {
+        alert_float('danger', 'Unable to contact the server. Please refresh and try again.');
+        $btn.prop('disabled', false).html(originalText);
+    });
+});
 </script>
 <?php init_tail(); ?>
