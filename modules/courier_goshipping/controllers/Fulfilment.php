@@ -1759,6 +1759,22 @@ class Fulfilment extends AdminController
         return $metrics;
     }
 
+    // Polled every few seconds by the fulfilment header so KPI cards update
+    // live (new Salibay orders, dispatch counts) without a manual page refresh.
+    public function get_dashboard_metrics_ajax()
+    {
+        if (!$this->can_view_fulfilment()) {
+            ajax_access_denied();
+        }
+
+        $virtual_warehouse = $this->ensure_virtual_warehouse();
+        echo json_encode([
+            'success' => true,
+            'metrics' => $this->get_fulfilment_metrics(),
+            'virtual_warehouse_name' => $virtual_warehouse->warehouse_name ?? null,
+        ]);
+    }
+
     private function ensure_virtual_warehouse($name = null)
     {
         if (!$this->db->table_exists(db_prefix() . 'warehouse')) {
