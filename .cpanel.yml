@@ -8,6 +8,4 @@
 deployment:
   tasks:
     - export DEPLOYPATH=/home/d19346/public_html/
-    - /bin/cp -R modules/courier_goshipping/. $DEPLOYPATH/modules/courier_goshipping/
-    - /bin/cp -R modules/shopify_connector/. $DEPLOYPATH/modules/shopify_connector/
-    - /bin/cp -R modules/fleet/. $DEPLOYPATH/modules/fleet/
+    - for d in modules/*/; do m=$(basename "$d"); mkdir -p "$DEPLOYPATH/modules/$m"; /bin/cp -R "$d." "$DEPLOYPATH/modules/$m/"; done
