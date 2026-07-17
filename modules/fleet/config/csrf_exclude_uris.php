@@ -3,9 +3,11 @@
 defined('BASEPATH') or exit('No direct script access allowed');
 
 /*
- * Driver GPS ping endpoint — the driver's phone posts here from a public,
- * token-authenticated page (no staff login, so no CSRF token available).
+ * Public, token-authenticated driver endpoints — the driver's phone posts
+ * here from their own tracker page (no staff login, so no CSRF token
+ * available).
  */
 return [
     'admin/fleet/trips/record_location(.*)',
+    'admin/fleet/trips/driver_start_trip(.*)',
 ];
