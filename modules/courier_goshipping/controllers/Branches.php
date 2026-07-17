@@ -11,8 +11,13 @@ class Branches extends AdminController
             access_denied('Courier - Branches');
         }
         $this->load->helper('courier_goshipping/courier');
-        $this->load->model('courier_goshipping/CourierBranch_model');
-        $this->load->model('courier_goshipping/CountryState_model');
+        // MX's model loader lowercases the whole path then only ucfirst()'s the
+        // first letter when checking is_file(), so it looks for
+        // "Courierbranch_model.php" / "Countrystate_model.php" — which never
+        // matches these mixed-case filenames on a case-sensitive (Linux) fs,
+        // even though it silently works on case-insensitive Windows dev boxes.
+        courier_load_model('CourierBranch_model');
+        courier_load_model('CountryState_model');
         $this->load->library('form_validation');
     }
 
