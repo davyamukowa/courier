@@ -119,32 +119,62 @@
         <div class="cgs-fulfilment-kpis">
             <div class="cgs-fulfilment-kpi">
                 <div class="cgs-fulfilment-kpi__label">Orders Today</div>
-                <div class="cgs-fulfilment-kpi__value"><?php echo (int) ($metrics['orders_today'] ?? 0); ?></div>
+                <div class="cgs-fulfilment-kpi__value" id="kpi_orders_today"><?php echo (int) ($metrics['orders_today'] ?? 0); ?></div>
             </div>
             <div class="cgs-fulfilment-kpi">
                 <div class="cgs-fulfilment-kpi__label">Pending Dispatch</div>
-                <div class="cgs-fulfilment-kpi__value"><?php echo (int) ($metrics['pending_dispatch'] ?? 0); ?></div>
+                <div class="cgs-fulfilment-kpi__value" id="kpi_pending_dispatch"><?php echo (int) ($metrics['pending_dispatch'] ?? 0); ?></div>
             </div>
             <div class="cgs-fulfilment-kpi">
                 <div class="cgs-fulfilment-kpi__label">Tracked SKUs</div>
-                <div class="cgs-fulfilment-kpi__value"><?php echo (int) ($metrics['tracked_skus'] ?? 0); ?></div>
+                <div class="cgs-fulfilment-kpi__value" id="kpi_tracked_skus"><?php echo (int) ($metrics['tracked_skus'] ?? 0); ?></div>
             </div>
             <div class="cgs-fulfilment-kpi">
                 <div class="cgs-fulfilment-kpi__label">Available Units</div>
-                <div class="cgs-fulfilment-kpi__value"><?php echo number_format((float) ($metrics['virtual_available_qty'] ?? 0), 0); ?></div>
+                <div class="cgs-fulfilment-kpi__value" id="kpi_available_qty"><?php echo number_format((float) ($metrics['virtual_available_qty'] ?? 0), 0); ?></div>
             </div>
             <div class="cgs-fulfilment-kpi">
                 <div class="cgs-fulfilment-kpi__label">Reserved Units</div>
-                <div class="cgs-fulfilment-kpi__value"><?php echo number_format((float) ($metrics['virtual_reserved_qty'] ?? 0), 0); ?></div>
+                <div class="cgs-fulfilment-kpi__value" id="kpi_reserved_qty"><?php echo number_format((float) ($metrics['virtual_reserved_qty'] ?? 0), 0); ?></div>
             </div>
             <div class="cgs-fulfilment-kpi">
                 <div class="cgs-fulfilment-kpi__label">Virtual Warehouse</div>
-                <div class="cgs-fulfilment-kpi__value" style="font-size:16px;line-height:1.25;"><?php echo htmlspecialchars($virtual_warehouse->warehouse_name ?? 'Not ready'); ?></div>
+                <div class="cgs-fulfilment-kpi__value" id="kpi_warehouse_name" style="font-size:16px;line-height:1.25;"><?php echo htmlspecialchars($virtual_warehouse->warehouse_name ?? 'Not ready'); ?></div>
             </div>
         </div>
     </div>
 
     <?php echo $group_content ?? ''; ?>
 </section>
+
+<script>
+(function waitForJQueryFulfilmentLive() {
+    if (!window.jQuery) { setTimeout(waitForJQueryFulfilmentLive, 50); return; }
+
+    $(function () {
+        var METRICS_URL = <?php echo json_encode(admin_url('courier_goshipping/fulfilment/get_dashboard_metrics_ajax')); ?>;
+
+        function pollMetrics() {
+            $.get(METRICS_URL, function (res) {
+                if (!res.success) { return; }
+                var m = res.metrics;
+                $('#kpi_orders_today').text(m.orders_today);
+                $('#kpi_pending_dispatch').text(m.pending_dispatch);
+                $('#kpi_tracked_skus').text(m.tracked_skus);
+                $('#kpi_available_qty').text(Number(m.virtual_available_qty).toLocaleString());
+                $('#kpi_reserved_qty').text(Number(m.virtual_reserved_qty).toLocaleString());
+                if (res.virtual_warehouse_name) {
+                    $('#kpi_warehouse_name').text(res.virtual_warehouse_name);
+                }
+            }, 'json');
+        }
+
+        // New Salibay orders arrive instantly via webhook — this just makes
+        // the already-open dashboard/orders page reflect that within a few
+        // seconds, without staff needing to hit refresh themselves.
+        setInterval(pollMetrics, 3000);
+    });
+})();
+</script>
 
 <?php init_tail(); ?>
