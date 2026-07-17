@@ -146,7 +146,7 @@ $ltype_labels   = ['full'=>'Full Load','half'=>'Half Load','part'=>'Part Load'];
               <div class="info-card">
                 <div class="ic-lbl"><i class="fa fa-file-text"></i> Shipment</div>
                 <div class="ic-val">
-                  <a href="<?php echo admin_url('courier/shipments/waybill/'.$t->shipment_id); ?>">
+                  <a href="<?php echo admin_url('courier_goshipping/shipments/waybill/'.$t->shipment_id); ?>">
                     <?php echo htmlspecialchars($shipment->waybill_number ?? '—'); ?>
                   </a>
                 </div>

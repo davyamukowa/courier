@@ -68,7 +68,7 @@
                     <td><?php echo $t->id; ?></td>
                     <td>
                       <?php if ($t->waybill_number): ?>
-                        <a href="<?php echo admin_url('courier/shipments/waybill/' . $t->shipment_id); ?>">
+                        <a href="<?php echo admin_url('courier_goshipping/shipments/waybill/' . $t->shipment_id); ?>">
                           <?php echo htmlspecialchars($t->waybill_number); ?>
                         </a>
                       <?php else: echo '—'; endif; ?>
