@@ -151,7 +151,7 @@ class Tracker extends App_Controller
             'phone_number' => $contact_phone,
             'email'        => $contact_email,
         ];
-        $this->load->model('PickupContact_model');
+        courier_load_model('PickupContact_model');
         $contact_id = $this->PickupContact_model->add($contact_data);
 
         if (!$contact_id) {
