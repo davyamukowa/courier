@@ -291,7 +291,7 @@ function togglePtMode(val) {
 }
 </script>
 
-    <?php echo form_open('admin/courier/settings/dimensional_factor', ['id' => 'set-dimensional-factor-form']); ?>
+    <?php echo form_open('admin/courier_goshipping/settings/dimensional_factor', ['id' => 'set-dimensional-factor-form']); ?>
     <div class="col-md-12">
         <div class="panel_s">
             <div class="panel-heading"><h4 class="panel-title">Dimensional Weight Factors</h4></div>
