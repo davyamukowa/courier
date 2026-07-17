@@ -44,6 +44,7 @@
                         <th>Model</th>
                         <th>Status</th>
                         <th>Courier Shipment</th>
+                        <th>Driver / Trip</th>
                         <th>Tracking</th>
                         <th>Created</th>
                         <th>Actions</th>
