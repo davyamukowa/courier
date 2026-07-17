@@ -34,15 +34,14 @@ class Branches extends AdminController
     public function store()
     {
         if (!is_admin() && !has_permission('courier-branches', '', 'create_branches')) {
-            access_denied('Courier - Branches');
+            ajax_access_denied();
         }
 
         $this->form_validation->set_rules('name', 'Branch Name', 'required');
         $this->form_validation->set_rules('branch_type', 'Branch Type', 'required');
 
         if ($this->form_validation->run() === false) {
-            set_alert('danger', validation_errors());
-            redirect(admin_url('courier_goshipping/branches/main'));
+            echo json_encode(['success' => false, 'message' => strip_tags(validation_errors())]);
             return;
         }
 
@@ -62,24 +61,21 @@ class Branches extends AdminController
 
         $id = $this->CourierBranch_model->add($data);
         if ($id) {
-            set_alert('success', 'Branch created successfully.');
+            echo json_encode(['success' => true, 'message' => 'Branch created successfully.']);
         } else {
-            set_alert('danger', 'Failed to create branch. The code may already be in use.');
+            echo json_encode(['success' => false, 'message' => 'Failed to create branch. The code may already be in use.']);
         }
-
-        redirect(admin_url('courier_goshipping/branches/main'));
     }
 
     public function update($id)
     {
         if (!is_admin() && !has_permission('courier-branches', '', 'edit_branches')) {
-            access_denied('Courier - Branches');
+            ajax_access_denied();
         }
 
         $branch = $this->CourierBranch_model->get((int) $id);
         if (!$branch) {
-            set_alert('danger', 'Branch not found.');
-            redirect(admin_url('courier_goshipping/branches/main'));
+            echo json_encode(['success' => false, 'message' => 'Branch not found.']);
             return;
         }
 
@@ -98,12 +94,10 @@ class Branches extends AdminController
         ];
 
         if ($this->CourierBranch_model->update((int) $id, $data)) {
-            set_alert('success', 'Branch updated successfully.');
+            echo json_encode(['success' => true, 'message' => 'Branch updated successfully.']);
         } else {
-            set_alert('danger', 'Failed to update branch.');
+            echo json_encode(['success' => false, 'message' => 'Failed to update branch.']);
         }
-
-        redirect(admin_url('courier_goshipping/branches/main'));
     }
 
     public function delete($id)
