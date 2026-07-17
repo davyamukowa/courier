@@ -223,7 +223,7 @@ class Tracker extends App_Controller
         }
 
         // Store sender
-        $this->load->model('ShipmentSender_model');
+        courier_load_model('ShipmentSender_model');
         $sender_id = $this->ShipmentSender_model->add([
             'first_name'   => $sender_name,
             'last_name'    => '',
