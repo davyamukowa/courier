@@ -2073,7 +2073,7 @@ class Shipments extends AdminController
         $declared_value = $this->input->post('declared_value');
 
         if (!empty($commodity_quantity) && is_array($commodity_quantity)) {
-            $this->load->model('CommercialValueItems_model');
+            courier_load_model('CommercialValueItems_model');
             foreach ($commodity_quantity as $i => $quantity) {
                 if (!empty($quantity) && !empty($commodity_description[$i]) && !empty($declared_value[$i])) {
                     $this->CommercialValueItems_model->add([
