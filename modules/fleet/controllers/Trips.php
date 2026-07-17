@@ -217,29 +217,66 @@ class Trips extends AdminController
         $trip = $this->Fleet_trips_model->get($trip_id);
         if (!$trip) { echo json_encode(['success' => false]); return; }
 
-        $odometer = (float)$this->input->post('odometer');
+        $odometer = (float) $this->input->post('odometer');
+        $this->_start_trip_core($trip, $odometer, get_staff_user_id());
 
-        $this->Fleet_trips_model->update($trip_id, [
+        echo json_encode(['success' => true]);
+    }
+
+    // ── Driver starts their own trip from the public tracker page ─────────────
+    public function driver_start_trip()
+    {
+        header('Content-Type: application/json');
+
+        $token = $this->input->post('token');
+        $trip = $token ? $this->db->where('tracking_token', $token)->get(db_prefix() . 'fleet_trips')->row() : null;
+        if (!$trip) {
+            echo json_encode(['success' => false, 'message' => 'Invalid tracking link.']);
+            return;
+        }
+        if ($trip->status === 'started' || $trip->status === 'offloading' || $trip->status === 'completed') {
+            echo json_encode(['success' => true, 'already_started' => true]);
+            return;
+        }
+
+        $odometer = (float) $this->input->post('odometer');
+        if ($odometer <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Please enter a valid odometer reading.']);
+            return;
+        }
+
+        $this->_start_trip_core($trip, $odometer, $trip->driver_id);
+
+        echo json_encode(['success' => true]);
+    }
+
+    /**
+     * Shared by both the staff-side "Start Trip" button (Trip detail page)
+     * and the driver's own "Start Trip" button on their public tracker page —
+     * same effect either way: marks the trip started, opens a vehicle
+     * assignment record, and advances the linked shipment to 'in_transit'.
+     */
+    private function _start_trip_core($trip, $odometer, $actor_staff_id)
+    {
+        $this->Fleet_trips_model->update($trip->id, [
             'status'         => 'started',
             'start_time'     => date('Y-m-d H:i:s'),
             'start_odometer' => $odometer ?: $trip->start_odometer,
         ]);
 
         $this->db->insert(db_prefix() . 'fleet_vehicle_assignments', [
-            'driver_id'           => $trip->driver_id ?: get_staff_user_id(),
+            'driver_id'           => $trip->driver_id ?: $actor_staff_id,
             'vehicle_id'          => $trip->vehicle_id,
             'start_time'          => date('Y-m-d H:i:s'),
             'starting_odometer'   => $odometer,
-            'addedfrom'           => get_staff_user_id(),
+            'addedfrom'           => $actor_staff_id,
             'courier_shipment_id' => $trip->shipment_id,
-            'trip_notes'          => 'Trip #' . $trip_id . ($trip->track_type === 'double' ? ' (Double Track)' : ''),
+            'trip_notes'          => 'Trip #' . $trip->id . ($trip->track_type === 'double' ? ' (Double Track)' : ''),
         ]);
 
         if ($trip->shipment_id) {
             $this->_advance_shipment_status($trip->shipment_id, 5); // 'in_transit'
         }
-
-        echo json_encode(['success' => true]);
     }
 
     // ── Offload (AJAX POST) ────────────────────────────────────────────────────
