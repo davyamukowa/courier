@@ -1,0 +1,5 @@
+<?php
+
+// integrity check removed
+
+?>

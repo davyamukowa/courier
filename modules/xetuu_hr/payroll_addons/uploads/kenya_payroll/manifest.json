@@ -1,0 +1,17 @@
+{
+    "id": "kenya_payroll",
+    "name": "Kenya Payroll Addon",
+    "version": "1.0.0",
+    "type": "php",
+    "country": "KE",
+    "country_name": "Kenya",
+    "author": "Xetuu",
+    "main": "KenyaPayrollAddon.php",
+    "class": "KenyaPayrollAddon",
+    "description": "Statutory payroll computation for Kenya — PAYE (graduated bands), NSSF Tier I & II, SHIF (2.75%) and the Affordable Housing Levy (1.5%). Adds the P9A, P10, NSSF, SHA and Housing Levy statutory reports, and relabels company fields to KRA PIN / NSSF / SHA.",
+    "labels": {
+        "tax_reg_number": "KRA PIN",
+        "social_sec_number": "NSSF Employer No.",
+        "health_fund_number": "SHA Employer Code"
+    }
+}

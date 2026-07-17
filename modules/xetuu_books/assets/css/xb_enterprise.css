@@ -1,0 +1,372 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   XETUU BOOKS — ENTERPRISE TRANSACTION WORKSPACE
+   Single source of truth for all transaction screen styles.
+   Load order: xb_accounting.css → xb_enterprise.css (this file)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Status Badge System (DO NOT deviate from these colours) ──────────────
+   Draft=Gray  Submitted=Blue  Approved=Purple  Posted=Green
+   Cancelled=Red  Overdue=Orange  Paid=Green  Partial=Amber  Reconciled=Green
+   ─────────────────────────────────────────────────────────────────────────*/
+.xb-status-badge {
+    display: inline-block;
+    padding: 3px 11px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    vertical-align: middle;
+    line-height: 1.6;
+}
+.xb-status-draft      { background: #e5e7eb; color: #374151; }
+.xb-status-submitted  { background: #dbeafe; color: #1d4ed8; }
+.xb-status-approved   { background: #ede9fe; color: #6d28d9; }
+.xb-status-posted     { background: #dcfce7; color: #166534; }
+.xb-status-cancelled  { background: #fee2e2; color: #991b1b; }
+.xb-status-paid       { background: #dcfce7; color: #166534; }
+.xb-status-partial    { background: #fef3c7; color: #92400e; }
+.xb-status-overdue    { background: #ffedd5; color: #9a3412; }
+.xb-status-reconciled { background: #dcfce7; color: #166534; }
+.xb-status-not_paid   { background: #e5e7eb; color: #374151; }
+.xb-status-in_payment { background: #dbeafe; color: #1d4ed8; }
+.xb-status-confirmed  { background: #ede9fe; color: #6d28d9; }
+.xb-status-open       { background: #dcfce7; color: #166534; }
+.xb-status-closed     { background: #e5e7eb; color: #374151; }
+
+/* ── Base Workspace ───────────────────────────────────────────────────────*/
+.xb-workspace {
+    margin-top: -15px;
+    background: #f3f4f6;
+    min-height: calc(100vh - 120px);
+}
+
+/* ── Breadcrumb ───────────────────────────────────────────────────────────*/
+.xb-breadcrumb {
+    padding: 12px 0 2px;
+    font-size: 12px;
+    color: #9ca3af;
+    line-height: 1.4;
+}
+.xb-breadcrumb a       { color: #1a6b3a; text-decoration: none; }
+.xb-breadcrumb a:hover { text-decoration: underline; }
+.xb-breadcrumb .xb-bc-sep { margin: 0 5px; color: #d1d5db; }
+.xb-breadcrumb .xb-bc-current { color: #6b7280; font-weight: 500; }
+
+/* ── Header Toolbar ───────────────────────────────────────────────────────*/
+.xb-header-toolbar {
+    background: #ffffff;
+    padding: 13px 25px;
+    border-bottom: 1px solid #e5e7eb;
+    border-top: 1px solid #e5e7eb;
+    margin: 0 -30px 20px -30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    box-shadow: 0 1px 3px rgba(0,0,0,.04);
+}
+.xb-header-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+.xb-header-title h3 {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 700;
+    color: #111827;
+    line-height: 1.3;
+}
+.xb-header-actions {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+/* Auto-save indicator */
+#xb-save-indicator {
+    font-size: 12px;
+    color: #6b7280;
+    margin-right: 4px;
+    transition: opacity .3s;
+}
+
+/* ── Tab Navigation ───────────────────────────────────────────────────────*/
+.xb-tabs { margin-bottom: 16px; }
+.xb-tabs .nav-tabs {
+    border-bottom: 2px solid #e5e7eb;
+    background: #fff;
+    padding: 0 4px;
+    border-radius: 6px 6px 0 0;
+    box-shadow: 0 1px 2px rgba(0,0,0,.04);
+}
+.xb-tabs .nav-tabs > li > a {
+    color: #6b7280;
+    font-weight: 500;
+    font-size: 13px;
+    border: none !important;
+    border-bottom: 2px solid transparent !important;
+    margin-bottom: -2px;
+    padding: 11px 16px;
+    border-radius: 0;
+    background: transparent !important;
+    transition: color .15s, border-color .15s, background .15s;
+}
+.xb-tabs .nav-tabs > li > a:hover {
+    color: #1a6b3a;
+    background: #f0fdf4 !important;
+    border-bottom-color: #86efac !important;
+}
+.xb-tabs .nav-tabs > li.active > a,
+.xb-tabs .nav-tabs > li.active > a:hover,
+.xb-tabs .nav-tabs > li.active > a:focus {
+    color: #1a6b3a !important;
+    border-bottom: 2px solid #1a6b3a !important;
+    background: transparent !important;
+    font-weight: 600;
+}
+.xb-tabs .tab-content { padding-top: 4px; }
+
+/* ── Enterprise Workspace Container (70/30 split) ─────────────────────────*/
+.xb-ew-container {
+    display: flex;
+    gap: 18px;
+    align-items: flex-start;
+}
+.xb-ew-main    { flex: 1 1 68%; min-width: 0; }
+.xb-ew-sidebar {
+    flex: 0 0 30%;
+    max-width: 310px;
+    min-width: 220px;
+    position: sticky;
+    top: 68px;
+    align-self: flex-start;
+}
+
+/* ── Collapsible Sections ─────────────────────────────────────────────────*/
+.xb-collapsible-section {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    overflow: hidden;
+}
+.xb-section-header {
+    padding: 10px 18px;
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+    font-weight: 600;
+    font-size: 13px;
+    color: #374151;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    user-select: none;
+    transition: background .15s;
+}
+.xb-section-header:hover { background: #f0fdf4; color: #1a6b3a; }
+.xb-collapse-icon { font-size: 11px; color: #9ca3af; transition: transform .2s; }
+.xb-section-body { padding: 16px 18px; }
+
+/* ── Sidebar Blocks ───────────────────────────────────────────────────────*/
+.xb-sb-block {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+}
+.xb-sb-block h4 {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: #9ca3af;
+    font-weight: 700;
+    margin: 0 0 10px;
+    padding-bottom: 7px;
+    border-bottom: 1px solid #f3f4f6;
+}
+/* Big amount display */
+.xb-sb-amount {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1a6b3a;
+    text-align: center;
+    padding: 6px 0 2px;
+    line-height: 1.2;
+}
+.xb-sb-amount-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    color: #9ca3af;
+    text-align: center;
+    letter-spacing: .06em;
+    margin-bottom: 10px;
+}
+/* Key-value info rows */
+.xb-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 7px;
+    font-size: 13px;
+    gap: 8px;
+    line-height: 1.4;
+}
+.xb-info-row:last-child { margin-bottom: 0; }
+.xb-info-label { color: #6b7280; flex-shrink: 0; }
+.xb-info-val   { font-weight: 600; color: #111827; text-align: right; word-break: break-word; }
+.xb-info-val.text-danger  { color: #dc2626 !important; }
+.xb-info-val.text-success { color: #16a34a !important; }
+.xb-info-val.text-warning { color: #d97706 !important; }
+
+/* Quick links */
+.xb-quick-links a {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 0;
+    font-size: 13px;
+    color: #1a6b3a;
+    font-weight: 500;
+    text-decoration: none;
+    border-bottom: 1px solid #f3f4f6;
+}
+.xb-quick-links a:last-child { border-bottom: none; }
+.xb-quick-links a:hover { color: #15803d; text-decoration: underline; }
+.xb-quick-links a i { width: 16px; text-align: center; font-size: 12px; }
+
+/* ── Activity Timeline ────────────────────────────────────────────────────*/
+.xb-timeline            { padding: 4px 0; }
+.xb-timeline-item       { display: flex; gap: 12px; margin-bottom: 18px; position: relative; }
+.xb-timeline-item:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: 7px; top: 18px; bottom: -14px;
+    width: 2px; background: #e5e7eb;
+}
+.xb-timeline-dot        { flex-shrink: 0; width: 16px; height: 16px; border-radius: 50%; background: #1a6b3a; border: 2px solid #dcfce7; margin-top: 3px; }
+.xb-timeline-dot.system { background: #6b7280; border-color: #e5e7eb; }
+.xb-timeline-dot.comment{ background: #2563eb; border-color: #dbeafe; }
+.xb-timeline-content    { flex: 1; }
+.xb-timeline-text       { font-size: 13px; color: #111827; font-weight: 500; }
+.xb-timeline-meta       { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+.xb-timeline-comment-body {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    padding: 8px 10px;
+    margin-top: 5px;
+    font-size: 13px;
+    color: #374151;
+    font-style: italic;
+}
+/* Comment input */
+.xb-comment-form        { margin-top: 16px; border-top: 1px solid #f3f4f6; padding-top: 14px; }
+.xb-comment-form textarea {
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    width: 100%;
+    padding: 8px 10px;
+    font-size: 13px;
+    resize: vertical;
+    min-height: 60px;
+    transition: border-color .15s;
+}
+.xb-comment-form textarea:focus { outline: none; border-color: #1a6b3a; box-shadow: 0 0 0 2px rgba(26,107,58,.1); }
+
+/* ── Attachments Panel ────────────────────────────────────────────────────*/
+.xb-drop-zone {
+    border: 2px dashed #d1d5db;
+    border-radius: 6px;
+    padding: 28px 20px;
+    text-align: center;
+    color: #9ca3af;
+    cursor: pointer;
+    transition: border-color .2s, background .2s, color .2s;
+    background: #fafafa;
+}
+.xb-drop-zone:hover,
+.xb-drop-zone.xb-dz-active {
+    border-color: #1a6b3a;
+    background: #f0fdf4;
+    color: #1a6b3a;
+}
+.xb-drop-zone i { font-size: 26px; display: block; margin-bottom: 8px; }
+.xb-attachment-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 4px;
+    border-bottom: 1px solid #f3f4f6;
+    font-size: 13px;
+}
+.xb-attachment-item:last-child { border-bottom: none; }
+.xb-attachment-icon { color: #6b7280; font-size: 18px; width: 22px; text-align: center; }
+.xb-attachment-name { flex: 1; font-weight: 500; color: #111827; word-break: break-all; }
+.xb-attachment-meta { color: #9ca3af; font-size: 11px; white-space: nowrap; }
+.xb-attachment-actions a { color: #6b7280; margin-left: 6px; font-size: 13px; }
+.xb-attachment-actions a:hover { color: #1a6b3a; }
+
+/* ── Line Items Table ─────────────────────────────────────────────────────*/
+.xb-line-table           { width: 100%; border-collapse: collapse; margin: 0; }
+.xb-line-table thead th  { background: #f9fafb; padding: 8px 10px; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid #e5e7eb; }
+.xb-line-table tbody td  { padding: 6px 8px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+.xb-line-table tbody tr:hover td { background: #fafff9; }
+.xb-line-table tfoot     { background: #f9fafb; }
+.xb-line-table tfoot td  { padding: 8px 10px; font-size: 13px; border-top: 2px solid #e5e7eb; }
+
+/* Totals box */
+.xb-totals-box { border: 1px solid #e5e7eb; border-radius: 6px; background: #fff; overflow: hidden; }
+.xb-totals-row { display: flex; justify-content: space-between; padding: 8px 16px; font-size: 13px; border-bottom: 1px solid #f3f4f6; }
+.xb-totals-row:last-child { border-bottom: none; background: #f0fdf4; font-weight: 700; font-size: 15px; padding: 10px 16px; }
+.xb-totals-row span:first-child { color: #6b7280; }
+.xb-totals-row span:last-child  { font-weight: 600; color: #111827; }
+
+/* ── Payment Register UI ─────────────────────────────────────────────────*/
+.xb-payment-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 4px;
+    border-bottom: 1px solid #f3f4f6;
+    font-size: 13px;
+}
+.xb-payment-item:last-child { border-bottom: none; }
+.xb-payment-amount { font-weight: 600; color: #16a34a; }
+.xb-payment-ref    { color: #6b7280; font-size: 12px; }
+
+/* ── General form improvements within workspace ──────────────────────────*/
+.xb-workspace .form-control { font-size: 13px; }
+.xb-workspace label { font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 4px; }
+.xb-workspace .form-group { margin-bottom: 14px; }
+.xb-workspace .help-block { font-size: 12px; color: #6b7280; }
+
+/* ── Button system ───────────────────────────────────────────────────────*/
+.xb-btn-primary  { background-color: #1a6b3a !important; border-color: #1a6b3a !important; color: #fff !important; }
+.xb-btn-primary:hover  { background-color: #15803d !important; border-color: #15803d !important; }
+.xb-btn-post     { background-color: #16a34a; border-color: #16a34a; color: #fff; }
+.xb-btn-post:hover     { background-color: #15803d; border-color: #15803d; color: #fff; }
+.xb-btn-danger   { background-color: #dc2626; border-color: #dc2626; color: #fff; }
+.xb-btn-danger:hover   { background-color: #b91c1c; border-color: #b91c1c; color: #fff; }
+
+/* ── Responsive ──────────────────────────────────────────────────────────*/
+@media (max-width: 1199px) {
+    .xb-ew-sidebar { max-width: 270px; }
+}
+@media (max-width: 991px) {
+    .xb-ew-container  { flex-direction: column; }
+    .xb-ew-main       { flex: 1 1 100%; }
+    .xb-ew-sidebar    { flex: 1 1 100%; max-width: 100%; position: static; }
+    .xb-header-toolbar { margin-left: -15px; margin-right: -15px; padding: 12px 15px; }
+}
+@media (max-width: 576px) {
+    .xb-header-title h3 { font-size: 15px; }
+    .xb-header-actions .btn { font-size: 12px; padding: 4px 8px; }
+    .xb-sb-amount { font-size: 20px; }
+}

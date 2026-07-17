@@ -1,0 +1,104 @@
+.whatsapp-color {
+    color: #10f43e;
+}
+
+.numbertext {
+    color: #ffffff;
+    text-align: center;
+    position: absolute;
+    top: 50%;
+    right: 15px;
+    /* Adjust as needed for spacing */
+    transform: translateY(-50%);
+}
+
+.circle {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    line-height: 50px;
+}
+
+.circle_default {
+    background-color: #6c757d;
+}
+
+.circle_success {
+    background-color: #198754;
+}
+
+.circle_warning {
+    background-color: #ffc107;
+}
+
+.circle_info {
+    background-color: #00A8FF;
+}
+
+.box {
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+.wtc_panel {
+    --tw-bg-opacity: 1;
+    border-radius: .375rem;
+    position: relative;
+    background-color: #ffffff;
+}
+
+.wtc_image {
+    border-radius: .250rem;
+    width: 100%;
+}
+
+.wtc_button {
+    margin-top:0px !important;
+}
+
+.bulk_modal_1 {
+    height: 100%;
+    display: flex;
+    margin: 0 auto;
+}
+
+.bulk_modal_2 {
+    margin: auto;
+}
+
+.bulk_modal_3 {
+    width: auto; 
+    height: 25px;
+    margin-right: 15px;
+}
+
+.attached-image-item {
+    width: 100px;
+    height: 100px;
+    margin-right: 10px;
+    position: relative;
+}
+
+.attached-image-item ._delete {
+    position: absolute;
+    right: 0;
+    top: 0;
+}
+
+.attached-image-item .table-image {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.attached-image-item img {
+    width: auto;
+    height: auto;
+    vertical-align: middle;
+    max-height: 100%;
+    max-width: 100%;
+}
+
+#attachedImages {
+    display: flex;
+}

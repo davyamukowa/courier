@@ -1,13 +1,14 @@
-# This repo is scoped ONLY to the synced modules (see CLAUDE.md sync setup).
-# Whitelist approach: ignore everything, then re-include what we want.
+# This repo syncs the whole modules/ directory (see CLAUDE.md sync setup),
+# plus the deploy config files at the root. Everything else at the repo
+# root (application/, assets/, vendor/, etc.) stays out of this repo.
 /*
 !modules/
-modules/*
-!modules/courier_goshipping/
-!modules/shopify_connector/
-!modules/fleet/
 !.cpanel.yml
 !.gitignore
+
+# Don't track the standalone module .zip bundles sitting next to each
+# module folder (courier_goshipping.zip, fleet.zip, xetuu_hr.zip, etc.)
+modules/*.zip
 
 # Common junk inside the whitelisted modules
 **/.DS_Store
