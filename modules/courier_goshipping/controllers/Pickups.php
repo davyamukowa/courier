@@ -13,7 +13,10 @@ class Pickups extends AdminController
             access_denied('Courier - Pickups');
         }
         $this->load->helper('courier_goshipping/courier');
-        $this->load->model('PickupContact_model');
+        // MX's model loader lowercases the whole path then only ucfirst()'s
+        // the first letter before checking is_file(), so multi-capital
+        // filenames like these never resolve on case-sensitive (Linux) fs.
+        courier_load_model('PickupContact_model');
         $this->load->model('Pickup_model');
         $this->load->model('Shipment_model');
         $this->load->model('Driver_model');
