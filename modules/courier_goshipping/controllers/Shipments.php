@@ -2553,7 +2553,7 @@ class Shipments extends AdminController
 
     public function quote_calculator()
     {
-        $this->load->model('DimensionalFactor_model');
+        courier_load_model('DimensionalFactor_model');
         // Build dimensional factors for the quote calculator
         $factors_raw = $this->DimensionalFactor_model->get();
         $data['dim_factors'] = [
