@@ -122,7 +122,7 @@
                 }
             },
             order: [[0, 'desc']],
-            columnDefs: [{ orderable: false, targets: [10] }],
+            columnDefs: [{ orderable: false, targets: [8, 11] }],
             initComplete: function (settings, json) {
                 $(this).parents('.table-loading').removeClass('table-loading');
             }
