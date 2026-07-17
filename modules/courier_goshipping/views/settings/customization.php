@@ -1,5 +1,5 @@
 <div class="row">
-    <?php echo form_open('admin/courier/settings/general', ['id' => 'set-general-settings-form']); ?>
+    <?php echo form_open('admin/courier_goshipping/settings/general', ['id' => 'set-general-settings-form']); ?>
     <div class="col-md-12">
         <div class="panel_s">
             <div class="panel-heading"><h4 class="panel-title">Courier Operation Type</h4></div>
