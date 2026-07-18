@@ -957,6 +957,20 @@ class Shipments extends AdminController
 
         $shipment_id = $this->Shipment_model->add($shipment_data);
 
+        // TEMP DIAGNOSTIC — remove once the agent visibility issue is confirmed fixed.
+        $this->db->insert(db_prefix() . 'shopify_integration_logs', [
+            'log_level' => 'info',
+            'category'  => 'shipment_debug',
+            'message'   => 'Shipment created: id=' . $shipment_id . ' staff_id=' . get_staff_user_id()
+                . ' stamped_branch_id=' . courier_get_session_branch_id()
+                . ' shipping_category=' . ($shipment_data['shipping_category'] ?? 'null'),
+            'context'   => json_encode([
+                'staff_branch_ids' => courier_get_staff_branch_ids(),
+                'can_view_all_branches' => courier_staff_can_view_all_branches(),
+            ]),
+            'created_at' => date('Y-m-d H:i:s'),
+        ]);
+
         // Record the status change in the shipment_status_histories table
         $this->db->insert(db_prefix() . '_shipment_status_history', [
             'shipment_id' => $shipment_id,
