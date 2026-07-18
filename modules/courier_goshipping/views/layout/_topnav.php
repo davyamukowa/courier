@@ -239,6 +239,7 @@ $cgs_can_view_reporting_menu = $cgs_can_view_shipments || $cgs_can_view_manifest
             </a>
         </div>
 
+        <?php if ($cgs_can_view_settings): ?>
         <div class="cgs-topnav__item" data-menu="cgs-menu-settings">
             <a href="javascript:void(0);" class="cgs-topnav__link cgs-topnav__link--has-menu <?php echo $cgs_active === 'settings' ? 'cgs-topnav__link--active' : ''; ?>">
                 <i class="fa fa-cogs"></i> Settings <i class="fa fa-angle-down cgs-chevron"></i>
@@ -255,6 +256,7 @@ $cgs_can_view_reporting_menu = $cgs_can_view_shipments || $cgs_can_view_manifest
                 </div>
             </div>
         </div>
+        <?php endif; ?>
         <?php endif; ?>
     </div><!-- /.cgs-topnav__nav -->
 </nav>
