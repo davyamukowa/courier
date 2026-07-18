@@ -473,6 +473,7 @@ public function agent_number()
 
         $data['agent']     = $agent;
         $data['countries'] = $this->Shipment_model->get_countries();
+        $data['branches']  = $this->CourierBranch_model->get();
         $data['title']     = 'Edit Agent: ' . $agent->firstname . ' ' . $agent->lastname;
         $this->load->view('agents/edit', $data);
     }
