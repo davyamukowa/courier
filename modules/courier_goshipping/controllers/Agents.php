@@ -501,6 +501,23 @@ public function agent_number()
             'admin_notes'     => $this->input->post('admin_notes'),
         ];
 
+        $new_branch_id = (int) $this->input->post('agent_branch_id');
+        if ($new_branch_id && $new_branch_id != (int) $agent->branch_id) {
+            $this->db->where('id', $id);
+            $this->db->update(db_prefix() . '_agents', ['branch_id' => $new_branch_id]);
+
+            if ($agent->staff_id) {
+                $this->db->where('staff_id', $agent->staff_id);
+                $this->db->delete(db_prefix() . '_courier_staff_branches');
+
+                $this->db->insert(db_prefix() . '_courier_staff_branches', [
+                    'staff_id'   => $agent->staff_id,
+                    'branch_id'  => $new_branch_id,
+                    'is_default' => 1,
+                ]);
+            }
+        }
+
         if ($this->Agent_model->update_agent($id, $data)) {
             set_alert('success', 'Agent updated successfully.');
         } else {
