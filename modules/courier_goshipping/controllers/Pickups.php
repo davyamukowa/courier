@@ -368,6 +368,18 @@ class Pickups extends AdminController
             return;
         }
 
+        // Branch isolation always applies — even staff with "view all
+        // pickups" permission shouldn't see another branch's pickup just by
+        // guessing/reusing its ID.
+        if (!courier_staff_can_view_all_branches()) {
+            $pickup_branch = (int) ($data['pickup']['branch_id'] ?? 0);
+            if ($pickup_branch > 0 && !in_array($pickup_branch, courier_get_staff_branch_ids(), true)) {
+                set_alert('danger', 'Access denied — this pickup belongs to another branch.');
+                redirect('admin/courier_goshipping/pickups/main');
+                return;
+            }
+        }
+
         if (!is_admin() && !staff_can('view_all_pickups', 'courier-pickups')
             && (int)($data['pickup']['staff_id'] ?? 0) !== (int)get_staff_user_id()) {
             set_alert('danger', 'Access denied — this pickup does not belong to you.');
