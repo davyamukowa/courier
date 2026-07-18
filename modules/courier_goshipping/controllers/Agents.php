@@ -14,6 +14,7 @@ class Agents extends AdminController
         $this->load->helper('courier_goshipping/courier'); // Load the helper specific to the courier module
         $this->load->model('Agent_model');
         $this->load->model('Shipment_model');
+        courier_load_model('CourierBranch_model');
         $this->load->library('form_validation');
 
     }
