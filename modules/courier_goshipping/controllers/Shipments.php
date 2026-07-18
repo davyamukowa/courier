@@ -467,21 +467,39 @@ class Shipments extends AdminController
             || $has_status
             || ($this->session->userdata('staff_id') != '0' && !empty($this->session->userdata('staff_id')));
 
+        $_debug_branch = 'unknown';
         if ($has_active_filter && !empty($this->session->userdata('shipment_details'))) {
             $data['shipment_details'] = $this->session->userdata('shipment_details');
+            $_debug_branch = 'cached_session';
         } elseif ($has_status) {
             // Status filter set (from card click or previous filter) but no cached results
             $staff_param = staff_can('view_all_shipments', 'courier-shipments') ? null : $staff_id;
             $data['shipment_details'] = $this->Shipment_model->filter_shipment_details(
                 $staff_param, $sess_status, null, null, null, $type, null, null, $branch_ids
             );
+            $_debug_branch = 'filter_shipment_details';
         } else {
             if (staff_can('view_all_shipments', 'courier-shipments')) {
                 $data['shipment_details'] = $this->Shipment_model->get_shipments_details(null, $type, $mode, $mode_type, $branch_ids);
             } else {
                 $data['shipment_details'] = $this->Shipment_model->get_shipments_details($staff_id, $type, $mode, $mode_type, $branch_ids);
             }
+            $_debug_branch = 'get_shipments_details';
         }
+
+        // TEMP DIAGNOSTIC — remove once the agent visibility issue is confirmed fixed.
+        $this->db->insert(db_prefix() . 'shopify_integration_logs', [
+            'log_level' => 'info',
+            'category'  => 'shipment_debug',
+            'message'   => 'Shipments::index() listing: staff_id=' . $staff_id . ' type=' . $type
+                . ' branch=' . $_debug_branch . ' result_count=' . count($data['shipment_details'] ?? []),
+            'context'   => json_encode([
+                'branch_ids' => $branch_ids,
+                'can_view_all_shipments' => staff_can('view_all_shipments', 'courier-shipments'),
+                'has_active_filter' => $has_active_filter,
+            ]),
+            'created_at' => date('Y-m-d H:i:s'),
+        ]);
 
         // Check if no shipments were found
         $data['no_shipments'] = $this->session->userdata('no_shipments') ?? false;
