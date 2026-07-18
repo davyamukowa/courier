@@ -228,6 +228,12 @@ class Agents extends AdminController
             $agent_number = $parts[2];
             $agent_data = [];
 
+            // Admins have no "active branch" of their own, so
+            // courier_get_session_branch_id() resolves to nothing for them —
+            // fall back to the explicitly-selected branch from the form in
+            // that case, so the new agent is never left branch-less.
+            $selected_branch_id = (int) $this->input->post('agent_branch_id') ?: courier_get_session_branch_id();
+
             if ($this->input->post('type') === 'individual') {
 
                 $id_file_url  = $this->upload_file('agent_ids', 'id_file');
