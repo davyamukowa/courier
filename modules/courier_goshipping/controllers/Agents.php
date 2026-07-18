@@ -32,6 +32,12 @@ class Agents extends AdminController
                 $data['roles']   = $this->db->get(db_prefix() . 'roles')->result();
                 $agent_role      = $this->db->where('name', 'Courier: Agent')->get(db_prefix() . 'roles')->row();
                 $data['courier_agent_role_id'] = $agent_role ? $agent_role->roleid : null;
+                // Admins have no "active branch" of their own (they can see every
+                // branch), so courier_get_session_branch_id() resolves to nothing
+                // for them — this new agent's branch must be picked explicitly
+                // rather than silently inherited from the creator's session.
+                $data['branches'] = $this->CourierBranch_model->get();
+                $data['default_branch_id'] = courier_get_session_branch_id();
                 $data['group_content'] = $this->load->view('agents/create', $data, true);
                 break;
 
