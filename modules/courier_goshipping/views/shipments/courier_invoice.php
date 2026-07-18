@@ -131,7 +131,7 @@ $rgba_border= 'rgba(' . $r . ',' . $g . ',' . $b . ',0.35)';
                 $company_logo_data_uri = 'data:' . $_mime . ';base64,' . base64_encode(file_get_contents($_logo_path));
             }
         }
-        $_ci               = courier_get_invoice_info();
+        $_ci               = courier_get_invoice_info($shipment_details['shipment']->branch_id ?? null);
         $logistic_company  = $_ci['name'] ?: 'Our Company';
         $s                 = $shipment_details['shipment'];
 
