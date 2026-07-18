@@ -296,7 +296,7 @@
 
 
                         <?php
-                        $_ci_inv       = courier_get_invoice_info();
+                        $_ci_inv       = courier_get_invoice_info($shipment_details['shipment']->branch_id ?? null);
                         $ci_logo_file  = get_option('company_logo_dark') ?: get_option('company_logo');
                         $ci_logo_url   = !empty($ci_logo_file) ? base_url('uploads/company/' . $ci_logo_file) : '';
                         ?>
