@@ -911,6 +911,53 @@ class Courier_Logistic_System {
     }
 
     /**
+     * v27: force-resync "Courier: Agent" role permissions to the intended
+     * "own everything, nothing global, no Salibay Fulfilment" definition —
+     * a one-time correction in case the live role drifted from this seed
+     * (manually edited via Setup > Roles) or any agent staff picked up
+     * extra individual permissions along the way. Runs once; re-running
+     * Setup > Roles > "Courier: Agent" and saving will NOT be reverted by
+     * this again since it's gated by the version flag below.
+     */
+    public function run_db_upgrades_v27() {
+        if (get_option('courier_schema_v27_done')) return;
+        $CI = &get_instance();
+
+        $safe_agent_permissions = [
+            'courier-shipments' => ['view_own_shipments', 'create_shipments', 'create_shipment_road', 'create_shipment_courier', 'create_shipment_domestic'],
+            'courier-pickups'   => ['view_own_pickups', 'create_pickups'],
+            'courier-waybills'  => ['view_own_waybills'],
+            'courier-invoices'  => ['view_own_invoices', 'generate_payment', 'view_receipts'],
+        ];
+
+        $role = $CI->db->where('name', 'Courier: Agent')->get(db_prefix() . 'roles')->row();
+        if ($role) {
+            $CI->db->where('roleid', $role->roleid)->update(db_prefix() . 'roles', [
+                'permissions' => serialize($safe_agent_permissions),
+            ]);
+
+            // Push the corrected set onto every staff member currently
+            // assigned this role, replacing whatever individual permissions
+            // they'd accumulated (mirrors Agents::sync_role_permissions()).
+            $agent_staff = $CI->db->where('role', $role->roleid)->get(db_prefix() . 'staff')->result();
+            foreach ($agent_staff as $staff) {
+                $CI->db->where('staff_id', $staff->staffid)->delete(db_prefix() . 'staff_permissions');
+                foreach ($safe_agent_permissions as $feature => $capabilities) {
+                    foreach ($capabilities as $capability) {
+                        $CI->db->insert(db_prefix() . 'staff_permissions', [
+                            'staff_id'   => $staff->staffid,
+                            'feature'    => $feature,
+                            'capability' => $capability,
+                        ]);
+                    }
+                }
+            }
+        }
+
+        update_option('courier_schema_v27_done', '1');
+    }
+
+    /**
      * v19: add kra_pin to shipment senders and companies tables.
      */
     public function run_db_upgrades_v19() {
