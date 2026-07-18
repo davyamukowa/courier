@@ -168,7 +168,8 @@ class Shipment_model extends App_Model
         }
 
         if ($branch_ids !== null) {
-            $this->db->where_in('s.branch_id', (array) $branch_ids);
+            // A genuinely empty array here must not become invalid "IN()" SQL.
+            $this->db->where_in('s.branch_id', !empty($branch_ids) ? (array) $branch_ids : [0]);
         }
 
         $this->db->where('s.shipping_category', $type);
@@ -690,7 +691,8 @@ class Shipment_model extends App_Model
         }
 
         if ($branch_ids !== null) {
-            $this->db->where_in('s.branch_id', (array) $branch_ids);
+            // A genuinely empty array here must not become invalid "IN()" SQL.
+            $this->db->where_in('s.branch_id', !empty($branch_ids) ? (array) $branch_ids : [0]);
         }
 
         $this->db->where('s.shipping_category', $type);
