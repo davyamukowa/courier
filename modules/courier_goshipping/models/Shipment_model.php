@@ -409,7 +409,7 @@ class Shipment_model extends App_Model
              . ' s.tracking_id, s.shipping_mode, s.shipping_category, s.waybill_number, s.fcl_shipment,'
              . ' s.company_id, s.courier_company_id, s.invoice_id, s.status_id, s.created_at,'
              . ' ss.status_name, ss.description AS status_description,'
-             . ' s.sender_id, s.recipient_id, s.recipient_company_id'
+             . ' s.sender_id, s.recipient_id, s.recipient_company_id, s.branch_id'
              . ' FROM '   . db_prefix() . '_shipments s'
              . ' LEFT JOIN ' . db_prefix() . '_shipment_statuses ss ON ss.id = s.status_id'
              . ' WHERE s.tracking_id = ? OR s.waybill_number = ?'
