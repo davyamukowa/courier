@@ -410,7 +410,7 @@ $rgba_border= 'rgba(' . $r . ',' . $g . ',' . $b . ',0.35)';
 
         <?php
         // Stamp — dedicated stamp settings, falling back to invoice info
-        $_ci_stamp   = courier_get_invoice_info();
+        $_ci_stamp   = courier_get_invoice_info($s->branch_id ?? null);
         $stamp_name  = strtoupper(trim(get_option('courier_stamp_name')  ?: ($_ci_stamp['name']  ?: '')));
         $stamp_pobox = strtoupper(trim(get_option('courier_stamp_pobox') ?: ''));
         $stamp_phone = strtoupper(trim(get_option('courier_stamp_phone') ?: ($_ci_stamp['phone'] ?: '')));
