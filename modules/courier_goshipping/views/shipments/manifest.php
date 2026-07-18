@@ -3,7 +3,10 @@
 <?php load_courier_styles(); ?>
 <?php
 /* ── Company branding ─────────────────────────────────────────────────────── */
-$_ci_mf        = courier_get_invoice_info();
+// A manifest can span shipments from multiple branches, so there's no single
+// "owning" shipment to read branch_id from — use whichever branch the staff
+// generating it is currently operating as.
+$_ci_mf        = courier_get_invoice_info(courier_get_session_branch_id());
 $_mf_company   = $_ci_mf['name'] ?: '';
 $_mf_logo_file = get_option('company_logo_dark') ?: get_option('company_logo');
 $_mf_logo_url  = !empty($_mf_logo_file) ? base_url('uploads/company/' . $_mf_logo_file) : '';
