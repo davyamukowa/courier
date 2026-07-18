@@ -132,7 +132,9 @@
                 </h4>
             </div>
             <?php
-            $_ci_v        = courier_get_invoice_info();
+            // A manifest can span shipments from multiple branches — use
+            // whichever branch the staff viewing it is currently operating as.
+            $_ci_v        = courier_get_invoice_info(courier_get_session_branch_id());
             $_v_company   = $_ci_v['name'] ?: '';
             $_v_logo_file = get_option('company_logo_dark') ?: get_option('company_logo');
             $_v_logo_url  = !empty($_v_logo_file) ? base_url('uploads/company/' . $_v_logo_file) : '';
