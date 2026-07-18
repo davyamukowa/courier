@@ -108,6 +108,16 @@ $cgs_driver_only = ($cgs_user_role === 'Fleet: Driver' && !$cgs_admin);
             </div>
         </div>
 
+        <?php
+        // Same gate as Fulfilment::can_view_fulfilment() — deliberately NOT
+        // implied by any courier-shipments capability, so agents (who get
+        // view_own_shipments by default) don't see this menu unless an
+        // admin explicitly grants the shopify_connector permission.
+        $can_view_salibay_fulfilment = is_admin()
+            || has_permission('shopify_connector', '', 'view_shopify_connector')
+            || has_permission('shopify_connector', '', 'manage_shopify_connector');
+        ?>
+        <?php if ($can_view_salibay_fulfilment): ?>
         <div class="cgs-topnav__item" data-menu="cgs-menu-fulfilment">
             <a href="javascript:void(0);" class="cgs-topnav__link cgs-topnav__link--has-menu <?php echo $cgs_active === 'fulfilment' ? 'cgs-topnav__link--active' : ''; ?>">
                 <i class="fa fa-cubes"></i> Salibay Fulfilment <i class="fa fa-angle-down cgs-chevron"></i>
