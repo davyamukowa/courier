@@ -152,14 +152,24 @@ $cgs_can_view_reporting_menu = $cgs_can_view_shipments || $cgs_can_view_manifest
                     <?php if ($cgs_can_view_pickups): ?>
                     <a href="<?php echo $base . '/pickups/main'; ?>"><i class="fa fa-truck cgs-icon-swatch cgs-icon-swatch--blue"></i><span>Pickups</span></a>
                     <?php endif; ?>
+                    <?php if ($cgs_can_view_companies): ?>
                     <a href="<?php echo $base . '/companies/main'; ?>"><i class="fa fa-building cgs-icon-swatch cgs-icon-swatch--purple"></i><span>Courier Companies</span></a>
+                    <?php endif; ?>
+                    <?php if ($cgs_can_view_agents): ?>
                     <a href="<?php echo $base . '/agents/main'; ?>"><i class="fa fa-users cgs-icon-swatch cgs-icon-swatch--teal"></i><span>Agents</span></a>
+                    <?php endif; ?>
+                    <?php if ($cgs_can_view_branches): ?>
                     <a href="<?php echo $base . '/branches/main'; ?>"><i class="fa fa-globe cgs-icon-swatch cgs-icon-swatch--red"></i><span>Branches / Offices</span></a>
+                    <?php endif; ?>
+                    <?php if ($cgs_can_view_quotes): ?>
                     <a href="<?php echo $base . '/client_quotes'; ?>"><i class="fa fa-list-alt cgs-icon-swatch cgs-icon-swatch--orange"></i><span>Client Quotes</span></a>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
+        <?php endif; ?>
 
+        <?php if ($cgs_can_view_reporting_menu): ?>
         <div class="cgs-topnav__item" data-menu="cgs-menu-reporting">
             <a href="javascript:void(0);" class="cgs-topnav__link cgs-topnav__link--has-menu <?php echo $cgs_active === 'reporting' ? 'cgs-topnav__link--active' : ''; ?>">
                 <i class="fa fa-bar-chart"></i> Reporting <i class="fa fa-angle-down cgs-chevron"></i>
@@ -167,12 +177,17 @@ $cgs_can_view_reporting_menu = $cgs_can_view_shipments || $cgs_can_view_manifest
             <div id="cgs-menu-reporting" class="cgs-dropdown-menu">
                 <div class="cgs-dropdown-menu__group">
                     <p class="cgs-dropdown-menu__label">Reporting & Analytics</p>
+                    <?php if ($cgs_can_view_shipments): ?>
                     <a href="<?php echo $base . '/shipments/main?group=dashboard'; ?>"><i class="fa fa-line-chart cgs-icon-swatch cgs-icon-swatch--blue"></i><span>Shipment KPIs</span></a>
                     <a href="<?php echo $base . '/shipments?type=domestic'; ?>"><i class="fa fa-filter cgs-icon-swatch cgs-icon-swatch--emerald"></i><span>Status Analytics</span></a>
+                    <?php endif; ?>
+                    <?php if ($cgs_can_view_manifests): ?>
                     <a href="<?php echo $base . '/shipments/main?group=manifests'; ?>"><i class="fa fa-area-chart cgs-icon-swatch cgs-icon-swatch--indigo"></i><span>Manifest Performance</span></a>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
+        <?php endif; ?>
 
         <?php
         // Same gate as Fulfilment::can_view_fulfilment() — deliberately NOT
