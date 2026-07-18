@@ -93,14 +93,25 @@ $cgs_can_view_reporting_menu = $cgs_can_view_shipments || $cgs_can_view_manifest
                     <?php if ($cgs_can_create_air_freight): ?>
                     <a href="<?php echo $base . '/shipments?type=international&mode=air&mode_type=air_freight'; ?>" class="cgs-mega-menu__setup-link"><i class="fa fa-plane cgs-icon-swatch cgs-icon-swatch--indigo"></i><span>Air Freight</span></a>
                     <?php endif; ?>
+                    <?php if ($cgs_can_create_air_consol): ?>
                     <a href="<?php echo $base . '/shipments?type=international&mode=air&mode_type=air_consolidation'; ?>" class="cgs-mega-menu__setup-link"><i class="fa fa-paper-plane cgs-icon-swatch cgs-icon-swatch--blue"></i><span>Air Consolidation</span></a>
+                    <?php endif; ?>
                 </div>
+                <?php endif; ?>
+                <?php if ($cgs_can_create_fcl || $cgs_can_create_lcl || $cgs_can_create_consolidation): ?>
                 <div class="cgs-mega-menu__column cgs-mega-menu__column--bordered">
                     <p class="cgs-mega-menu__section-label">International By Sea</p>
+                    <?php if ($cgs_can_create_fcl): ?>
                     <a href="<?php echo $base . '/shipments?type=international&mode=sea&mode_type=fcl'; ?>" class="cgs-mega-menu__setup-link"><i class="fa fa-ship cgs-icon-swatch cgs-icon-swatch--amber"></i><span>FCL</span></a>
+                    <?php endif; ?>
+                    <?php if ($cgs_can_create_lcl): ?>
                     <a href="<?php echo $base . '/shipments?type=international&mode=sea&mode_type=lcl'; ?>" class="cgs-mega-menu__setup-link"><i class="fa fa-anchor cgs-icon-swatch cgs-icon-swatch--teal"></i><span>LCL</span></a>
+                    <?php endif; ?>
+                    <?php if ($cgs_can_create_consolidation): ?>
                     <a href="<?php echo $base . '/shipments?type=international&mode=sea&mode_type=sea_consolidation'; ?>" class="cgs-mega-menu__setup-link"><i class="fa fa-cubes cgs-icon-swatch cgs-icon-swatch--orange"></i><span>Consolidation</span></a>
+                    <?php endif; ?>
                 </div>
+                <?php endif; ?>
             </div>
         </div>
 
