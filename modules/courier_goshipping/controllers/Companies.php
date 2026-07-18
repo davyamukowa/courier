@@ -31,11 +31,13 @@ class Companies extends AdminController
 
         $group = $this->input->get('group', true) ?? 'dashboard';
 
+        $branch_ids = courier_staff_can_view_all_branches() ? null : courier_get_staff_branch_ids();
+
         $types = ['internal', 'third_party'];
         $company_counts = [];
 
         foreach ($types as $type) {
-            $company_counts[$type] = $this->CourierCompany_model->get_company_count_by_type($type);
+            $company_counts[$type] = $this->CourierCompany_model->get_company_count_by_type($type, $branch_ids);
         }
 
         $data['type_counts'] = $company_counts;
@@ -53,7 +55,7 @@ class Companies extends AdminController
                 break;
 
             case 'list_companies':
-                $data['companies'] = $this->CourierCompany_model->get();
+                $data['companies'] = $this->CourierCompany_model->get(false, null, $branch_ids);
                 $data['title'] = _l('List Companies');
                 $data['group_content'] = $this->load->view('companies/index', $data, true);
                 break;
