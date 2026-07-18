@@ -54,9 +54,9 @@
         /* ── Resolve company ─────────────────────────────────────────── */
         $company_logo_file = get_option('company_logo_dark') ?: get_option('company_logo');
         $company_logo_url  = !empty($company_logo_file) ? base_url('uploads/company/' . $company_logo_file) : '';
-        $_ci               = courier_get_invoice_info();
-        $logistic_company  = $_ci['name'] ?: 'Our Company';
         $s                 = $shipment_details['shipment'];
+        $_ci               = courier_get_invoice_info($s->branch_id ?? null);
+        $logistic_company  = $_ci['name'] ?: 'Our Company';
 
         /* ── Sender / Recipient ────────────────────────────────────────── */
         $is_sender_ind = $shipment_details['sender_type'] === 'individual';
