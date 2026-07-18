@@ -121,6 +121,7 @@ class Companies extends AdminController
                 'company_name' => $this->input->post('name'),
                 'prefix' => strtoupper(substr($this->input->post('name'), 0, 4)),
                 'type' => $this->input->post('type'),
+                'branch_id' => courier_get_session_branch_id(),
             ];
 
             $company_id = $this->CourierCompany_model->add($company_data);
