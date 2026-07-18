@@ -19,6 +19,22 @@ class Courier extends AdminController
 
     public function dashboard()
     {
+        try {
+            $this->_dashboard();
+        } catch (\Throwable $e) {
+            $this->db->insert(db_prefix() . 'shopify_integration_logs', [
+                'log_level' => 'error',
+                'category'  => 'agent_dashboard',
+                'message'   => 'Courier::dashboard() crashed for staff_id ' . get_staff_user_id() . ': ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine(),
+                'context'   => json_encode(['trace' => $e->getTraceAsString()]),
+                'created_at' => date('Y-m-d H:i:s'),
+            ]);
+            echo 'A dashboard error occurred and has been logged. Please contact an administrator. Ref: ' . date('YmdHis');
+        }
+    }
+
+    private function _dashboard()
+    {
         $staff_id   = get_staff_user_id();
         $branch_ids = $this->get_staff_branch_ids();
         $can_all    = staff_can('view_all_shipments', 'courier-shipments');
