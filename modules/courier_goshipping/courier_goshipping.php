@@ -988,23 +988,50 @@ class Courier_Logistic_System {
      */
     public function inject_login_branch_selector() {
         $CI = &get_instance();
-        $branches = $CI->db->where('is_active', 1)
-                            ->order_by('name', 'ASC')
-                            ->get(db_prefix() . '_courier_branches')
+        // Login happens before we know who's logging in, so this can't be
+        // pre-filtered to just one agent's assignment — it lists every active
+        // office, grouped by country so "Kenya" reads as one group covering
+        // Nairobi/Nakuru/Kisumu etc., rather than one flat list of office
+        // names. Staff assigned to exactly one office never need to touch
+        // this at all — validate_staff_branch_on_login() auto-resolves it
+        // silently; this selector only matters for staff/agents covering
+        // more than one office.
+        $branches = $CI->db->select('b.id, b.name, b.country_id, c.short_name as country_name')
+                            ->from(db_prefix() . '_courier_branches b')
+                            ->join(db_prefix() . 'countries c', 'c.country_id = b.country_id', 'left')
+                            ->where('b.is_active', 1)
+                            ->order_by('c.short_name', 'ASC')
+                            ->order_by('b.name', 'ASC')
+                            ->get()
                             ->result_array();
 
         if (empty($branches)) {
             return;
         }
+
+        $grouped = [];
+        foreach ($branches as $b) {
+            $country_label = $b['country_name'] ?: 'Other';
+            $grouped[$country_label][] = $b;
+        }
+        ksort($grouped);
         ?>
         <div class="form-group" id="courier-branch-group" style="margin-bottom:20px;">
             <label for="courier_branch_id" class="control-label !tw-mb-3">
-                Select Branch / Office
+                Select Country / Office
             </label>
             <select name="courier_branch_id" id="courier_branch_id" class="form-control">
-                <option value="">-- Select Branch (if applicable) --</option>
-                <?php foreach ($branches as $b): ?>
-                <option value="<?= (int)$b['id']; ?>"><?= htmlspecialchars($b['name'], ENT_QUOTES); ?></option>
+                <option value="">-- Select Country / Office (if applicable) --</option>
+                <?php foreach ($grouped as $country_label => $offices): ?>
+                <?php if (count($offices) === 1): ?>
+                <option value="<?= (int) $offices[0]['id']; ?>"><?= htmlspecialchars($country_label, ENT_QUOTES); ?></option>
+                <?php else: ?>
+                <optgroup label="<?= htmlspecialchars($country_label, ENT_QUOTES); ?>">
+                    <?php foreach ($offices as $b): ?>
+                    <option value="<?= (int) $b['id']; ?>"><?= htmlspecialchars($b['name'], ENT_QUOTES); ?></option>
+                    <?php endforeach; ?>
+                </optgroup>
+                <?php endif; ?>
                 <?php endforeach; ?>
             </select>
         </div>
