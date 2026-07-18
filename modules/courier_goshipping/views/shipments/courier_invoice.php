@@ -869,7 +869,7 @@ $pay_amount_js   = $is_partial_paid ? round($balance_remaining, 2) : round($tota
 
 <?php
 // Precompute values needed in receipt — use courier invoice info (with global fallbacks)
-$_ci_r              = courier_get_invoice_info();
+$_ci_r              = courier_get_invoice_info($s->branch_id ?? null);
 $rc_company_name    = $_ci_r['name']    ?: $logistic_company;
 $rc_company_addr    = $_ci_r['address'] ?: '';
 $rc_company_city    = get_option('invoice_company_city')        ?: (get_option('company_city') ?: '');
