@@ -284,13 +284,12 @@ class Agents extends AdminController
 
             $this->db->insert(db_prefix() . '_agents', $agent_data);
 
-            // Assign the new agent's staff account to the creating staff's active
-            // branch, so their own shipments/pickups/etc. are scoped from day one.
-            $creator_branch_id = courier_get_session_branch_id();
-            if ($creator_branch_id) {
+            // Assign the new agent's staff account to the selected branch, so
+            // their own shipments/pickups/etc. are scoped from day one.
+            if ($selected_branch_id) {
                 $this->db->insert(db_prefix() . '_courier_staff_branches', [
                     'staff_id'   => $staff_id,
-                    'branch_id'  => $creator_branch_id,
+                    'branch_id'  => $selected_branch_id,
                     'is_default' => 1,
                 ]);
             }
