@@ -2339,7 +2339,7 @@ class Shipments extends AdminController
             return;
         }
 
-        $_ci_e         = courier_get_invoice_info();
+        $_ci_e         = courier_get_invoice_info($shipment->branch_id ?? null);
         $company_name  = $_ci_e['name'] ?: 'Courier';
         $waybill       = htmlspecialchars($shipment->waybill_number ?? $shipment->tracking_id);
         $status_name   = htmlspecialchars($shipment->status_name ?? 'Processing');
