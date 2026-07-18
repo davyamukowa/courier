@@ -68,6 +68,8 @@ class Agents extends AdminController
 
     private function set_validation_rules()
     {
+        $this->form_validation->set_rules('agent_branch_id', 'Branch / Office', 'required');
+
         if ($this->input->post('type') === 'individual') {
             $this->form_validation->set_rules('first_name', 'First Name', 'required|trim|min_length[2]|max_length[100]');
             $this->form_validation->set_rules('last_name', 'Last Name', 'required|trim|min_length[2]|max_length[100]');
