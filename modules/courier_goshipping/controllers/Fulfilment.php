@@ -1887,11 +1887,13 @@ class Fulfilment extends AdminController
 
     private function can_view_fulfilment()
     {
+        // Salibay Fulfilment is deliberately its OWN gate — not implied by any
+        // courier-shipments capability. Agents (brokers on commission) get
+        // view_own_shipments by default, which must never leak into Fulfilment;
+        // an admin grants this explicitly per staff/role via Setup > Roles.
         return is_admin()
             || has_permission('shopify_connector', '', 'view_shopify_connector')
-            || has_permission('shopify_connector', '', 'manage_shopify_connector')
-            || has_permission('courier-shipments', '', 'view_all_shipments')
-            || has_permission('courier-shipments', '', 'view_own_shipments');
+            || has_permission('shopify_connector', '', 'manage_shopify_connector');
     }
 
     private function can_manage_fulfilment()
