@@ -71,6 +71,23 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group">
+                                    <label>Branch / Office <span class="required">*</span></label>
+                                    <select name="agent_branch_id" class="form-control" required>
+                                        <option value="">— Select Branch —</option>
+                                        <?php foreach ($branches as $b): ?>
+                                            <option value="<?php echo $b->id; ?>" <?php echo ($b->id == $agent->branch_id) ? 'selected' : ''; ?>>
+                                                <?php echo htmlspecialchars($b->name); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <p class="help-block">Which office this agent reports to — controls which shipments/pickups they see.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
                                     <label>Commission Rate (%)</label>
                                     <div class="input-group">
                                         <input type="number" name="commission_rate" class="form-control" step="0.01" min="0" max="100"
