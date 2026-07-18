@@ -48,7 +48,10 @@ class Shipment_model extends App_Model
         }
 
         if ($branch_ids !== null) {
-            $this->db->where_in('s.branch_id', (array) $branch_ids);
+            // CI3's where_in() with a genuinely empty array emits literal
+            // "IN()" — invalid SQL that throws, not "no rows". A staff/agent
+            // assigned to zero branches must see a clean zero count instead.
+            $this->db->where_in('s.branch_id', !empty($branch_ids) ? (array) $branch_ids : [0]);
         }
 
         return $this->db->count_all_results();
