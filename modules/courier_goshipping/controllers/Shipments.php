@@ -1705,8 +1705,35 @@ class Shipments extends AdminController
     }
 
     // ── Helper: enforce agent ownership ─────────────────────────────────────
+    /**
+     * Branch isolation for single-record document endpoints (waybill,
+     * invoice, manifest, etc.) — enforced independently of the staff-creator
+     * check below and of any "view all shipments" permission, so an agent
+     * with broad view permissions still can't open another branch's
+     * document just by guessing/reusing its numeric ID.
+     */
+    private function _assert_branch_ownership($details)
+    {
+        if (courier_staff_can_view_all_branches()) {
+            return true;
+        }
+        $shipment_branch = (int) ($details['shipment']->branch_id ?? 0);
+        if ($shipment_branch <= 0) {
+            return true; // legacy/unscoped shipment predating branch isolation
+        }
+        if (!in_array($shipment_branch, courier_get_staff_branch_ids(), true)) {
+            set_alert('danger', 'Access denied — this shipment belongs to another branch.');
+            redirect(admin_url('courier_goshipping/shipments/main'));
+            return false;
+        }
+        return true;
+    }
+
     private function _assert_ownership($details)
     {
+        if (!$this->_assert_branch_ownership($details)) {
+            return false;
+        }
         if (is_admin() || staff_can('view_all_shipments', 'courier-shipments')) {
             return true;
         }
@@ -1725,6 +1752,11 @@ class Shipments extends AdminController
         if (empty($details)) {
             set_alert('danger', 'Shipment not found.');
             redirect(admin_url('courier_goshipping/shipments/main'));
+            return null;
+        }
+        // Branch isolation is never skippable, even when $ignore_ownership
+        // (staff-creator check) is bypassed for staff with broad view permissions.
+        if (!$this->_assert_branch_ownership($details)) {
             return null;
         }
         if (!$ignore_ownership && !$this->_assert_ownership($details)) {
