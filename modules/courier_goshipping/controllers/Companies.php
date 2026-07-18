@@ -170,6 +170,13 @@ class Companies extends AdminController
             redirect('admin/courier_goshipping/companies/main?group=list_companies');
         }
 
+        $branch_ids = courier_staff_can_view_all_branches() ? null : courier_get_staff_branch_ids();
+        if (!$this->CourierCompany_model->belongs_to_branch($company, $branch_ids)) {
+            set_alert('danger', 'This company belongs to another branch — you cannot delete it.');
+            $this->db->trans_rollback();
+            redirect('admin/courier_goshipping/companies/main?group=list_companies');
+        }
+
         // Delete the company
         $deleted_company = $this->CourierCompany_model->delete($id);
 
