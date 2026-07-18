@@ -19,6 +19,11 @@ class Companies extends AdminController
         courier_load_model('ContactPerson_model');
         $this->load->library('form_validation');
 
+        // Self-heal: branch_id was never added to _courier_companies, so this
+        // whole table has had zero branch isolation until now.
+        if (!$this->db->field_exists('branch_id', db_prefix() . '_courier_companies')) {
+            $this->db->query('ALTER TABLE `' . db_prefix() . '_courier_companies` ADD COLUMN `branch_id` INT NULL DEFAULT NULL');
+        }
     }
 
     public function main()
