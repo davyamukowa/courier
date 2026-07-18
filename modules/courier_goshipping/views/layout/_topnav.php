@@ -115,6 +115,7 @@ $cgs_can_view_reporting_menu = $cgs_can_view_shipments || $cgs_can_view_manifest
             </div>
         </div>
 
+        <?php if ($cgs_can_view_documents_menu): ?>
         <div class="cgs-topnav__item" data-menu="cgs-menu-documents">
             <a href="javascript:void(0);" class="cgs-topnav__link cgs-topnav__link--has-menu <?php echo $cgs_active === 'documents' ? 'cgs-topnav__link--active' : ''; ?>">
                 <i class="fa fa-folder-open"></i> Documents <i class="fa fa-angle-down cgs-chevron"></i>
@@ -122,15 +123,25 @@ $cgs_can_view_reporting_menu = $cgs_can_view_shipments || $cgs_can_view_manifest
             <div id="cgs-menu-documents" class="cgs-dropdown-menu">
                 <div class="cgs-dropdown-menu__group">
                     <p class="cgs-dropdown-menu__label">Documents</p>
+                    <?php if ($cgs_can_view_manifests): ?>
                     <a href="<?php echo $base . '/shipments/main?group=manifests'; ?>"><i class="fa fa-file cgs-icon-swatch cgs-icon-swatch--teal"></i><span>Manifests</span></a>
+                    <?php endif; ?>
+                    <?php if ($cgs_can_view_waybills): ?>
                     <a href="<?php echo $base . '/shipments?type=domestic'; ?>"><i class="fa fa-file-text cgs-icon-swatch cgs-icon-swatch--purple"></i><span>Waybills</span></a>
+                    <?php endif; ?>
+                    <?php if ($cgs_can_view_invoices): ?>
                     <a href="<?php echo $base . '/shipments/list_commercial_invoices'; ?>"><i class="fa fa-file-invoice cgs-icon-swatch cgs-icon-swatch--red"></i><span>Commercial Invoices</span></a>
                     <a href="<?php echo $base . '/shipments/list_invoices'; ?>"><i class="fa fa-file-text-o cgs-icon-swatch cgs-icon-swatch--amber"></i><span>Courier Invoices</span></a>
+                    <?php endif; ?>
+                    <?php if ($cgs_can_view_quotes): ?>
                     <a href="<?php echo $base . '/client_quotes'; ?>"><i class="fa fa-list-alt cgs-icon-swatch cgs-icon-swatch--orange"></i><span>Client Quotes</span></a>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
+        <?php endif; ?>
 
+        <?php if ($cgs_can_view_network_menu): ?>
         <div class="cgs-topnav__item" data-menu="cgs-menu-network">
             <a href="javascript:void(0);" class="cgs-topnav__link cgs-topnav__link--has-menu <?php echo in_array($cgs_active, ['network', 'branches'], true) ? 'cgs-topnav__link--active' : ''; ?>">
                 <i class="fa fa-sitemap"></i> Network <i class="fa fa-angle-down cgs-chevron"></i>
@@ -138,7 +149,9 @@ $cgs_can_view_reporting_menu = $cgs_can_view_shipments || $cgs_can_view_manifest
             <div id="cgs-menu-network" class="cgs-dropdown-menu">
                 <div class="cgs-dropdown-menu__group">
                     <p class="cgs-dropdown-menu__label">Network</p>
+                    <?php if ($cgs_can_view_pickups): ?>
                     <a href="<?php echo $base . '/pickups/main'; ?>"><i class="fa fa-truck cgs-icon-swatch cgs-icon-swatch--blue"></i><span>Pickups</span></a>
+                    <?php endif; ?>
                     <a href="<?php echo $base . '/companies/main'; ?>"><i class="fa fa-building cgs-icon-swatch cgs-icon-swatch--purple"></i><span>Courier Companies</span></a>
                     <a href="<?php echo $base . '/agents/main'; ?>"><i class="fa fa-users cgs-icon-swatch cgs-icon-swatch--teal"></i><span>Agents</span></a>
                     <a href="<?php echo $base . '/branches/main'; ?>"><i class="fa fa-globe cgs-icon-swatch cgs-icon-swatch--red"></i><span>Branches / Offices</span></a>
