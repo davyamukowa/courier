@@ -252,7 +252,7 @@ class Agents extends AdminController
                     'state_id'    => $this->input->post('state_id') ?: NULL,
                     'agent_type'  => $this->input->post('type'),
                     'station'     => $this->input->post('station') ?: NULL,
-                    'branch_id'   => courier_get_session_branch_id(),
+                    'branch_id'   => $selected_branch_id,
                 ];
             }
 
