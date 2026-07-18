@@ -265,6 +265,9 @@ class Shipment_model extends App_Model
         if ($this->db->field_exists('goods_declared_value', db_prefix() . '_shipments')) {
             $base_cols .= ', COALESCE(s.goods_declared_value,0) as goods_declared_value';
         }
+        if ($this->db->field_exists('branch_id', db_prefix() . '_shipments')) {
+            $base_cols .= ', s.branch_id';
+        }
 
         // FALSE = do not let CI3 split/escape the string — COALESCE() contains commas
         // that CI3's Active Record would incorrectly split into separate columns
