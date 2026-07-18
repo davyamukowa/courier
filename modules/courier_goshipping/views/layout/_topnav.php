@@ -8,6 +8,37 @@ $CI->load->model('courier_goshipping/Driver_model');
 $cgs_admin = is_admin();
 $cgs_user_role = $CI->Driver_model->get_staff_role(get_staff_user_id());
 $cgs_driver_only = ($cgs_user_role === 'Fleet: Driver' && !$cgs_admin);
+
+// Nav visibility mirrors the actual capability checks each page enforces —
+// an agent (or any restricted staff) should never see a menu item leading
+// to something they don't actually have permission for.
+$cgs_can_create_courier          = $cgs_admin || has_permission('courier-shipments', '', 'create_shipments') || has_permission('courier-shipments', '', 'create_shipment_courier');
+$cgs_can_create_road             = $cgs_admin || has_permission('courier-shipments', '', 'create_shipments') || has_permission('courier-shipments', '', 'create_shipment_road');
+$cgs_can_create_domestic         = $cgs_admin || has_permission('courier-shipments', '', 'create_shipments') || has_permission('courier-shipments', '', 'create_shipment_domestic');
+$cgs_can_create_fcl              = $cgs_admin || has_permission('courier-shipments', '', 'create_shipments') || has_permission('courier-shipments', '', 'create_shipment_fcl');
+$cgs_can_create_lcl              = $cgs_admin || has_permission('courier-shipments', '', 'create_shipments') || has_permission('courier-shipments', '', 'create_shipment_lcl');
+$cgs_can_create_consolidation    = $cgs_admin || has_permission('courier-shipments', '', 'create_shipments') || has_permission('courier-shipments', '', 'create_shipment_consolidation');
+$cgs_can_create_air_freight      = $cgs_admin || has_permission('courier-shipments', '', 'create_shipments') || has_permission('courier-shipments', '', 'create_shipment_air_freight');
+$cgs_can_create_air_consol       = $cgs_admin || has_permission('courier-shipments', '', 'create_shipments') || has_permission('courier-shipments', '', 'create_shipment_air_consolidation');
+$cgs_can_view_shipments          = $cgs_admin || has_permission('courier-shipments', '', 'view_own_shipments') || has_permission('courier-shipments', '', 'view_all_shipments');
+$cgs_can_view_all_shipments      = $cgs_admin || has_permission('courier-shipments', '', 'view_all_shipments');
+
+$cgs_can_view_pickups   = $cgs_admin || has_permission('courier-pickups', '', 'view_own_pickups') || has_permission('courier-pickups', '', 'view_all_pickups');
+$cgs_can_view_companies = $cgs_admin || has_permission('courier-companies', '', 'view_companies');
+$cgs_can_view_agents    = $cgs_admin || has_permission('courier-agents', '', 'view_agents');
+$cgs_can_view_branches  = $cgs_admin || has_permission('courier-branches', '', 'view_branches');
+// Client_quotes.php itself requires view_all_shipments specifically.
+$cgs_can_view_quotes    = $cgs_can_view_all_shipments;
+
+$cgs_can_view_manifests = $cgs_admin || has_permission('courier-manifests', '', 'view_own_manifests') || has_permission('courier-manifests', '', 'view_manifests');
+$cgs_can_view_waybills  = $cgs_admin || has_permission('courier-waybills', '', 'view_own_waybills') || has_permission('courier-waybills', '', 'view_waybills');
+$cgs_can_view_invoices  = $cgs_admin || has_permission('courier-invoices', '', 'view_own_invoices') || has_permission('courier-invoices', '', 'view_invoices');
+
+$cgs_can_view_settings  = $cgs_admin || has_permission('courier-settings', '', 'view_settings');
+
+$cgs_can_view_documents_menu = $cgs_can_view_manifests || $cgs_can_view_waybills || $cgs_can_view_invoices || $cgs_can_view_quotes;
+$cgs_can_view_network_menu   = $cgs_can_view_pickups || $cgs_can_view_companies || $cgs_can_view_agents || $cgs_can_view_branches || $cgs_can_view_quotes;
+$cgs_can_view_reporting_menu = $cgs_can_view_shipments || $cgs_can_view_manifests;
 ?>
 <div id="wrapper">
 <div class="cgs-page">
