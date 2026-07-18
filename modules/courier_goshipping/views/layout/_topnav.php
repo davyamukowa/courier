@@ -150,6 +150,7 @@ $cgs_driver_only = ($cgs_user_role === 'Fleet: Driver' && !$cgs_admin);
                 </div>
             </div>
         </div>
+        <?php endif; ?>
 
         <div class="cgs-topnav__item">
             <a href="<?php echo base_url('courier_goshipping/tracking'); ?>" target="_blank" class="cgs-topnav__link">
