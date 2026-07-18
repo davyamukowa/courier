@@ -68,20 +68,31 @@ $cgs_can_view_reporting_menu = $cgs_can_view_shipments || $cgs_can_view_manifest
                         <div class="cgs-mega-menu__icon-wrap cgs-icon-swatch cgs-icon-swatch--indigo"><i class="fa fa-bar-chart"></i></div>
                         <span>Shipment Dashboard</span>
                     </a>
+                    <?php if ($cgs_can_create_domestic): ?>
                     <p class="cgs-mega-menu__section-label">Domestic Shipment</p>
                     <a href="<?php echo $base . '/shipments?type=domestic'; ?>" class="cgs-mega-menu__setup-link">
                         <div class="cgs-mega-menu__icon-wrap cgs-icon-swatch cgs-icon-swatch--teal"><i class="fa fa-home"></i></div>
                         <span>Domestic Shipment</span>
                     </a>
+                    <?php endif; ?>
                 </div>
+                <?php if ($cgs_can_create_courier || $cgs_can_create_road): ?>
                 <div class="cgs-mega-menu__column cgs-mega-menu__column--bordered">
                     <p class="cgs-mega-menu__section-label">International</p>
+                    <?php if ($cgs_can_create_courier): ?>
                     <a href="<?php echo $base . '/shipments?type=international&mode=courier&mode_type=none'; ?>" class="cgs-mega-menu__setup-link"><i class="fa fa-truck cgs-icon-swatch cgs-icon-swatch--purple"></i><span>International Courier</span></a>
+                    <?php endif; ?>
+                    <?php if ($cgs_can_create_road): ?>
                     <a href="<?php echo $base . '/shipments?type=international&mode=road&mode_type=none'; ?>" class="cgs-mega-menu__setup-link"><i class="fa fa-road cgs-icon-swatch cgs-icon-swatch--red"></i><span>International Road</span></a>
+                    <?php endif; ?>
                 </div>
+                <?php endif; ?>
+                <?php if ($cgs_can_create_air_freight || $cgs_can_create_air_consol): ?>
                 <div class="cgs-mega-menu__column cgs-mega-menu__column--bordered">
                     <p class="cgs-mega-menu__section-label">International By Air</p>
+                    <?php if ($cgs_can_create_air_freight): ?>
                     <a href="<?php echo $base . '/shipments?type=international&mode=air&mode_type=air_freight'; ?>" class="cgs-mega-menu__setup-link"><i class="fa fa-plane cgs-icon-swatch cgs-icon-swatch--indigo"></i><span>Air Freight</span></a>
+                    <?php endif; ?>
                     <a href="<?php echo $base . '/shipments?type=international&mode=air&mode_type=air_consolidation'; ?>" class="cgs-mega-menu__setup-link"><i class="fa fa-paper-plane cgs-icon-swatch cgs-icon-swatch--blue"></i><span>Air Consolidation</span></a>
                 </div>
                 <div class="cgs-mega-menu__column cgs-mega-menu__column--bordered">
