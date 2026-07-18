@@ -78,7 +78,8 @@ class Companies extends AdminController
 
     public function index()
     {
-        $data['companies'] = $this->CourierCompany_model->get();
+        $branch_ids = courier_staff_can_view_all_branches() ? null : courier_get_staff_branch_ids();
+        $data['companies'] = $this->CourierCompany_model->get(false, null, $branch_ids);
         $this->load->view('companies/index', $data);
     }
 
