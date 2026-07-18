@@ -180,8 +180,9 @@ class Shipments extends AdminController
 
         $rows = $this->_get_manifest_rows($date_from, $date_to, $driver_id);
 
-        // Company info
-        $_ci_s    = courier_get_invoice_info();
+        // Company info — spans multiple shipments/branches, so use whichever
+        // branch the staff generating this is currently operating as.
+        $_ci_s    = courier_get_invoice_info(courier_get_session_branch_id());
         $company  = $_ci_s['name']    ?: '';
         $phone    = $_ci_s['phone']   ?: '';
         $address  = $_ci_s['address'] ?: '';
