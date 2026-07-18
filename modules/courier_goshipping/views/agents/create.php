@@ -332,6 +332,21 @@ foreach ($countries as $c) {
                             <p class="help-block" style="font-size:11px;color:#888;margin-top:4px;">Default is "Courier: Agent" — the admin can change per-agent from the agent detail page.</p>
                         </div>
                     </div>
+                    <div class="col-md-6 col-sm-12">
+                        <div class="custom-form-group">
+                            <label for="agent_branch_id" class="custom-label">Branch / Office <span class="req">*</span></label>
+                            <select id="agent_branch_id" name="agent_branch_id" class="custom-select" required>
+                                <option value="">-- Select Branch / Office --</option>
+                                <?php if (!empty($branches)): foreach ($branches as $b): ?>
+                                    <option value="<?php echo (int) $b->id; ?>" <?php echo (!empty($default_branch_id) && (int) $default_branch_id === (int) $b->id) ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($b->name); ?>
+                                    </option>
+                                <?php endforeach; endif; ?>
+                            </select>
+                            <p class="help-block" style="font-size:11px;color:#888;margin-top:4px;">This agent's shipments, pickups, and documents are scoped to this branch — required since as an admin you don't have one assigned to yourself.</p>
+                            <?php echo form_error('agent_branch_id', '<div class="error-message">', '</div>'); ?>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
