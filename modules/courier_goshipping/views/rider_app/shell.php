@@ -111,24 +111,23 @@
 
         .bottom-nav {
             display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
-            background: #16283f; border-top: 1px solid #2a3f5c;
-            box-shadow: 0 -4px 14px rgba(0,0,0,.35);
+            background: #ffffff; border-top: 1px solid #e2e8f0;
+            box-shadow: 0 -4px 14px rgba(0,0,0,.15);
             padding-bottom: env(safe-area-inset-bottom);
         }
         .bottom-nav.active { display: flex; }
         .bottom-nav button {
             flex: 1; background: none; margin: 0; padding: 12px 4px 10px; border-radius: 0;
-            color: #cbd5e1; font-size: 11.5px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 4px;
-            opacity: .85;
+            color: #64748b; font-size: 11.5px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 4px;
         }
         .bottom-nav button.active {
-            color: #fff; opacity: 1; position: relative;
+            color: #0d47a1; position: relative;
         }
         .bottom-nav button.active::before {
             content: ''; position: absolute; top: 0; left: 20%; right: 20%; height: 3px;
             background: linear-gradient(90deg,#1565c0,#c62828); border-radius: 0 0 4px 4px;
         }
-        .bottom-nav .ic { font-size: 21px; filter: drop-shadow(0 1px 2px rgba(0,0,0,.4)); }
+        .bottom-nav .ic { font-size: 21px; }
     </style>
 </head>
 <body>
