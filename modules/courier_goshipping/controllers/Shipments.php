@@ -2328,6 +2328,8 @@ class Shipments extends AdminController
         }
 
         if ($this->input->post()) {
+            $this->auto_claim_shopify_order($id);
+
             $assigned_staff_id = (int)$this->input->post('assigned_staff_id');
             if ($assigned_staff_id > 0) {
                 $this->db->where('id', (int)$id)->update(db_prefix() . '_shipments', ['staff_id' => $assigned_staff_id]);
