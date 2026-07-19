@@ -384,26 +384,27 @@
                 <div class="panel_s">
                     <div class="panel-body">
                         <div style="margin-bottom:20px; display:flex; justify-content:flex-end; gap:8px; flex-wrap:wrap;">
-                            <a class="custom-button custom-button-green"
-                               href="javascript:void(0);" onclick="printWaybill();">
+                            <a class="custom-button"
+                               href="javascript:void(0);" onclick="printWaybill();"
+                               style="background:linear-gradient(135deg,#1565c0,#0d47a1); color:#fff; border-color:#0d47a1;">
                                 <i class="fa fa-print" style="margin-right:5px;"></i> Print Waybill
                             </a>
                             <a class="custom-button"
                                href="javascript:void(0);" onclick="downloadWaybillPdf();"
-                               style="background:#1565c0; color:#fff; border-color:#1565c0;">
+                               style="background:linear-gradient(135deg,#c62828,#8e1c1c); color:#fff; border-color:#8e1c1c;">
                                 <i class="fa fa-file-pdf-o" style="margin-right:5px;"></i> Download PDF
                             </a>
                             <a class="custom-button" href="javascript:void(0);" onclick="openSendWaybillModal();"
-                               style="background:#455a64; color:#fff; border-color:#455a64;">
+                               style="background:#fff; color:#0d47a1; border-color:#1565c0;">
                                 <i class="fa fa-envelope" style="margin-right:5px;"></i> Send by Email
                             </a>
                             <a class="custom-button" href="#" data-toggle="modal" data-target="#update_status"
-                               style="background:#e65100; color:#fff; border-color:#e65100;">
+                               style="background:#c62828; color:#fff; border-color:#c62828;">
                                 <i class="fa fa-refresh" style="margin-right:5px;"></i> Update Status
                             </a>
                             <?php if (is_admin() || staff_can('edit_shipments', 'courier-shipments')): ?>
                             <a class="custom-button" href="#" data-toggle="modal" data-target="#assign_agent_modal"
-                               style="background:#004d40; color:#fff; border-color:#004d40;">
+                               style="background:#0d47a1; color:#fff; border-color:#0d47a1;">
                                 <i class="fa fa-user-plus" style="margin-right:5px;"></i> Assign Agent/Staff
                             </a>
                             <?php endif; ?>
