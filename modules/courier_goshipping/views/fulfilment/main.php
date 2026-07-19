@@ -111,6 +111,7 @@
             <a href="<?php echo admin_url('courier_goshipping/fulfilment/orders'); ?>" class="<?php echo $group === 'orders' ? 'is-active' : ''; ?>"><i class="fa fa-shopping-cart"></i><span>Orders</span></a>
             <a href="<?php echo admin_url('courier_goshipping/fulfilment/inventory'); ?>" class="<?php echo $group === 'inventory' ? 'is-active' : ''; ?>"><i class="fa fa-cubes"></i><span>Virtual Warehouse</span></a>
             <a href="<?php echo admin_url('courier_goshipping/fulfilment/health'); ?>" class="<?php echo $group === 'health' ? 'is-active' : ''; ?>"><i class="fa fa-heartbeat"></i><span>Health & Logs</span></a>
+            <a href="<?php echo admin_url('courier_goshipping/fulfilment/riders'); ?>" class="<?php echo $group === 'riders' ? 'is-active' : ''; ?>"><i class="fa fa-motorcycle"></i><span>Riders</span></a>
             <?php if ($can_manage_fulfilment): ?>
             <a href="<?php echo admin_url('courier_goshipping/fulfilment/settings'); ?>" class="<?php echo $group === 'settings' ? 'is-active' : ''; ?>"><i class="fa fa-cogs"></i><span>Settings</span></a>
             <?php endif; ?>
