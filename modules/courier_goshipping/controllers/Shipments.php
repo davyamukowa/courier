@@ -2206,7 +2206,40 @@ class Shipments extends AdminController
             ->get()
             ->result();
 
+        // Salibay orders get a short rider link (no vehicle/odometer/GPS —
+        // just Start → Deliver/Cancel) instead of the full fleet "Book a
+        // Trip" flow, which is overkill for a single-parcel last-mile drop.
+        $data['salibay_delivery_link'] = null;
+        if ($this->db->table_exists(db_prefix() . 'shopify_orders')) {
+            $is_salibay = $this->db->where('gs_shipment_id', (int) $id)->get(db_prefix() . 'shopify_orders')->row();
+            if ($is_salibay) {
+                $data['salibay_delivery_link'] = site_url('admin/courier_goshipping/salibay_delivery/rider/' . $this->_get_or_create_driver_token((int) $id));
+            }
+        }
+
         $this->load->view('shipments/waybill', $data);
+    }
+
+    /**
+     * Lazily generates (once) the opaque per-shipment token the Salibay
+     * rider link uses for public, no-login access — same reasoning as fleet
+     * trips' tracking_token, but stored directly on the shipment since
+     * there's no separate "trip" record for this shorter flow.
+     */
+    private function _get_or_create_driver_token($shipment_id)
+    {
+        if (!$this->db->field_exists('driver_token', db_prefix() . '_shipments')) {
+            $this->db->query('ALTER TABLE `' . db_prefix() . '_shipments` ADD COLUMN `driver_token` VARCHAR(64) NULL DEFAULT NULL, ADD UNIQUE KEY `driver_token` (`driver_token`)');
+        }
+
+        $shipment = $this->db->select('driver_token')->where('id', $shipment_id)->get(db_prefix() . '_shipments')->row();
+        if ($shipment && !empty($shipment->driver_token)) {
+            return $shipment->driver_token;
+        }
+
+        $token = bin2hex(random_bytes(20));
+        $this->db->where('id', $shipment_id)->update(db_prefix() . '_shipments', ['driver_token' => $token]);
+        return $token;
     }
 
     private function get_shipment_fleet_report(int $shipment_id): array
