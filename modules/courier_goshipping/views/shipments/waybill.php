@@ -301,14 +301,8 @@
     <div class="content gs-waybill-page">
         <div class="row">
             <?php
-            $wb_type      = $this->session->userdata('type') ?: 'domestic';
-            $wb_mode      = $this->session->userdata('mode');
-            $wb_mode_type = $this->session->userdata('mode_type');
-            $wb_list_url  = 'courier_goshipping/shipments?type=' . $wb_type;
-            if ($wb_mode) {
-                $wb_list_url .= '&mode=' . $wb_mode . '&mode_type=' . $wb_mode_type;
-            }
-            $wb_sid = $shipment_details['shipment']->id;
+            $wb_type = $this->session->userdata('type') ?: 'domestic';
+            $wb_sid  = $shipment_details['shipment']->id;
             ?>
 
             <!-- ── Left sidebar ────────────────────────────────────── -->
