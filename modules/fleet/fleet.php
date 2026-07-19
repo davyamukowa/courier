@@ -25,18 +25,11 @@ hooks()->add_action('fleet_init',FLEET_MODULE_NAME.'_appint');
 hooks()->add_action('pre_activate_module', FLEET_MODULE_NAME.'_preactivate');
 hooks()->add_action('pre_deactivate_module', FLEET_MODULE_NAME.'_predeactivate');
 
-// Disable CSRF for the driver trip tracker's public POST actions (GPS pings,
-// start/deliver/cancel) — plain fetch() calls from a no-login mobile page,
-// so there's no staff session/CSRF cookie to send a token with.
-hooks()->add_filter('csrf_exclude_uris', 'fleet_csrf_exclude_uris');
-function fleet_csrf_exclude_uris($uris)
-{
-    $uris[] = '.*fleet/trips/record_location.*';
-    $uris[] = '.*fleet/trips/driver_start_trip.*';
-    $uris[] = '.*fleet/trips/driver_deliver_shipment.*';
-    $uris[] = '.*fleet/trips/driver_cancel_shipment.*';
-    return $uris;
-}
+// CSRF exclusions for the driver trip tracker's public POST actions live in
+// config/csrf_exclude_uris.php, not here — InitModules applies that file at
+// the pre_system hook, before App_Security::csrf_verify() ever runs; an
+// add_filter('csrf_exclude_uris', ...) registered from this file fires too
+// late to have any effect.
 
 /**
  * Register activation module hook
