@@ -1255,6 +1255,7 @@ class Shopify_connector extends AdminController
         // up as "Pickupcontact_model.php" — a match only on Windows'
         // case-insensitive filesystem, not on production Linux. Load it by
         // hand instead of via $this->load->model() to sidestep that.
+        class_exists('CI_Model', false) or load_class('Model', 'core');
         if (!class_exists('PickupContact_model', false)) {
             require_once APP_MODULES_PATH . 'courier/models/PickupContact_model.php';
         }
