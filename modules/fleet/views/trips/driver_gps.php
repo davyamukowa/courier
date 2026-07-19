@@ -141,7 +141,9 @@
         <div id="cancel_error" style="display:none; margin-top:10px; background:#7f1d1d; color:#fecaca; padding:10px 14px; border-radius:8px; font-size:13px;"></div>
     </div>
 
-    <div id="trip_complete_banner"></div>
+    <div id="trip_complete_banner" style="<?php echo $trip_finished ? 'display:block;' : ''; ?>">
+        <?php echo $trip->status === 'cancelled' ? '✖ Shipment cancelled.' : '✅ Delivered — thank you!'; ?>
+    </div>
     <?php endif; ?>
 
     <br>
