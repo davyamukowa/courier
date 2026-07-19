@@ -210,6 +210,7 @@ $cgs_can_view_reporting_menu = $cgs_can_view_shipments || $cgs_can_view_manifest
                     <a href="<?php echo admin_url('courier_goshipping/fulfilment/orders'); ?>" class="cgs-mega-menu__setup-link"><i class="fa fa-shopping-cart cgs-icon-swatch cgs-icon-swatch--purple"></i><span>Orders from Salibay</span></a>
                     <a href="<?php echo admin_url('courier_goshipping/fulfilment/orders?status=processing'); ?>" class="cgs-mega-menu__setup-link"><i class="fa fa-truck cgs-icon-swatch cgs-icon-swatch--orange"></i><span>Pending Dispatch</span></a>
                     <a href="<?php echo admin_url('courier_goshipping/fulfilment/salibay_order_list'); ?>" class="cgs-mega-menu__setup-link"><i class="fa fa-list-alt cgs-icon-swatch cgs-icon-swatch--blue"></i><span>Salibay Order List</span></a>
+                    <a href="<?php echo admin_url('courier_goshipping/fulfilment/riders'); ?>" class="cgs-mega-menu__setup-link"><i class="fa fa-motorcycle cgs-icon-swatch cgs-icon-swatch--orange"></i><span>Riders</span></a>
                 </div>
                 <div class="cgs-mega-menu__column cgs-mega-menu__column--bordered">
                     <p class="cgs-mega-menu__section-label">Inventory</p>
