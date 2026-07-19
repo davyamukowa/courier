@@ -403,7 +403,7 @@
                         </a>
 
                         <a href="#" data-toggle="modal" data-target="#assign_agent_modal" class="gs-action-btn">
-                            <i class="fa fa-user-plus"></i> <?php echo !empty($salibay_delivery_link) ? 'Assign Rider' : 'Assign Agent / Staff'; ?>
+                            <i class="fa fa-user-plus"></i> Assign Agent / Staff
                         </a>
                         <?php endif; ?>
 
