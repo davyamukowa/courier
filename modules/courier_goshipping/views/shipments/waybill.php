@@ -413,14 +413,7 @@
                         <?php endif; ?>
                         <?php endif; ?>
 
-                        <?php if (!empty($salibay_delivery_link)): ?>
-                        <div class="courier-nav-divider"></div>
-
-                        <a href="javascript:void(0);" onclick="copySalibayDeliveryLink(this);" class="gs-action-btn"
-                           data-link="<?php echo htmlspecialchars($salibay_delivery_link); ?>">
-                            <i class="fa fa-motorcycle"></i> Copy Rider Delivery Link
-                        </a>
-                        <?php elseif (is_admin()): ?>
+                        <?php if (empty($salibay_delivery_link) && is_admin()): ?>
                         <div class="courier-nav-divider"></div>
 
                         <a href="<?php echo admin_url('fleet/trips/create/' . $wb_sid); ?>" class="gs-action-btn">
