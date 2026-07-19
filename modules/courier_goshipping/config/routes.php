@@ -52,24 +52,36 @@ $route['admin/courier_goshipping/salibay_delivery/deliver'] = 'courier_goshippin
 $route['admin/courier_goshipping/salibay_delivery/cancel'] = 'courier_goshipping/salibay_delivery/cancel';
 
 /*
- * Rider PWA — installable app at the clean top-level URL /rider, see
- * controllers/Rider_app.php (shell/manifest/sw) and Rider_api.php (JSON API).
+ * Rider PWA — installable app for riders, see controllers/Rider_app.php
+ * (shell/manifest/sw) and Rider_api.php (JSON API).
+ *
+ * URL note: MX only ever loads a module's own config/routes.php when the
+ * URL's FIRST segment already equals that module's folder name (see
+ * MX_Router::locate() -> Modules::parse_routes($segments[0], ...)) — a
+ * bare top-level path like "/rider" has no matching module folder and
+ * 404s before this file is even consulted. "admin/..." URLs work through
+ * a separate, unrelated fallback (a hardcoded admin-prefix strip that
+ * dispatches straight to module/controller/method) that never reads this
+ * file either. So the deployable URL has to keep the "courier_goshipping/"
+ * prefix — a truly bare "/rider" would require an entry in the *core*
+ * application/config/routes.php, which today's cron deploy script
+ * (modules/* only) never copies to the server.
  **/
-$route['rider'] = 'courier_goshipping/rider_app/index';
-$route['rider/manifest'] = 'courier_goshipping/rider_app/manifest';
-$route['rider/sw'] = 'courier_goshipping/rider_app/sw';
-$route['rider/icon/(:num)'] = 'courier_goshipping/rider_app/icon/$1';
+$route['courier_goshipping/rider'] = 'courier_goshipping/rider_app/index';
+$route['courier_goshipping/rider/manifest'] = 'courier_goshipping/rider_app/manifest';
+$route['courier_goshipping/rider/sw'] = 'courier_goshipping/rider_app/sw';
+$route['courier_goshipping/rider/icon/(:num)'] = 'courier_goshipping/rider_app/icon/$1';
 
-$route['rider-api/register'] = 'courier_goshipping/rider_api/register';
-$route['rider-api/login'] = 'courier_goshipping/rider_api/login';
-$route['rider-api/logout'] = 'courier_goshipping/rider_api/logout';
-$route['rider-api/me'] = 'courier_goshipping/rider_api/me';
-$route['rider-api/deliveries'] = 'courier_goshipping/rider_api/deliveries';
-$route['rider-api/deliveries/(:num)/start'] = 'courier_goshipping/rider_api/delivery_start/$1';
-$route['rider-api/deliveries/(:num)/deliver'] = 'courier_goshipping/rider_api/delivery_deliver/$1';
-$route['rider-api/deliveries/(:num)/cancel'] = 'courier_goshipping/rider_api/delivery_cancel/$1';
-$route['rider-api/pickups'] = 'courier_goshipping/rider_api/pickups';
-$route['rider-api/pickups/(:num)/update'] = 'courier_goshipping/rider_api/pickup_update/$1';
+$route['courier_goshipping/rider-api/register'] = 'courier_goshipping/rider_api/register';
+$route['courier_goshipping/rider-api/login'] = 'courier_goshipping/rider_api/login';
+$route['courier_goshipping/rider-api/logout'] = 'courier_goshipping/rider_api/logout';
+$route['courier_goshipping/rider-api/me'] = 'courier_goshipping/rider_api/me';
+$route['courier_goshipping/rider-api/deliveries'] = 'courier_goshipping/rider_api/deliveries';
+$route['courier_goshipping/rider-api/deliveries/(:num)/start'] = 'courier_goshipping/rider_api/delivery_start/$1';
+$route['courier_goshipping/rider-api/deliveries/(:num)/deliver'] = 'courier_goshipping/rider_api/delivery_deliver/$1';
+$route['courier_goshipping/rider-api/deliveries/(:num)/cancel'] = 'courier_goshipping/rider_api/delivery_cancel/$1';
+$route['courier_goshipping/rider-api/pickups'] = 'courier_goshipping/rider_api/pickups';
+$route['courier_goshipping/rider-api/pickups/(:num)/update'] = 'courier_goshipping/rider_api/pickup_update/$1';
 
 $route['courier_goshipping/tracking'] = 'tracker/tracking';
 $route['courier_goshipping/tracking/shipment_info'] = 'tracker/shipment_info';
