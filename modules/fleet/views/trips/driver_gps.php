@@ -82,10 +82,14 @@
         Keep this open and your screen on while you drive — location is sent automatically.
     </div>
 
-    <?php $already_started = in_array($trip->status, ['started', 'offloading', 'completed'], true); ?>
+    <?php
+    $already_started = in_array($trip->status, ['started', 'offloading', 'completed'], true);
+    $has_shipment     = !empty($trip->shipment_id);
+    $trip_finished    = in_array($trip->status, ['completed', 'cancelled'], true);
+    ?>
 
     <!-- ── Step 1: Start Trip (odometer reading) — skipped if already started ── -->
-    <div id="start_trip_section" style="<?php echo $already_started ? 'display:none;' : ''; ?>">
+    <div id="start_trip_section" style="<?php echo ($already_started || $trip_finished) ? 'display:none;' : ''; ?>">
         <label style="display:block; font-size:13px; color:#cbd5e1; margin-bottom:8px;">
             Starting odometer reading (km)
         </label>
