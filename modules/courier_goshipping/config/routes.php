@@ -41,6 +41,16 @@ $route['admin/courier_goshipping/fulfilment/clear_logs'] = 'courier_goshipping/f
 $route['admin/courier_goshipping/fulfilment/generate_test_log'] = 'courier_goshipping/fulfilment/generate_test_log';
 $route['admin/courier_goshipping/fulfilment/export_logs_csv'] = 'courier_goshipping/fulfilment/export_logs_csv';
 $route['admin/courier_goshipping/fulfilment/get_health_status'] = 'courier_goshipping/fulfilment/get_health_status';
+
+/*
+ * Salibay Delivery — short public rider flow (no login), see
+ * controllers/Salibay_delivery.php
+ **/
+$route['admin/courier_goshipping/salibay_delivery/rider/(:any)'] = 'courier_goshipping/salibay_delivery/rider/$1';
+$route['admin/courier_goshipping/salibay_delivery/start'] = 'courier_goshipping/salibay_delivery/start';
+$route['admin/courier_goshipping/salibay_delivery/deliver'] = 'courier_goshipping/salibay_delivery/deliver';
+$route['admin/courier_goshipping/salibay_delivery/cancel'] = 'courier_goshipping/salibay_delivery/cancel';
+
 $route['courier_goshipping/tracking'] = 'tracker/tracking';
 $route['courier_goshipping/tracking/shipment_info'] = 'tracker/shipment_info';
 
