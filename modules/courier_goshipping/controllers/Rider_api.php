@@ -26,6 +26,36 @@ class Rider_api extends App_Controller
         if ($this->db->table_exists(db_prefix() . '_shipment_status_history') && !$this->db->field_exists('notes', db_prefix() . '_shipment_status_history')) {
             $this->db->query('ALTER TABLE `' . db_prefix() . '_shipment_status_history` ADD COLUMN `notes` TEXT NULL DEFAULT NULL');
         }
+
+        // Self-heal: this module's install.php migration only actually runs
+        // when the module is (re)activated via Setup > Modules — a plain
+        // file-copy deploy (like this app's cron-based sync) never triggers
+        // that, so these tables may not exist yet on first use.
+        if (!$this->db->table_exists(db_prefix() . '_courier_riders')) {
+            $this->db->query('CREATE TABLE `' . db_prefix() . '_courier_riders` (
+                `id`            INT NOT NULL AUTO_INCREMENT,
+                `name`          VARCHAR(255) NOT NULL,
+                `phone`         VARCHAR(30) NOT NULL,
+                `password_hash` VARCHAR(255) NOT NULL,
+                `staff_id`      INT NULL DEFAULT NULL,
+                `status`        ENUM(\'active\',\'suspended\') NOT NULL DEFAULT \'active\',
+                `created_at`    DATETIME NOT NULL,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `phone` (`phone`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=' . $this->db->char_set . ';');
+        }
+        if (!$this->db->table_exists(db_prefix() . '_courier_rider_tokens')) {
+            $this->db->query('CREATE TABLE `' . db_prefix() . '_courier_rider_tokens` (
+                `id`           INT NOT NULL AUTO_INCREMENT,
+                `rider_id`     INT NOT NULL,
+                `token_hash`   VARCHAR(64) NOT NULL,
+                `created_at`   DATETIME NOT NULL,
+                `last_used_at` DATETIME NULL DEFAULT NULL,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `token_hash` (`token_hash`),
+                FOREIGN KEY (`rider_id`) REFERENCES `' . db_prefix() . '_courier_riders`(`id`) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=' . $this->db->char_set . ';');
+        }
     }
 
     private function respond($data)
