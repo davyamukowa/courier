@@ -262,16 +262,16 @@
 
 <script>
     var API = {
-        register: <?php echo json_encode(site_url('rider-api/register')); ?>,
-        login: <?php echo json_encode(site_url('rider-api/login')); ?>,
-        logout: <?php echo json_encode(site_url('rider-api/logout')); ?>,
-        me: <?php echo json_encode(site_url('rider-api/me')); ?>,
-        deliveries: <?php echo json_encode(site_url('rider-api/deliveries')); ?>,
-        deliveryStart: <?php echo json_encode(site_url('rider-api/deliveries/')); ?>,
-        pickups: <?php echo json_encode(site_url('rider-api/pickups')); ?>,
-        pickupUpdate: <?php echo json_encode(site_url('rider-api/pickups/')); ?>
+        register: <?php echo json_encode(site_url('courier_goshipping/rider-api/register')); ?>,
+        login: <?php echo json_encode(site_url('courier_goshipping/rider-api/login')); ?>,
+        logout: <?php echo json_encode(site_url('courier_goshipping/rider-api/logout')); ?>,
+        me: <?php echo json_encode(site_url('courier_goshipping/rider-api/me')); ?>,
+        deliveries: <?php echo json_encode(site_url('courier_goshipping/rider-api/deliveries')); ?>,
+        deliveryStart: <?php echo json_encode(site_url('courier_goshipping/rider-api/deliveries/')); ?>,
+        pickups: <?php echo json_encode(site_url('courier_goshipping/rider-api/pickups')); ?>,
+        pickupUpdate: <?php echo json_encode(site_url('courier_goshipping/rider-api/pickups/')); ?>
     };
-    var SW_URL = <?php echo json_encode(site_url('rider/sw')); ?>;
+    var SW_URL = <?php echo json_encode(site_url('courier_goshipping/rider/sw')); ?>;
 
     var TOKEN_KEY = 'gs_rider_token';
     var token = localStorage.getItem(TOKEN_KEY);
