@@ -20,15 +20,15 @@ class Rider_app extends App_Controller
         echo json_encode([
             'name'             => 'Go Shipping Rider',
             'short_name'       => 'GS Rider',
-            'start_url'        => site_url('rider'),
-            'scope'            => site_url('rider'),
+            'start_url'        => site_url('courier_goshipping/rider'),
+            'scope'            => site_url('courier_goshipping/rider'),
             'display'          => 'standalone',
             'orientation'      => 'portrait',
             'background_color' => '#0d1b2a',
             'theme_color'      => '#0d47a1',
             'icons'            => [
-                ['src' => site_url('rider/icon/192'), 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any maskable'],
-                ['src' => site_url('rider/icon/512'), 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any maskable'],
+                ['src' => site_url('courier_goshipping/rider/icon/192'), 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any maskable'],
+                ['src' => site_url('courier_goshipping/rider/icon/512'), 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any maskable'],
             ],
         ]);
     }
