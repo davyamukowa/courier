@@ -481,7 +481,25 @@
 
     // ── GPS sharing — starts once a delivery is under way, posts a
     // throttled ping so the admin waybill's live map has something to show.
+    // Uses the device's own GPS chip (enableHighAccuracy), not a coarse
+    // network/IP-based fix, and holds a Wake Lock so the OS doesn't dim the
+    // screen and pause tracking while the installed PWA is open.
     var locationWatches = {};
+    var wakeLock = null;
+
+    async function acquireWakeLock() {
+        if (!('wakeLock' in navigator)) { return; }
+        try {
+            wakeLock = await navigator.wakeLock.request('screen');
+            wakeLock.addEventListener('release', function () { wakeLock = null; });
+        } catch (e) { /* permission or platform doesn't support it — ignore */ }
+    }
+    document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible' && Object.keys(locationWatches).length && !wakeLock) {
+            acquireWakeLock();
+        }
+    });
+
     function beginLocationSharing(id) {
         if (locationWatches[id] || !navigator.geolocation) { return; }
 
@@ -500,6 +518,7 @@
                 accuracy: pos.coords.accuracy || '',
                 speed: pos.coords.speed || ''
             }).catch(function () {});
+            acquireWakeLock();
         }, function () {
             // Permission denied or unavailable — no visible error, the rider
             // can still complete the delivery without live tracking.
