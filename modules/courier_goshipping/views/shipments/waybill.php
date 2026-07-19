@@ -270,36 +270,42 @@
     color: #0d47a1;
     border-left-color: #c62828;
 }
-/* Every sidebar action button looks the same at rest (blue) — red is
-   reserved for the one the user is actually interacting with right now,
-   instead of some actions being permanently red and others plain text. */
+/* Plain flat list — no button blocks. Every row looks the same at rest;
+   red is reserved for whichever one the user is actually hovering/pressing
+   right now, instead of some actions being permanently-colored buttons and
+   others plain text. */
 .gs-waybill-page .gs-action-list {
-    padding: 8px 10px;
+    padding: 4px 0;
     display: flex;
     flex-direction: column;
-    gap: 6px;
 }
 .gs-waybill-page .gs-action-btn {
     display: flex;
     align-items: center;
-    gap: 9px;
-    background: linear-gradient(135deg, #1565c0, #0d47a1);
-    color: #fff !important;
-    padding: 9px 14px;
-    border-radius: 6px;
-    font-size: 13.5px;
+    gap: 10px;
+    background: none;
+    color: #32475a !important;
+    padding: 12px 20px;
+    font-size: 14px;
     font-weight: 600;
     text-decoration: none !important;
-    transition: background .15s, transform .12s, box-shadow .15s;
+    border-bottom: 1px solid #eef1f5;
+    transition: background .15s, color .15s;
 }
-.gs-waybill-page .gs-action-btn i { width: 16px; text-align: center; }
+.gs-waybill-page .gs-action-btn i { width: 16px; text-align: center; color: #9aa7b5; font-size: 12px; }
 .gs-waybill-page .gs-action-btn:hover,
 .gs-waybill-page .gs-action-btn:focus,
 .gs-waybill-page .gs-action-btn:active {
-    background: linear-gradient(135deg, #c62828, #8e1c1c);
-    color: #fff !important;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(198, 40, 40, .3);
+    background: #fbeeee;
+    color: #c62828 !important;
+}
+.gs-waybill-page .gs-action-btn:hover i,
+.gs-waybill-page .gs-action-btn:focus i,
+.gs-waybill-page .gs-action-btn:active i {
+    color: #c62828;
+}
+.gs-waybill-page .courier-nav-divider {
+    display: none;
 }
 .gs-waybill-page .panel_s {
     border-radius: 12px;
