@@ -193,6 +193,66 @@ class Fulfilment extends AdminController
         $this->load->view('courier_goshipping/fulfilment/main', $data);
     }
 
+    public function riders()
+    {
+        $data = $this->build_base_data('riders', 'Riders');
+
+        $prefix = db_prefix();
+        $rows = $this->db->select('r.id, r.name, r.phone, r.status, r.staff_id, r.created_at, staff.firstname, staff.lastname, staff.active AS staff_active')
+            ->from($prefix . '_courier_riders r')
+            ->join($prefix . 'staff staff', 'staff.staffid = r.staff_id', 'left')
+            ->order_by('r.created_at', 'desc')
+            ->get()
+            ->result();
+
+        foreach ($rows as $row) {
+            $row->linked = !empty($row->staff_id);
+            $row->staff_display = $row->linked
+                ? (trim((string) $row->firstname . ' ' . (string) $row->lastname) ?: ('Staff #' . $row->staff_id))
+                : null;
+        }
+
+        $data['riders'] = $rows;
+        $data['unlinked_drivers'] = $this->db->select('staff.staffid, staff.firstname, staff.lastname, staff.phonenumber')
+            ->from($prefix . 'staff staff')
+            ->join($prefix . 'roles roles', 'roles.roleid = staff.role')
+            ->where('roles.name', 'Fleet: Driver')
+            ->get()
+            ->result();
+
+        $data['group_content'] = $this->load->view('courier_goshipping/fulfilment/riders', $data, true);
+        $this->load->view('courier_goshipping/fulfilment/main', $data);
+    }
+
+    public function link_rider($rider_id)
+    {
+        if (!$this->can_manage_fulfilment()) {
+            access_denied('Salibay Fulfilment');
+        }
+
+        $staff_id = (int) $this->input->post('staff_id');
+        if ($staff_id > 0) {
+            $this->db->where('id', (int) $rider_id)->update(db_prefix() . '_courier_riders', ['staff_id' => $staff_id]);
+            set_alert('success', 'Rider linked to driver profile.');
+        }
+        redirect(admin_url('courier_goshipping/fulfilment/riders'));
+    }
+
+    public function toggle_rider_status($rider_id)
+    {
+        if (!$this->can_manage_fulfilment()) {
+            access_denied('Salibay Fulfilment');
+        }
+
+        $rider = $this->db->where('id', (int) $rider_id)->get(db_prefix() . '_courier_riders')->row();
+        if ($rider) {
+            $new_status = $rider->status === 'active' ? 'suspended' : 'active';
+            $this->db->where('id', (int) $rider_id)->update(db_prefix() . '_courier_riders', ['status' => $new_status]);
+            set_alert('success', 'Rider account ' . $new_status . '.');
+        }
+        redirect(admin_url('courier_goshipping/fulfilment/riders'));
+    }
+
     public function settings()
     {
         if (!$this->can_manage_fulfilment()) {
