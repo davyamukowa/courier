@@ -111,10 +111,6 @@
         <button id="stop_btn" onclick="stopSharing()">Stop Sharing</button>
     </div>
 
-    <?php
-    $has_shipment  = !empty($trip->shipment_id);
-    $trip_finished = in_array($trip->status, ['completed', 'cancelled'], true);
-    ?>
     <?php if ($has_shipment): ?>
     <!-- ── Step 3: Deliver or cancel — shown once the trip has started ───────── -->
     <div id="delivery_actions_section" style="<?php echo ($already_started && !$trip_finished) ? '' : 'display:none;'; ?> margin-top:24px;">
