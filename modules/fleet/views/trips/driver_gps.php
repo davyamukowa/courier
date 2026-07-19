@@ -162,7 +162,10 @@
         var TOKEN = <?php echo json_encode($token); ?>;
         var RECORD_URL = <?php echo json_encode(site_url('admin/fleet/trips/record_location')); ?>;
         var START_TRIP_URL = <?php echo json_encode(site_url('admin/fleet/trips/driver_start_trip')); ?>;
+        var DELIVER_URL = <?php echo json_encode(site_url('admin/fleet/trips/driver_deliver_shipment')); ?>;
+        var CANCEL_URL = <?php echo json_encode(site_url('admin/fleet/trips/driver_cancel_shipment')); ?>;
         var SW_URL = <?php echo json_encode(site_url('admin/fleet/trips/sw')); ?>;
+        var sigPad = null;
         var QUEUE_KEY = 'trip_tracker_queue_' + TOKEN;
         var watchId = null;
         var wakeLock = null;
