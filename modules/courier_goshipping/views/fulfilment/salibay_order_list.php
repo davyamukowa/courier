@@ -85,41 +85,48 @@
 </style>
 
 <script>
-function createSalibayShipment(id) {
-    if (!confirm('Create a courier shipment for this Salibay order?')) {
-        return;
-    }
+(function waitForJQuerySalibayOrderList() {
+    // group_content (this view) is echoed into main.php BEFORE init_tail()
+    // loads jQuery, so $ isn't defined yet at the point this script tag
+    // runs — same reason main.php's own dashboard poller has to wait for it.
+    if (!window.jQuery) { setTimeout(waitForJQuerySalibayOrderList, 50); return; }
 
-    var postData = {};
-    if (typeof csrfData !== 'undefined') {
-        postData[csrfData['token_name']] = csrfData['hash'];
-    } else {
-        postData['<?php echo $this->security->get_csrf_token_name(); ?>'] = '<?php echo $this->security->get_csrf_hash(); ?>';
-    }
-
-    $.post('<?php echo site_url('admin/courier_goshipping/fulfilment/create_shipment/'); ?>' + id, postData, function (res) {
-        if (!res.success) {
-            alert_float('danger', res.error || res.message || 'Shipment creation failed.');
+    function createSalibayShipment(id) {
+        if (!confirm('Create a courier shipment for this Salibay order?')) {
             return;
         }
 
-        alert_float('success', res.message || 'Shipment created successfully.');
-        window.location.reload();
-    }, 'json').fail(function () {
-        alert_float('danger', 'Unable to contact the server. Please refresh and try again.');
+        var postData = {};
+        if (typeof csrfData !== 'undefined') {
+            postData[csrfData['token_name']] = csrfData['hash'];
+        } else {
+            postData['<?php echo $this->security->get_csrf_token_name(); ?>'] = '<?php echo $this->security->get_csrf_hash(); ?>';
+        }
+
+        $.post('<?php echo site_url('admin/courier_goshipping/fulfilment/create_shipment/'); ?>' + id, postData, function (res) {
+            if (!res.success) {
+                alert_float('danger', res.error || res.message || 'Shipment creation failed.');
+                return;
+            }
+
+            alert_float('success', res.message || 'Shipment created successfully.');
+            window.location.reload();
+        }, 'json').fail(function () {
+            alert_float('danger', 'Unable to contact the server. Please refresh and try again.');
+        });
+    }
+
+    $(document).on('click', '.salibay-order-row', function () {
+        var href = $(this).data('href');
+        if (href) {
+            window.location.href = href;
+            return;
+        }
+
+        var orderId = $(this).data('order-id');
+        if (orderId) {
+            createSalibayShipment(orderId);
+        }
     });
-}
-
-$(document).on('click', '.salibay-order-row', function () {
-    var href = $(this).data('href');
-    if (href) {
-        window.location.href = href;
-        return;
-    }
-
-    var orderId = $(this).data('order-id');
-    if (orderId) {
-        createSalibayShipment(orderId);
-    }
-});
+})();
 </script>
