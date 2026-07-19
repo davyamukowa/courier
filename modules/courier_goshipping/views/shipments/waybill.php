@@ -919,6 +919,28 @@
                         })();
                         </script>
                         <?php endif; ?>
+
+                        <?php if (!empty($salibay_delivery_link)): ?>
+                        <script>
+                        // Auto-refresh: a rider tapping Start/Delivered/Cancel on their
+                        // phone changes this shipment's status server-side, but this page
+                        // has no way to know until it re-fetches — poll a tiny status
+                        // endpoint and reload once it actually changes, so staff never
+                        // have to hit refresh themselves to see the update or the map.
+                        (function () {
+                            var STATUS_URL = <?php echo json_encode(site_url('admin/courier_goshipping/shipments/status_snapshot/' . $shipment_details['shipment']->id)); ?>;
+                            var CURRENT_STATUS_ID = <?php echo (int) $shipment_details['shipment']->status_id; ?>;
+
+                            setInterval(function () {
+                                fetch(STATUS_URL).then(function (r) { return r.json(); }).then(function (res) {
+                                    if (res.success && res.status_id !== CURRENT_STATUS_ID) {
+                                        window.location.reload();
+                                    }
+                                }).catch(function () {});
+                            }, 12000);
+                        })();
+                        </script>
+                        <?php endif; ?>
                     </div>
                 </div>
             <?php echo form_close(); ?>
