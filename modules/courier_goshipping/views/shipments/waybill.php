@@ -334,12 +334,12 @@
                         <div class="courier-nav-divider"></div>
 
                         <a href="#" data-toggle="modal" data-target="#update_status" class="courier-nav-item"
-                           style="color:#e65100;">
+                           style="color:#c62828;">
                             <i class="fa fa-refresh"></i> Update Status
                         </a>
 
                         <a href="#" data-toggle="modal" data-target="#assign_agent_modal" class="courier-nav-item"
-                           style="color:#004d40;">
+                           style="color:#0d47a1;">
                             <i class="fa fa-user-plus"></i> Assign Agent / Staff
                         </a>
                         <?php endif; ?>
