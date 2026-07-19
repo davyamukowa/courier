@@ -273,6 +273,38 @@ class Rider_api extends App_Controller
         $this->respond(['success' => true]);
     }
 
+    // ── Receive a GPS ping from the rider app while a delivery is in
+    // progress (public POST, token-authenticated + ownership-checked) ──────
+    public function location_ping($id)
+    {
+        if (!$this->require_rider()) {
+            return;
+        }
+        $shipment = $this->owned_shipment($id);
+        if (!$shipment) {
+            $this->fail('Delivery not found.', 404);
+            return;
+        }
+
+        $lat = (float) $this->input->post('lat');
+        $lng = (float) $this->input->post('lng');
+        if ($lat === 0.0 && $lng === 0.0) {
+            $this->fail('Missing coordinates.');
+            return;
+        }
+
+        $this->db->insert(db_prefix() . '_shipment_locations', [
+            'shipment_id' => $shipment->id,
+            'latitude'    => $lat,
+            'longitude'   => $lng,
+            'accuracy'    => (float) $this->input->post('accuracy') ?: null,
+            'speed'       => is_numeric($this->input->post('speed')) ? (float) $this->input->post('speed') : null,
+            'recorded_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        $this->respond(['success' => true]);
+    }
+
     public function delivery_deliver($id)
     {
         if (!$this->require_rider()) {
