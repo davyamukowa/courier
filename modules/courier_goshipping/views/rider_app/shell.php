@@ -626,7 +626,7 @@
         });
     }
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register(SW_URL, { scope: <?php echo json_encode(site_url('rider')); ?> }).catch(function () {});
+        navigator.serviceWorker.register(SW_URL, { scope: <?php echo json_encode(site_url('courier_goshipping/rider')); ?> }).catch(function () {});
     }
 
     // ── Boot ─────────────────────────────────────────────────────────────────
