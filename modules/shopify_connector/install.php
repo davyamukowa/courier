@@ -220,3 +220,13 @@ if ($CI->db->table_exists(db_prefix() . 'shopify_product_mappings')) {
         $CI->db->query("ALTER TABLE `" . db_prefix() . "shopify_product_mappings` ADD `courier_branch_id` INT NULL;");
     }
 }
+
+if ($CI->db->table_exists(db_prefix() . 'shopify_orders')) {
+    // Tracks which staff member "owns" a Salibay order in the fulfilment UI.
+    // Defaults to unassigned (shown as "Admin" in the UI) until the first
+    // staff member to touch the order's shipment (change its status, assign
+    // an agent, etc.) claims it automatically.
+    if (!$CI->db->field_exists('assigned_staff_id', db_prefix() . 'shopify_orders')) {
+        $CI->db->query("ALTER TABLE `" . db_prefix() . "shopify_orders` ADD `assigned_staff_id` INT NULL AFTER `gs_shipment_id`;");
+    }
+}
