@@ -1991,12 +1991,19 @@ class Fulfilment extends AdminController
                 sender.first_name AS sender_first_name,
                 sender.last_name AS sender_last_name,
                 recipient.first_name AS recipient_first_name,
-                recipient.last_name AS recipient_last_name
+                recipient.last_name AS recipient_last_name,
+                items.items_summary
             FROM {$prefix}shopify_orders so
             LEFT JOIN {$prefix}_shipments s ON s.id = so.gs_shipment_id
             LEFT JOIN {$prefix}_shipment_statuses ss ON ss.id = s.status_id
             LEFT JOIN {$prefix}_shipment_senders sender ON sender.id = s.sender_id
             LEFT JOIN {$prefix}_shipment_recipients recipient ON recipient.id = s.recipient_id
+            LEFT JOIN (
+                SELECT shopify_order_id,
+                       GROUP_CONCAT(CONCAT(COALESCE(NULLIF(product_name, ''), 'Product'), ' (x', quantity, ')') SEPARATOR ', ') AS items_summary
+                FROM {$prefix}shopify_order_items
+                GROUP BY shopify_order_id
+            ) items ON items.shopify_order_id = so.id
             ORDER BY so.created_at DESC
         ")->result();
 
@@ -2009,6 +2016,7 @@ class Fulfilment extends AdminController
             $row->recipient_display = trim((string) $row->recipient_first_name . ' ' . (string) $row->recipient_last_name) ?: (string) $row->customer_name;
             $row->tracking_display = (string) ($row->order_tracking_number ?: $row->tracking_id ?: '-');
             $row->waybill_display = (string) ($row->waybill_number ?: $row->tracking_id ?: $row->order_tracking_number ?: '');
+            $row->items_display = (string) ($row->items_summary ?: '-');
         }
 
         return $rows;
