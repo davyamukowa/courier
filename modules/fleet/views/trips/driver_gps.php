@@ -107,6 +107,40 @@
         <button id="stop_btn" onclick="stopSharing()">Stop Sharing</button>
     </div>
 
+    <?php $has_shipment = !empty($trip->shipment_id); ?>
+    <?php if ($has_shipment): ?>
+    <!-- ── Step 3: Deliver or cancel — shown once the trip has started ───────── -->
+    <div id="delivery_actions_section" style="<?php echo $already_started ? '' : 'display:none;'; ?> margin-top:24px;">
+        <button id="deliver_btn" onclick="showDeliverForm()">✅ Mark Delivered</button>
+        <button id="cancel_btn" onclick="showCancelForm()">✖ Cancel Shipment</button>
+    </div>
+
+    <div id="deliver_form" class="gs-panel" style="display:none;">
+        <h3 style="color:#8ecae6; font-size:15px; margin:0;">Confirm Delivery</h3>
+        <label for="deliver_first_name">Customer first name</label>
+        <input type="text" id="deliver_first_name">
+        <label for="deliver_last_name">Customer last name</label>
+        <input type="text" id="deliver_last_name">
+        <label>Customer signature</label>
+        <canvas id="signature_pad_canvas"></canvas>
+        <button type="button" onclick="clearSignature()" class="gs-btn-secondary" style="width:100%; margin-top:8px;">Clear Signature</button>
+        <button id="confirm_deliver_btn" onclick="submitDelivery()" class="gs-btn-wide">Confirm Delivery</button>
+        <button type="button" onclick="hideForms()" class="gs-btn-secondary gs-btn-wide">Back</button>
+        <div id="deliver_error" style="display:none; margin-top:10px; background:#7f1d1d; color:#fecaca; padding:10px 14px; border-radius:8px; font-size:13px;"></div>
+    </div>
+
+    <div id="cancel_form" class="gs-panel" style="display:none;">
+        <h3 style="color:#fca5a5; font-size:15px; margin:0;">Cancel Shipment</h3>
+        <label for="cancel_reason">Reason for cancelling</label>
+        <textarea id="cancel_reason" rows="4"></textarea>
+        <button id="confirm_cancel_btn" onclick="submitCancel()" class="gs-btn-wide">Confirm Cancellation</button>
+        <button type="button" onclick="hideForms()" class="gs-btn-secondary gs-btn-wide">Back</button>
+        <div id="cancel_error" style="display:none; margin-top:10px; background:#7f1d1d; color:#fecaca; padding:10px 14px; border-radius:8px; font-size:13px;"></div>
+    </div>
+
+    <div id="trip_complete_banner"></div>
+    <?php endif; ?>
+
     <br>
     <button id="install_btn" onclick="installApp()">📲 Install App to Home Screen</button>
 
