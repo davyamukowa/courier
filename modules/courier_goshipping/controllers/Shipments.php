@@ -2209,6 +2209,9 @@ class Shipments extends AdminController
         // Salibay orders get a short rider link (no vehicle/odometer/GPS —
         // just Start → Deliver/Cancel) instead of the full fleet "Book a
         // Trip" flow, which is overkill for a single-parcel last-mile drop.
+        $data['map_provider'] = get_option('courier_map_provider') ?: 'leaflet';
+        $data['google_api_key'] = get_option('google_api_key');
+
         $data['salibay_delivery_link'] = null;
         $data['salibay_riders'] = [];
         if ($this->db->table_exists(db_prefix() . 'shopify_orders')) {
