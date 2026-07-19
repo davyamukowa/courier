@@ -198,6 +198,14 @@ class Fulfilment extends AdminController
         $data = $this->build_base_data('riders', 'Riders');
 
         $prefix = db_prefix();
+        if (!$this->db->table_exists($prefix . '_courier_riders')) {
+            $data['riders'] = [];
+            $data['unlinked_drivers'] = [];
+            $data['group_content'] = $this->load->view('courier_goshipping/fulfilment/riders', $data, true);
+            $this->load->view('courier_goshipping/fulfilment/main', $data);
+            return;
+        }
+
         $rows = $this->db->select('r.id, r.name, r.phone, r.status, r.staff_id, r.created_at, staff.firstname, staff.lastname, staff.active AS staff_active')
             ->from($prefix . '_courier_riders r')
             ->join($prefix . 'staff staff', 'staff.staffid = r.staff_id', 'left')
