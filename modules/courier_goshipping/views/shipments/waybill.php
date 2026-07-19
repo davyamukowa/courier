@@ -311,17 +311,16 @@
                     <div class="courier-sidebar-header">
                         <i class="fa fa-file-text"></i> Shipment Actions
                     </div>
-                    <nav class="courier-sidebar-nav">
+                    <nav class="courier-sidebar-nav gs-action-list">
 
                         <?php if (!empty($shipment_details['shipment']->invoice_id)): ?>
                         <a href="<?php echo admin_url('invoices/invoice/' . $shipment_details['shipment']->invoice_id); ?>"
-                           class="courier-nav-item">
+                           class="gs-action-btn">
                             <i class="fa fa-money"></i> Invoice
                         </a>
                         <?php elseif (empty($shipment_details['shipment']->invoice_id) && $shipment_details['shipment']->staff_id == 0): ?>
                         <a href="javascript:void(0);" onclick="openConfirmPortalModal(<?php echo $wb_sid; ?>);"
-                           class="courier-nav-item"
-                           style="background:linear-gradient(135deg,#1565c0,#0d47a1);color:#fff;font-weight:700;border-radius:4px;padding:8px 10px;">
+                           class="gs-action-btn">
                             <i class="fa fa-check-circle"></i> Confirm &amp; Create Invoice
                         </a>
                         <?php endif; ?>
@@ -333,7 +332,7 @@
                             : admin_url('courier_goshipping/shipments/commercial_invoice/' . $wb_sid);
                         $ci_target = !empty($shipment_details['shipment']->commercial_invoice_url) ? ' target="_blank"' : '';
                         ?>
-                        <a href="<?php echo $ci_url; ?>"<?php echo $ci_target; ?> class="courier-nav-item">
+                        <a href="<?php echo $ci_url; ?>"<?php echo $ci_target; ?> class="gs-action-btn">
                             <i class="fa fa-file-invoice"></i> Commercial Invoice
                         </a>
                         <?php endif; ?>
@@ -341,44 +340,32 @@
                         <?php if (is_admin() || staff_can('view_invoices', 'courier-invoices') || staff_can('view_own_invoices', 'courier-invoices')): ?>
                         <div class="courier-nav-divider"></div>
 
-                        <div style="padding:6px 10px; display:flex; flex-direction:column; gap:6px;">
-                            <a href="<?php echo admin_url('courier_goshipping/shipments/courier_invoice/' . $wb_sid); ?>"
-                               style="display:flex; align-items:center; gap:8px; background:linear-gradient(135deg,#c62828,#8e1c1c); color:#fff; padding:8px 14px; border-radius:6px; font-size:13px; font-weight:600; text-decoration:none; transition:opacity .2s;"
-                               onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
-                                <i class="fa fa-file-text"></i> Courier Invoice
-                            </a>
-                            <?php if (is_admin()): ?>
-                            <a href="<?php echo admin_url('courier_goshipping/shipments/consignment_note/' . $wb_sid); ?>"
-                               style="display:flex; align-items:center; gap:8px; background:linear-gradient(135deg,#c62828,#8e1c1c); color:#fff; padding:8px 14px; border-radius:6px; font-size:13px; font-weight:600; text-decoration:none; transition:opacity .2s;"
-                               onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
-                                <i class="fa fa-clipboard"></i> Consignment Note
-                            </a>
-                            <?php endif; ?>
-                        </div>
+                        <a href="<?php echo admin_url('courier_goshipping/shipments/courier_invoice/' . $wb_sid); ?>" class="gs-action-btn">
+                            <i class="fa fa-file-text"></i> Courier Invoice
+                        </a>
+                        <?php if (is_admin()): ?>
+                        <a href="<?php echo admin_url('courier_goshipping/shipments/consignment_note/' . $wb_sid); ?>" class="gs-action-btn">
+                            <i class="fa fa-clipboard"></i> Consignment Note
+                        </a>
+                        <?php endif; ?>
                         <?php endif; ?>
 
                         <?php if (is_admin()): ?>
                         <div class="courier-nav-divider"></div>
 
-                        <div style="padding:6px 10px;">
-                            <a href="<?php echo admin_url('fleet/trips/create/' . $wb_sid); ?>"
-                               style="display:flex; align-items:center; gap:8px; background:linear-gradient(135deg,#1565c0,#0d47a1); color:#fff; padding:8px 14px; border-radius:6px; font-size:13px; font-weight:600; text-decoration:none; transition:opacity .2s;"
-                               onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
-                                <i class="fa fa-road"></i> Book a Trip
-                            </a>
-                        </div>
+                        <a href="<?php echo admin_url('fleet/trips/create/' . $wb_sid); ?>" class="gs-action-btn">
+                            <i class="fa fa-road"></i> Book a Trip
+                        </a>
                         <?php endif; ?>
 
                         <?php if (is_admin() || staff_can('edit_shipments', 'courier-shipments')): ?>
                         <div class="courier-nav-divider"></div>
 
-                        <a href="#" data-toggle="modal" data-target="#update_status" class="courier-nav-item"
-                           style="color:#c62828;">
+                        <a href="#" data-toggle="modal" data-target="#update_status" class="gs-action-btn">
                             <i class="fa fa-refresh"></i> Update Status
                         </a>
 
-                        <a href="#" data-toggle="modal" data-target="#assign_agent_modal" class="courier-nav-item"
-                           style="color:#0d47a1;">
+                        <a href="#" data-toggle="modal" data-target="#assign_agent_modal" class="gs-action-btn">
                             <i class="fa fa-user-plus"></i> Assign Agent / Staff
                         </a>
                         <?php endif; ?>
@@ -386,7 +373,7 @@
                         <?php if (is_admin()): ?>
                         <div class="courier-nav-divider"></div>
                         <a href="<?php echo admin_url('courier_goshipping/shipments/create?type=' . $wb_type); ?>"
-                           class="courier-nav-item">
+                           class="gs-action-btn">
                             <i class="fa fa-plus-circle"></i> New Shipment
                         </a>
                         <?php endif; ?>
