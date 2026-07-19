@@ -2210,10 +2210,25 @@ class Shipments extends AdminController
         // just Start → Deliver/Cancel) instead of the full fleet "Book a
         // Trip" flow, which is overkill for a single-parcel last-mile drop.
         $data['salibay_delivery_link'] = null;
+        $data['salibay_riders'] = [];
         if ($this->db->table_exists(db_prefix() . 'shopify_orders')) {
             $is_salibay = $this->db->where('gs_shipment_id', (int) $id)->get(db_prefix() . 'shopify_orders')->row();
             if ($is_salibay) {
                 $data['salibay_delivery_link'] = site_url('admin/courier_goshipping/salibay_delivery/rider/' . $this->_get_or_create_driver_token((int) $id));
+
+                // Salibay shipments get assigned to a registered rider (their
+                // chosen app name), not the generic staff/agent list — riders
+                // auto-provision a staff row with a placeholder name, so the
+                // staff list alone isn't meaningful for picking one.
+                if ($this->db->table_exists(db_prefix() . '_courier_riders')) {
+                    $data['salibay_riders'] = $this->db->select('r.staff_id, r.name, r.phone')
+                        ->from(db_prefix() . '_courier_riders r')
+                        ->where('r.staff_id IS NOT NULL', null, false)
+                        ->where('r.status', 'active')
+                        ->order_by('r.name', 'asc')
+                        ->get()
+                        ->result();
+                }
             }
         }
 
