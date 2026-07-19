@@ -252,8 +252,53 @@
     }
 </script>
 
+<style>
+/* ── Go Shipping corporate theme (scoped to the waybill page only) ──
+   Blue = primary brand, Red = accent/action. Overrides the shared green
+   courier-sidebar / stepper styling from main.css / progress.css without
+   touching those files, so other pages that reuse them are unaffected. */
+.gs-waybill-page .courier-sidebar {
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(13, 71, 161, 0.08);
+}
+.gs-waybill-page .courier-sidebar-header {
+    background: linear-gradient(135deg, #1565c0, #0d47a1);
+}
+.gs-waybill-page .courier-nav-item:hover,
+.gs-waybill-page .courier-nav-item.active {
+    background: #eef4fc;
+    color: #0d47a1;
+    border-left-color: #c62828;
+}
+.gs-waybill-page .panel_s {
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(13, 71, 161, 0.06);
+    border: 1px solid #e3ebf5;
+}
+.gs-waybill-page .stepper-item .step-counter {
+    background: #dbe7f6;
+    color: #0d47a1;
+    font-weight: 700;
+}
+.gs-waybill-page .stepper-item.completed .step-counter {
+    background: #1565c0;
+    color: #fff;
+}
+.gs-waybill-page .stepper-item.active .step-counter {
+    background: #c62828;
+    color: #fff;
+    box-shadow: 0 0 0 4px rgba(198, 40, 40, 0.18);
+}
+.gs-waybill-page .stepper-item.completed::after {
+    border-bottom-color: #1565c0;
+}
+.gs-waybill-page .waybill-container {
+    border-color: #0d47a1;
+    border-top: 4px solid #c62828;
+}
+</style>
 <?php $this->load->view('courier_goshipping/layout/_topnav', ['cgs_active' => 'shipments']); ?>
-    <div class="content">
+    <div class="content gs-waybill-page">
         <div class="row">
             <?php
             $wb_type      = $this->session->userdata('type') ?: 'domestic';
