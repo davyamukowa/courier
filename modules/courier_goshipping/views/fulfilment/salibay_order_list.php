@@ -30,6 +30,7 @@
                             <tr>
                                 <td>#<?php echo htmlspecialchars((string) $order->shopify_order_number); ?></td>
                                 <td><?php echo htmlspecialchars((string) $order->customer_name); ?></td>
+                                <td><?php echo htmlspecialchars($order->items_display); ?></td>
                                 <td><span class="label label-<?php echo $order->order_badge_class; ?>"><?php echo ucfirst((string) $order->order_status); ?></span></td>
                                 <td><span class="label label-<?php echo $order->financial_badge_class; ?>"><?php echo ucfirst((string) ($order->financial_status ?: 'unknown')); ?></span></td>
                                 <td><span class="label label-<?php echo $order->shipment_badge_class; ?>"><?php echo htmlspecialchars($order->shipment_status_text); ?></span></td>
@@ -62,7 +63,7 @@
                         <?php endforeach; ?>
                     <?php else: ?>
                         <tr>
-                            <td colspan="12" class="text-center text-muted">No Salibay orders have been captured yet.</td>
+                            <td colspan="13" class="text-center text-muted">No Salibay orders have been captured yet.</td>
                         </tr>
                     <?php endif; ?>
                 </tbody>
