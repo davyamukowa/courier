@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
     <title>Live Trip Tracking</title>
 
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad"></script>
     <link rel="manifest" href="<?php echo site_url('admin/fleet/trips/manifest/' . $token); ?>">
     <meta name="theme-color" content="#0d1b2a">
     <link rel="apple-touch-icon" href="<?php echo site_url('admin/fleet/trips/icon/192'); ?>">
