@@ -796,6 +796,129 @@
                                 &copy; <?php echo date('Y'); ?> <?php echo htmlspecialchars($logistic_company); ?>. All rights reserved.
                             </div>
                         </div>
+
+                        <?php if ($show_live_map): ?>
+                        <div style="margin-top:20px; background:#fff; border:1px solid #e3ebf5; border-radius:12px; padding:16px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                                <h4 style="margin:0; font-size:15px; font-weight:700; color:#0d47a1;"><i class="fa fa-map-marker"></i> Live Rider Tracking</h4>
+                                <span id="live_map_updated" class="text-muted" style="font-size:12px;">Waiting for rider to share location…</span>
+                            </div>
+                            <div id="live_map" style="width:100%; height:320px; border-radius:8px; background:#eee;"></div>
+                        </div>
+
+                        <script>
+                        var LATEST_LOCATION_URL = <?php echo json_encode(site_url('admin/courier_goshipping/shipments/latest_location/' . $shipment_details['shipment']->id)); ?>;
+                        var DEST_ADDRESS = <?php echo json_encode($dest_address); ?>;
+                        var MAP_PROVIDER = <?php echo json_encode($map_provider); ?>;
+                        var GOOGLE_API_KEY = <?php echo json_encode($google_api_key); ?>;
+
+                        (function () {
+                            var map, marker, polyline, destMarker;
+                            var leafletReady = false, googleReady = false;
+
+                            function timeAgo(iso) {
+                                var seconds = Math.floor((Date.now() - new Date(iso.replace(' ', 'T')).getTime()) / 1000);
+                                if (seconds < 60) return seconds + 's ago';
+                                if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
+                                return Math.floor(seconds / 3600) + 'h ago';
+                            }
+
+                            function geocodeDestination(cb) {
+                                if (!DEST_ADDRESS) { return; }
+                                fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(DEST_ADDRESS))
+                                    .then(function (r) { return r.json(); })
+                                    .then(function (res) {
+                                        if (res && res[0]) { cb(parseFloat(res[0].lat), parseFloat(res[0].lon)); }
+                                    }).catch(function () {});
+                            }
+
+                            function initLeaflet(lat, lng) {
+                                map = L.map('live_map').setView([lat, lng], 13);
+                                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                                    attribution: '&copy; OpenStreetMap contributors'
+                                }).addTo(map);
+                                marker = L.marker([lat, lng]).addTo(map).bindPopup('Rider');
+                                polyline = L.polyline([], { color: '#1565c0', weight: 4 }).addTo(map);
+                                leafletReady = true;
+                                geocodeDestination(function (dLat, dLng) {
+                                    destMarker = L.marker([dLat, dLng], {
+                                        icon: L.icon({ iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png', iconSize: [20, 32], iconAnchor: [10, 32] })
+                                    }).addTo(map).bindPopup('Delivery address');
+                                });
+                            }
+
+                            function updateLeaflet(lat, lng, trail) {
+                                marker.setLatLng([lat, lng]);
+                                map.panTo([lat, lng]);
+                                if (trail && trail.length) {
+                                    polyline.setLatLngs(trail.map(function (p) { return [p.latitude, p.longitude]; }));
+                                }
+                            }
+
+                            function initGoogle(lat, lng) {
+                                map = new google.maps.Map(document.getElementById('live_map'), { center: { lat: lat, lng: lng }, zoom: 13 });
+                                marker = new google.maps.Marker({ position: { lat: lat, lng: lng }, map: map, label: 'R' });
+                                polyline = new google.maps.Polyline({ path: [], strokeColor: '#1565c0', strokeWeight: 4 });
+                                polyline.setMap(map);
+                                googleReady = true;
+                                geocodeDestination(function (dLat, dLng) {
+                                    destMarker = new google.maps.Marker({ position: { lat: dLat, lng: dLng }, map: map, label: 'D' });
+                                });
+                            }
+
+                            function updateGoogle(lat, lng, trail) {
+                                var pos = { lat: lat, lng: lng };
+                                marker.setPosition(pos);
+                                map.panTo(pos);
+                                if (trail && trail.length) {
+                                    polyline.setPath(trail.map(function (p) { return { lat: p.latitude, lng: p.longitude }; }));
+                                }
+                            }
+
+                            function poll() {
+                                fetch(LATEST_LOCATION_URL).then(function (r) { return r.json(); }).then(function (res) {
+                                    if (!res.success) { return; }
+                                    document.getElementById('live_map_updated').textContent =
+                                        'Updated ' + timeAgo(res.recorded_at) + (res.speed ? ' · ' + Math.round(res.speed * 3.6) + ' km/h' : '');
+                                    if (MAP_PROVIDER === 'google' && GOOGLE_API_KEY) {
+                                        if (!googleReady) { initGoogle(res.latitude, res.longitude); } else { updateGoogle(res.latitude, res.longitude, res.trail); }
+                                    } else {
+                                        if (!leafletReady) { initLeaflet(res.latitude, res.longitude); } else { updateLeaflet(res.latitude, res.longitude, res.trail); }
+                                    }
+                                }).catch(function () {});
+                            }
+
+                            function loadLeafletAssets(cb) {
+                                if (window.L) { cb(); return; }
+                                var css = document.createElement('link');
+                                css.rel = 'stylesheet';
+                                css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+                                document.head.appendChild(css);
+                                var js = document.createElement('script');
+                                js.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+                                js.onload = cb;
+                                document.head.appendChild(js);
+                            }
+
+                            function loadGoogleAssets(cb) {
+                                if (window.google && window.google.maps) { cb(); return; }
+                                var js = document.createElement('script');
+                                js.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(GOOGLE_API_KEY);
+                                js.onload = cb;
+                                js.onerror = function () {
+                                    document.getElementById('live_map_updated').textContent = 'Google Maps failed to load — check the API key, or switch to the free map provider.';
+                                };
+                                document.head.appendChild(js);
+                            }
+
+                            if (MAP_PROVIDER === 'google' && GOOGLE_API_KEY) {
+                                loadGoogleAssets(function () { poll(); setInterval(poll, 8000); });
+                            } else {
+                                loadLeafletAssets(function () { poll(); setInterval(poll, 8000); });
+                            }
+                        })();
+                        </script>
+                        <?php endif; ?>
                     </div>
                 </div>
             <?php echo form_close(); ?>
