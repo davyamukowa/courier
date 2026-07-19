@@ -262,6 +262,127 @@ class Trips extends AdminController
         echo json_encode(['success' => true]);
     }
 
+    // ── Driver marks the shipment delivered, with the customer's on-screen
+    // signature, from the public tracker page (public POST) ───────────────────
+    public function driver_deliver_shipment()
+    {
+        header('Content-Type: application/json');
+
+        $token = $this->input->post('token');
+        $trip = $token ? $this->db->where('tracking_token', $token)->get(db_prefix() . 'fleet_trips')->row() : null;
+        if (!$trip || !$trip->shipment_id) {
+            echo json_encode(['success' => false, 'message' => 'Invalid tracking link.']);
+            return;
+        }
+
+        $first_name = trim((string) $this->input->post('first_name'));
+        $last_name  = trim((string) $this->input->post('last_name'));
+        $signature  = $this->input->post('signature');
+
+        if ($first_name === '' || $last_name === '' || empty($signature)) {
+            echo json_encode(['success' => false, 'message' => "Please enter the customer's name and have them sign."]);
+            return;
+        }
+
+        $canvas_data = str_replace(' ', '+', str_replace('data:image/png;base64,', '', $signature));
+        $image_data  = base64_decode($canvas_data, true);
+        if ($image_data === false) {
+            echo json_encode(['success' => false, 'message' => 'Could not read the signature. Please try again.']);
+            return;
+        }
+
+        // Same folder the staff-side "Update Status" delivery signature uses
+        // (modules/courier_goshipping/controllers/Shipments.php), so both
+        // paths land in one place and render through the same views.
+        $signatures_dir = FCPATH . 'modules/courier_goshipping/assets/deliveries/signatures/';
+        if (!is_dir($signatures_dir)) {
+            @mkdir($signatures_dir, 0755, true);
+        }
+        $file_name = uniqid('delivery_') . '.png';
+        if (!file_put_contents($signatures_dir . $file_name, $image_data)) {
+            echo json_encode(['success' => false, 'message' => 'Could not save the signature. Please try again.']);
+            return;
+        }
+
+        $this->load->model('courier_goshipping/Delivery_model');
+        $this->Delivery_model->add([
+            'shipment_id'   => $trip->shipment_id,
+            'first_name'    => $first_name,
+            'last_name'     => $last_name,
+            'signature_url' => 'assets/deliveries/signatures/' . $file_name,
+        ]);
+
+        $this->_advance_shipment_status($trip->shipment_id, 8); // 'delivered'
+
+        if ($this->db->table_exists(db_prefix() . 'shopify_orders')) {
+            $this->db->where('gs_shipment_id', (int) $trip->shipment_id)->update(db_prefix() . 'shopify_orders', [
+                'order_status' => 'delivered',
+            ]);
+        }
+
+        // Delivery ends the trip — close it out the same way the staff-side
+        // "End Trip" action does, so a delivered shipment doesn't leave an
+        // open trip/vehicle assignment behind.
+        $this->Fleet_trips_model->update($trip->id, [
+            'status'   => 'completed',
+            'end_time' => date('Y-m-d H:i:s'),
+        ]);
+        $this->db->where('courier_shipment_id', $trip->shipment_id)
+            ->where('vehicle_id', $trip->vehicle_id)
+            ->where('end_time IS NULL', null, false)
+            ->update(db_prefix() . 'fleet_vehicle_assignments', ['end_time' => date('Y-m-d H:i:s')]);
+
+        echo json_encode(['success' => true]);
+    }
+
+    // ── Driver cancels the shipment with a reason, from the public tracker
+    // page (public POST) ────────────────────────────────────────────────────
+    public function driver_cancel_shipment()
+    {
+        header('Content-Type: application/json');
+
+        $token = $this->input->post('token');
+        $trip = $token ? $this->db->where('tracking_token', $token)->get(db_prefix() . 'fleet_trips')->row() : null;
+        if (!$trip || !$trip->shipment_id) {
+            echo json_encode(['success' => false, 'message' => 'Invalid tracking link.']);
+            return;
+        }
+
+        $reason = trim((string) $this->input->post('reason'));
+        if ($reason === '') {
+            echo json_encode(['success' => false, 'message' => 'Please enter a reason for cancelling.']);
+            return;
+        }
+
+        $cancelled_status = $this->db->where('status_name', 'cancelled')->get(db_prefix() . '_shipment_statuses')->row();
+        $cancelled_status_id = $cancelled_status ? (int) $cancelled_status->id : 9;
+
+        $this->db->where('id', (int) $trip->shipment_id)->update(db_prefix() . '_shipments', [
+            'status_id'     => $cancelled_status_id,
+            'cancel_reason' => $reason,
+        ]);
+        $this->db->insert(db_prefix() . '_shipment_status_history', [
+            'shipment_id' => $trip->shipment_id,
+            'status_id'   => $cancelled_status_id,
+            'notes'       => $reason,
+            'changed_at'  => date('Y-m-d H:i:s'),
+        ]);
+
+        if ($this->db->table_exists(db_prefix() . 'shopify_orders')) {
+            $this->db->where('gs_shipment_id', (int) $trip->shipment_id)->update(db_prefix() . 'shopify_orders', [
+                'order_status' => 'cancelled',
+            ]);
+        }
+
+        $this->Fleet_trips_model->update($trip->id, ['status' => 'cancelled']);
+        $this->db->where('courier_shipment_id', $trip->shipment_id)
+            ->where('vehicle_id', $trip->vehicle_id)
+            ->where('end_time IS NULL', null, false)
+            ->update(db_prefix() . 'fleet_vehicle_assignments', ['end_time' => date('Y-m-d H:i:s')]);
+
+        echo json_encode(['success' => true]);
+    }
+
     /**
      * Shared by both the staff-side "Start Trip" button (Trip detail page)
      * and the driver's own "Start Trip" button on their public tracker page —
