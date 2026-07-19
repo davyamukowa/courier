@@ -86,6 +86,7 @@ $route['courier_goshipping/rider-api/deliveries'] = 'rider_api/deliveries';
 $route['courier_goshipping/rider-api/deliveries/(:num)/start'] = 'rider_api/delivery_start/$1';
 $route['courier_goshipping/rider-api/deliveries/(:num)/deliver'] = 'rider_api/delivery_deliver/$1';
 $route['courier_goshipping/rider-api/deliveries/(:num)/cancel'] = 'rider_api/delivery_cancel/$1';
+$route['courier_goshipping/rider-api/deliveries/(:num)/location'] = 'rider_api/location_ping/$1';
 $route['courier_goshipping/rider-api/pickups'] = 'rider_api/pickups';
 $route['courier_goshipping/rider-api/pickups/(:num)/update'] = 'rider_api/pickup_update/$1';
 
