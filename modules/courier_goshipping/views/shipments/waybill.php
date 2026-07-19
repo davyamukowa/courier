@@ -468,7 +468,7 @@
                             <?php if (is_admin() || staff_can('edit_shipments', 'courier-shipments')): ?>
                             <a class="custom-button" href="#" data-toggle="modal" data-target="#assign_agent_modal"
                                style="background:#0d47a1; color:#fff; border-color:#0d47a1;">
-                                <i class="fa fa-user-plus" style="margin-right:5px;"></i> Assign Agent/Staff
+                                <i class="fa fa-user-plus" style="margin-right:5px;"></i> <?php echo !empty($salibay_delivery_link) ? 'Assign Rider' : 'Assign Agent/Staff'; ?>
                             </a>
                             <?php endif; ?>
                         </div>
