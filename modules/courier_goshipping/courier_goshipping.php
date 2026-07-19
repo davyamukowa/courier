@@ -1566,5 +1566,16 @@ class Courier_Logistic_System {
     }
 }
 
+// Disable CSRF for the Rider PWA's public JSON API and the Salibay driver
+// delivery links — both are plain fetch() calls from pages with no staff
+// session/CSRF cookie, same reasoning as shopify_connector's webhook.
+hooks()->add_filter('csrf_exclude_uris', 'courier_goshipping_csrf_exclude_uris');
+function courier_goshipping_csrf_exclude_uris($uris)
+{
+    $uris[] = '.*courier_goshipping/rider-api/.*';
+    $uris[] = '.*courier_goshipping/salibay_delivery/.*';
+    return $uris;
+}
+
 // Instantiate the module class to initialize it
 new Courier_Logistic_System();
