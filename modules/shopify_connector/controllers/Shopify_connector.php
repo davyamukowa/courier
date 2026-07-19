@@ -1299,9 +1299,11 @@ class Shopify_connector extends AdminController
         $pickup_id = $this->Pickup_model->add($pickup_data);
 
         if (!$pickup_id) {
-            $this->write_integration_log('error', 'shipment', 'Pickup not created: Pickup_model->add() failed', [
+            $db_error = $this->db->error();
+            $this->write_integration_log('error', 'shipment', 'Pickup not created: Pickup_model->add() failed - ' . ($db_error['message'] ?? 'unknown error'), [
                 'shopify_db_order_id' => $order_id,
-                'shipment_id' => $shipment_id
+                'shipment_id' => $shipment_id,
+                'pickup_data' => $pickup_data,
             ], $order->store_id);
             return false;
         }
