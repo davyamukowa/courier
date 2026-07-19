@@ -56,6 +56,20 @@ class Rider_api extends App_Controller
                 FOREIGN KEY (`rider_id`) REFERENCES `' . db_prefix() . '_courier_riders`(`id`) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=' . $this->db->char_set . ';');
         }
+        if (!$this->db->table_exists(db_prefix() . '_shipment_locations')) {
+            $this->db->query('CREATE TABLE `' . db_prefix() . '_shipment_locations` (
+                `id`          INT NOT NULL AUTO_INCREMENT,
+                `shipment_id` INT NOT NULL,
+                `latitude`    DECIMAL(10,7) NOT NULL,
+                `longitude`   DECIMAL(10,7) NOT NULL,
+                `accuracy`    DECIMAL(10,2) NULL DEFAULT NULL,
+                `speed`       DECIMAL(10,2) NULL DEFAULT NULL,
+                `recorded_at` DATETIME NOT NULL,
+                PRIMARY KEY (`id`),
+                KEY `shipment_id` (`shipment_id`),
+                KEY `shipment_recorded` (`shipment_id`, `recorded_at`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=' . $this->db->char_set . ';');
+        }
     }
 
     private function respond($data)
