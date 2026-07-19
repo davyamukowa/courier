@@ -270,6 +270,37 @@
     color: #0d47a1;
     border-left-color: #c62828;
 }
+/* Every sidebar action button looks the same at rest (blue) — red is
+   reserved for the one the user is actually interacting with right now,
+   instead of some actions being permanently red and others plain text. */
+.gs-waybill-page .gs-action-list {
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.gs-waybill-page .gs-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    background: linear-gradient(135deg, #1565c0, #0d47a1);
+    color: #fff !important;
+    padding: 9px 14px;
+    border-radius: 6px;
+    font-size: 13.5px;
+    font-weight: 600;
+    text-decoration: none !important;
+    transition: background .15s, transform .12s, box-shadow .15s;
+}
+.gs-waybill-page .gs-action-btn i { width: 16px; text-align: center; }
+.gs-waybill-page .gs-action-btn:hover,
+.gs-waybill-page .gs-action-btn:focus,
+.gs-waybill-page .gs-action-btn:active {
+    background: linear-gradient(135deg, #c62828, #8e1c1c);
+    color: #fff !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(198, 40, 40, .3);
+}
 .gs-waybill-page .panel_s {
     border-radius: 12px;
     box-shadow: 0 4px 16px rgba(13, 71, 161, 0.06);
