@@ -10,7 +10,13 @@
 <script>
     function copySalibayDeliveryLink(el) {
         var link = el.getAttribute('data-link');
-        var done = function () { alert_float ? alert_float('success', 'Rider delivery link copied — send it to the driver.') : alert('Link copied: ' + link); };
+        var done = function () {
+            if (typeof alert_float === 'function') {
+                alert_float('success', 'Rider delivery link copied — send it to the driver.');
+            } else {
+                alert('Link copied: ' + link);
+            }
+        };
         var fallback = function () {
             var tmp = document.createElement('textarea');
             tmp.value = link;
