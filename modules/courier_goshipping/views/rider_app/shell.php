@@ -254,6 +254,15 @@
         </div>
     </div>
 
+    <!-- ── Live map modal (rider's own view of their shared location + drop-off) -->
+    <div class="modal-backdrop" id="map_modal">
+        <div class="modal-sheet">
+            <h3>Delivery Map</h3>
+            <div id="rider_map" style="width:100%;height:280px;border-radius:8px;background:#eee;margin-top:10px;"></div>
+            <button class="btn-ghost" onclick="closeModal('map_modal')" style="margin-top:14px;">Close</button>
+        </div>
+    </div>
+
     <!-- ── Pickup signature modal ───────────────────────────────────────────── -->
     <div class="modal-backdrop" id="pickup_modal">
         <div class="modal-sheet">
