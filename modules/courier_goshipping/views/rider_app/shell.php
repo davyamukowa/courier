@@ -525,6 +525,7 @@
         }, { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 });
 
         locationWatches[id] = watchId;
+        acquireWakeLock();
     }
 
     // ── Rider's own map view: last known shared position + geocoded drop-off ──
