@@ -101,7 +101,7 @@
     </div>
 
     <!-- ── Step 2: Share location — shown once the trip has started ──────────── -->
-    <div id="sharing_section" style="<?php echo $already_started ? '' : 'display:none;'; ?>">
+    <div id="sharing_section" style="<?php echo ($already_started && !$trip_finished) ? '' : 'display:none;'; ?>">
         <div>
             <span id="status_dot" class="status-dot"></span>
             <span id="status_text">Not sharing location</span>
