@@ -22,4 +22,11 @@ return [
     'courier_goshipping/portal/send_quote_email',
     'courier_goshipping/portal/get_countries',
     'courier_goshipping/portal/get_cities',
+
+    // Rider PWA JSON API — plain fetch() calls from a no-login mobile app,
+    // so there's no staff session/CSRF cookie to send a token with.
+    'courier_goshipping/rider-api/(.*)',
+
+    // Salibay short driver delivery flow (public, per-shipment token link).
+    'admin/courier_goshipping/salibay_delivery/(.*)',
 ];
