@@ -2726,8 +2726,34 @@ class Shipments extends AdminController
         }
     }
 
+    /**
+     * Claims the Salibay order linked to this shipment for whichever staff
+     * member is the first to change something about it — shown as "Admin"
+     * in the order list until then. Silently no-ops if the shopify_orders
+     * table/column isn't present yet (fresh install still upgrading) or the
+     * shipment isn't linked to a Salibay order.
+     */
+    private function auto_claim_shopify_order($shipment_id)
+    {
+        if (!$this->db->table_exists(db_prefix() . 'shopify_orders')
+            || !$this->db->field_exists('assigned_staff_id', db_prefix() . 'shopify_orders')) {
+            return;
+        }
+
+        $staff_id = get_staff_user_id();
+        if (!$staff_id) {
+            return;
+        }
+
+        $this->db->where('gs_shipment_id', (int) $shipment_id)
+            ->where('assigned_staff_id IS NULL')
+            ->update(db_prefix() . 'shopify_orders', ['assigned_staff_id' => $staff_id]);
+    }
+
     public function update_status($id)
     {
+        $this->auto_claim_shopify_order($id);
+
         // Start a database transaction
         $this->db->trans_begin();
 
