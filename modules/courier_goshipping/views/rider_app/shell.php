@@ -145,7 +145,7 @@
             <p>Manage your deliveries, pickups, and status updates on the go.</p>
         </div>
         <label for="login_phone">Phone number</label>
-        <input type="tel" id="login_phone" placeholder="e.g. 0701020320">
+        <input type="tel" id="login_phone" placeholder="e.g. 0723434533">
         <label for="login_password">Password</label>
         <input type="password" id="login_password" placeholder="••••••••">
         <button class="btn-primary" onclick="doLogin()" id="login_btn">Log In</button>
@@ -163,7 +163,7 @@
         <label for="reg_name">Full name</label>
         <input type="text" id="reg_name" placeholder="e.g. John Otieno">
         <label for="reg_phone">Phone number</label>
-        <input type="tel" id="reg_phone" placeholder="e.g. 0701020320">
+        <input type="tel" id="reg_phone" placeholder="e.g. 0723434533">
         <label for="reg_password">Create a password</label>
         <input type="password" id="reg_password" placeholder="At least 4 characters">
         <button class="btn-primary" onclick="doRegister()" id="register_btn">Create Account</button>
