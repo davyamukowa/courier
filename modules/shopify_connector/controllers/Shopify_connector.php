@@ -1247,12 +1247,22 @@ class Shopify_connector extends AdminController
      */
     private function create_shipment_pickup($order_id, $shipment_id, $order, $sender_data, $branch_id)
     {
-        $this->load->model('courier/PickupContact_model');
         $this->load->model('courier/Pickup_model');
+
+        // MX_Loader::model() lowercases the whole path then rebuilds the
+        // filename with ucfirst() on just the first character, so a
+        // multi-capital filename like "PickupContact_model.php" gets looked
+        // up as "Pickupcontact_model.php" — a match only on Windows'
+        // case-insensitive filesystem, not on production Linux. Load it by
+        // hand instead of via $this->load->model() to sidestep that.
+        if (!class_exists('PickupContact_model', false)) {
+            require_once APP_MODULES_PATH . 'courier/models/PickupContact_model.php';
+        }
+        $pickup_contact_model = new PickupContact_model();
 
         $branch = $branch_id ? $this->db->where('id', $branch_id)->get(db_prefix() . '_courier_branches')->row() : null;
 
-        $contact_id = $this->PickupContact_model->add([
+        $contact_id = $pickup_contact_model->add([
             'first_name'   => $sender_data['first_name'],
             'last_name'    => $sender_data['last_name'],
             'phone_number' => $sender_data['phone_number'],
