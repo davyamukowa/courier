@@ -1239,6 +1239,97 @@ class Shopify_connector extends AdminController
     }
 
     /**
+     * Schedules a courier pickup for the shipment just created, so it lands in
+     * the courier module's pickup queue without staff having to create one by
+     * hand. The pickup point is the fulfilling branch/warehouse (the sender)
+     * since that's where the driver actually collects the package from — not
+     * the Shopify customer's delivery address.
+     */
+    private function create_shipment_pickup($order_id, $shipment_id, $order, $sender_data, $branch_id)
+    {
+        $this->load->model('courier/PickupContact_model');
+        $this->load->model('courier/Pickup_model');
+
+        $branch = $branch_id ? $this->db->where('id', $branch_id)->get(db_prefix() . '_courier_branches')->row() : null;
+
+        $contact_id = $this->PickupContact_model->add([
+            'first_name'   => $sender_data['first_name'],
+            'last_name'    => $sender_data['last_name'],
+            'phone_number' => $sender_data['phone_number'],
+            'email'        => $sender_data['email'],
+        ]);
+
+        if (!$contact_id) {
+            $this->write_integration_log('error', 'shipment', 'Pickup not created: failed to add pickup contact person', [
+                'shopify_db_order_id' => $order_id,
+                'shipment_id' => $shipment_id
+            ], $order->store_id);
+            return false;
+        }
+
+        $pickup_data = [
+            'pickup_date'       => date('Y-m-d'),
+            'pickup_start_time' => '09:00 AM',
+            'pickup_end_time'   => '05:00 PM',
+            'country_id'        => ($branch && $branch->country_id) ? $branch->country_id : get_option('customer_default_country'),
+            'state_id'          => null,
+            'address'           => ($branch && $branch->address) ? $branch->address : $sender_data['address'],
+            'pickup_zip'        => $sender_data['zipcode'],
+            'address_type'      => $sender_data['address_type'],
+            'vehicle_type'      => 'VAN',
+            'shipment_id'       => $shipment_id,
+            'contact_person_id' => $contact_id,
+            'staff_id'          => $this->get_default_staff_id(),
+            'driver_id'         => $this->get_default_driver_id(),
+            'source'            => 'system',
+            'created_at'        => date('Y-m-d H:i:s'),
+        ];
+
+        $pickup_id = $this->Pickup_model->add($pickup_data);
+
+        if (!$pickup_id) {
+            $this->write_integration_log('error', 'shipment', 'Pickup not created: Pickup_model->add() failed', [
+                'shopify_db_order_id' => $order_id,
+                'shipment_id' => $shipment_id
+            ], $order->store_id);
+            return false;
+        }
+
+        log_activity("Pickup #{$pickup_id} scheduled for shipment #{$shipment_id} (Shopify order SHF-{$order_id})");
+        $this->write_integration_log('info', 'shipment', 'Courier pickup scheduled successfully', [
+            'shopify_db_order_id' => $order_id,
+            'shipment_id' => $shipment_id,
+            'pickup_id' => $pickup_id
+        ], $order->store_id);
+
+        return $pickup_id;
+    }
+
+    /**
+     * The driver a Shopify-triggered pickup is assigned to: an explicit
+     * setting if configured, otherwise the first staff member with the
+     * "Fleet: Driver" role, falling back to the default staff used for
+     * shipment attribution so the NOT NULL driver_id column is never left
+     * unresolved.
+     */
+    private function get_default_driver_id()
+    {
+        $configured = get_option('shopify_default_driver_id');
+        if (!empty($configured)) {
+            $exists = $this->db->where('staffid', $configured)->where('active', 1)->get(db_prefix() . 'staff')->row();
+            if ($exists) return (int) $configured;
+        }
+
+        $this->load->model('courier/Driver_model');
+        $drivers = $this->Driver_model->get();
+        if (!empty($drivers)) {
+            return (int) $drivers[0]['staffid'];
+        }
+
+        return $this->get_default_staff_id();
+    }
+
+    /**
      * Creates a real courier invoice for a Shopify-triggered shipment, mirroring
      * what Shipments::process_invoice_and_packages() does for manually-created
      * shipments (client + priced invoice items), since raw tbl_shipments inserts
