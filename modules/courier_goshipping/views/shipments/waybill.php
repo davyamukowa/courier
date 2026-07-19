@@ -282,7 +282,7 @@
                         <?php elseif (empty($shipment_details['shipment']->invoice_id) && $shipment_details['shipment']->staff_id == 0): ?>
                         <a href="javascript:void(0);" onclick="openConfirmPortalModal(<?php echo $wb_sid; ?>);"
                            class="courier-nav-item"
-                           style="background:#00796b;color:#fff;font-weight:700;border-radius:4px;padding:8px 10px;">
+                           style="background:linear-gradient(135deg,#1565c0,#0d47a1);color:#fff;font-weight:700;border-radius:4px;padding:8px 10px;">
                             <i class="fa fa-check-circle"></i> Confirm &amp; Create Invoice
                         </a>
                         <?php endif; ?>
