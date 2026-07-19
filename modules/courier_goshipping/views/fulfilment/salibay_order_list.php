@@ -12,12 +12,12 @@
                         <th>Salibay Order</th>
                         <th>Customer</th>
                         <th>Items</th>
-                        <th>Order Status</th>
+                        <th>Fulfilment Status</th>
                         <th>Payment</th>
                         <th>Waybill / Shipment</th>
                         <th>Sender</th>
-                        <th>Receiver</th>
-                        <th>Mode</th>
+                        <th>Assigned To</th>
+                        <th>Total Amount</th>
                         <th>Created</th>
                     </tr>
                 </thead>
