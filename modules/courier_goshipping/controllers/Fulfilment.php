@@ -1970,6 +1970,13 @@ class Fulfilment extends AdminController
         $shipment_status_description = $this->db->field_exists('status_description', "{$prefix}_shipment_statuses")
             ? 'ss.status_description'
             : 'ss.description';
+        $assigned_staff_supported = $this->db->field_exists('assigned_staff_id', "{$prefix}shopify_orders");
+        $assigned_select = $assigned_staff_supported
+            ? 'so.assigned_staff_id, owner.firstname AS owner_firstname, owner.lastname AS owner_lastname,'
+            : 'NULL AS assigned_staff_id, NULL AS owner_firstname, NULL AS owner_lastname,';
+        $assigned_join = $assigned_staff_supported
+            ? "LEFT JOIN {$prefix}staff owner ON owner.staffid = so.assigned_staff_id"
+            : '';
 
         $rows = $this->db->query("
             SELECT
@@ -1979,25 +1986,25 @@ class Fulfilment extends AdminController
                 so.customer_email,
                 so.order_status,
                 so.financial_status,
+                so.total_price,
+                so.currency,
                 so.tracking_number AS order_tracking_number,
                 so.created_at AS order_created_at,
                 so.gs_shipment_id,
+                {$assigned_select}
                 s.id AS shipment_id,
                 s.waybill_number,
                 s.tracking_id,
-                s.shipping_mode,
                 {$shipment_status_description} AS status_description,
                 ss.status_name,
                 sender.first_name AS sender_first_name,
                 sender.last_name AS sender_last_name,
-                recipient.first_name AS recipient_first_name,
-                recipient.last_name AS recipient_last_name,
                 items.items_summary
             FROM {$prefix}shopify_orders so
             LEFT JOIN {$prefix}_shipments s ON s.id = so.gs_shipment_id
             LEFT JOIN {$prefix}_shipment_statuses ss ON ss.id = s.status_id
             LEFT JOIN {$prefix}_shipment_senders sender ON sender.id = s.sender_id
-            LEFT JOIN {$prefix}_shipment_recipients recipient ON recipient.id = s.recipient_id
+            {$assigned_join}
             LEFT JOIN (
                 SELECT shopify_order_id,
                        GROUP_CONCAT(CONCAT(COALESCE(NULLIF(product_name, ''), 'Product'), ' (x', quantity, ')') SEPARATOR ', ') AS items_summary
@@ -2008,15 +2015,28 @@ class Fulfilment extends AdminController
         ")->result();
 
         foreach ($rows as $row) {
-            $row->order_badge_class = $this->order_badge_class($row->order_status);
             $row->financial_badge_class = $this->financial_badge_class($row->financial_status);
-            $row->shipment_badge_class = $this->shipment_badge_class($row->status_name);
-            $row->shipment_status_text = (string) ($row->status_description ?: (!empty($row->shipment_id) ? 'Shipment Created' : 'Awaiting Shipment'));
             $row->sender_display = trim((string) $row->sender_first_name . ' ' . (string) $row->sender_last_name) ?: 'Go Shipping Warehouse';
-            $row->recipient_display = trim((string) $row->recipient_first_name . ' ' . (string) $row->recipient_last_name) ?: (string) $row->customer_name;
-            $row->tracking_display = (string) ($row->order_tracking_number ?: $row->tracking_id ?: '-');
             $row->waybill_display = (string) ($row->waybill_number ?: $row->tracking_id ?: $row->order_tracking_number ?: '');
             $row->items_display = (string) ($row->items_summary ?: '-');
+            $row->assigned_display = trim((string) $row->owner_firstname . ' ' . (string) $row->owner_lastname) ?: 'Admin';
+            $row->total_display = ($row->total_price !== null)
+                ? app_format_money((float) $row->total_price, $row->currency ?: get_base_currency()->name)
+                : '-';
+
+            $is_delivered = strtolower((string) $row->order_status) === 'delivered'
+                || in_array(strtolower((string) $row->status_name), ['delivered', 'received'], true);
+
+            if ($is_delivered) {
+                $row->fulfilment_status_text = 'Fulfilled';
+                $row->fulfilment_badge_class = 'success';
+            } elseif (empty($row->shipment_id)) {
+                $row->fulfilment_status_text = 'Not Fulfilled';
+                $row->fulfilment_badge_class = 'default';
+            } else {
+                $row->fulfilment_status_text = (string) ($row->status_description ?: 'Shipment Created');
+                $row->fulfilment_badge_class = $this->shipment_badge_class($row->status_name);
+            }
         }
 
         return $rows;
