@@ -15,6 +15,22 @@ class Salibay_delivery extends App_Controller
     {
         parent::__construct();
         $this->load->helper('courier_goshipping/courier');
+
+        // Self-heal: this controller's own rider page (and the waybill link
+        // that generates it) both depend on these columns existing, but the
+        // module deploy that ships this code may land before install.php's
+        // migration has actually run against the live DB.
+        if ($this->db->table_exists(db_prefix() . '_shipments')) {
+            if (!$this->db->field_exists('driver_token', db_prefix() . '_shipments')) {
+                $this->db->query('ALTER TABLE `' . db_prefix() . '_shipments` ADD COLUMN `driver_token` VARCHAR(64) NULL DEFAULT NULL, ADD UNIQUE KEY `driver_token` (`driver_token`)');
+            }
+            if (!$this->db->field_exists('cancel_reason', db_prefix() . '_shipments')) {
+                $this->db->query('ALTER TABLE `' . db_prefix() . '_shipments` ADD COLUMN `cancel_reason` TEXT NULL DEFAULT NULL');
+            }
+        }
+        if ($this->db->table_exists(db_prefix() . '_shipment_status_history') && !$this->db->field_exists('notes', db_prefix() . '_shipment_status_history')) {
+            $this->db->query('ALTER TABLE `' . db_prefix() . '_shipment_status_history` ADD COLUMN `notes` TEXT NULL DEFAULT NULL');
+        }
     }
 
     private function _get_shipment_by_token($token)
