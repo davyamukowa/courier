@@ -1260,18 +1260,29 @@ class Shopify_connector extends AdminController
         ]);
 
         if (!$contact_id) {
-            $this->write_integration_log('error', 'shipment', 'Pickup not created: failed to add pickup contact person', [
+            $db_error = $this->db->error();
+            $this->write_integration_log('error', 'shipment', 'Pickup not created: failed to add pickup contact person - ' . ($db_error['message'] ?? 'unknown error'), [
                 'shopify_db_order_id' => $order_id,
                 'shipment_id' => $shipment_id
             ], $order->store_id);
             return false;
         }
 
+        // tbl_pickups.country_id has an FK to tbl_countries(country_id) that
+        // still enforces even though the column is nullable — an invalid
+        // non-null value (e.g. get_option() returning '' or '0' because no
+        // default country is configured) fails the insert silently, so any
+        // unresolved country must go in as NULL rather than a falsy value.
+        $country_id = ($branch && $branch->country_id) ? (int) $branch->country_id : (int) get_option('customer_default_country');
+        if ($country_id <= 0 || !$this->db->where('country_id', $country_id)->get(db_prefix() . 'countries')->row()) {
+            $country_id = null;
+        }
+
         $pickup_data = [
             'pickup_date'       => date('Y-m-d'),
             'pickup_start_time' => '09:00 AM',
             'pickup_end_time'   => '05:00 PM',
-            'country_id'        => ($branch && $branch->country_id) ? $branch->country_id : get_option('customer_default_country'),
+            'country_id'        => $country_id,
             'state_id'          => null,
             'address'           => ($branch && $branch->address) ? $branch->address : $sender_data['address'],
             'pickup_zip'        => $sender_data['zipcode'],
