@@ -24,6 +24,18 @@ class Trips extends AdminController
         if (!$this->db->field_exists('tracking_token', db_prefix() . 'fleet_trips')) {
             $this->db->query('ALTER TABLE `' . db_prefix() . 'fleet_trips` ADD COLUMN `tracking_token` VARCHAR(64) NULL DEFAULT NULL AFTER `id`, ADD UNIQUE KEY `tracking_token` (`tracking_token`)');
         }
+        // Same self-heal reasoning as tracking_token above — these belong to
+        // the courier_goshipping module's tables but the driver_deliver/cancel
+        // actions below (fired from this module's public trip page) need them
+        // to exist regardless of whether that module's own install.php has
+        // been re-run since this deploy.
+        if ($this->db->table_exists(db_prefix() . '_shipments') && !$this->db->field_exists('cancel_reason', db_prefix() . '_shipments')) {
+            $this->db->query('ALTER TABLE `' . db_prefix() . '_shipments` ADD COLUMN `cancel_reason` TEXT NULL DEFAULT NULL');
+        }
+        if ($this->db->table_exists(db_prefix() . '_shipment_status_history') && !$this->db->field_exists('notes', db_prefix() . '_shipment_status_history')) {
+            $this->db->query('ALTER TABLE `' . db_prefix() . '_shipment_status_history` ADD COLUMN `notes` TEXT NULL DEFAULT NULL');
+        }
+
         if (!$this->db->table_exists(db_prefix() . 'fleet_trip_locations')) {
             $this->db->query('CREATE TABLE `' . db_prefix() . "fleet_trip_locations` (
                 `id`          INT(11)        NOT NULL AUTO_INCREMENT,
