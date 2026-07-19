@@ -279,7 +279,7 @@ class Rider_api extends App_Controller
         }
 
         $canvas_data = str_replace(' ', '+', str_replace('data:image/png;base64,', '', $signature));
-        $image_data  = base64_decode($canvas_data, true);
+        $image_data  = base64_decode($canvas_data);
         if ($image_data === false) {
             $this->fail('Could not read the signature. Please try again.');
             return;
@@ -399,7 +399,7 @@ class Rider_api extends App_Controller
         }
 
         $canvas_data = str_replace(' ', '+', str_replace('data:image/png;base64,', '', $signature));
-        $image_data  = base64_decode($canvas_data, true);
+        $image_data  = base64_decode($canvas_data);
         if ($image_data === false) {
             $this->fail('Could not read the signature. Please try again.');
             return;

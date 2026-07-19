@@ -285,7 +285,7 @@ class Trips extends AdminController
         }
 
         $canvas_data = str_replace(' ', '+', str_replace('data:image/png;base64,', '', $signature));
-        $image_data  = base64_decode($canvas_data, true);
+        $image_data  = base64_decode($canvas_data);
         if ($image_data === false) {
             echo json_encode(['success' => false, 'message' => 'Could not read the signature. Please try again.']);
             return;
