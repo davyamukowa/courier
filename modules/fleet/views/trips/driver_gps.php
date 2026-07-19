@@ -57,6 +57,22 @@
             display: none; margin-top: 16px; background: #1e293b; color: #cbd5e1;
             padding: 12px 16px; border-radius: 8px; font-size: 12px; max-width: 300px; line-height: 1.6;
         }
+        .gs-panel { text-align: left; max-width: 300px; width: 100%; }
+        .gs-panel label { display: block; font-size: 13px; color: #cbd5e1; margin: 12px 0 4px; }
+        .gs-panel input[type="text"], .gs-panel textarea {
+            width: 100%; padding: 12px; border-radius: 8px; border: none; font-size: 15px; font-family: inherit;
+        }
+        #signature_pad_canvas { width: 100%; height: 160px; background: #fff; border-radius: 8px; touch-action: none; display: block; }
+        .gs-btn-wide { width: 100%; margin-top: 14px; }
+        .gs-btn-secondary { background: #334155; color: #fff; font-size: 14px; padding: 12px; }
+        #deliver_btn { background: #22c55e; color: #06281a; }
+        #cancel_btn { background: #ef4444; color: #2b0a0a; }
+        #confirm_deliver_btn { background: #22c55e; color: #06281a; }
+        #confirm_cancel_btn { background: #ef4444; color: #2b0a0a; }
+        #trip_complete_banner {
+            display: none; margin-top: 20px; background: #052e1a; color: #86efac;
+            padding: 16px 20px; border-radius: 10px; font-size: 15px; font-weight: 700; max-width: 300px;
+        }
     </style>
 </head>
 <body>
