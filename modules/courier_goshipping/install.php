@@ -648,6 +648,15 @@ if (!$CI->db->field_exists('notes', db_prefix() . '_shipment_status_history')) {
     ');
 }
 
+// Opaque per-shipment token for the public, no-login Salibay rider delivery
+// link (Shipments::_get_or_create_driver_token()).
+if (!$CI->db->field_exists('driver_token', db_prefix() . '_shipments')) {
+    $CI->db->query('ALTER TABLE `' . db_prefix() . '_shipments`
+        ADD COLUMN `driver_token` VARCHAR(64) NULL DEFAULT NULL,
+        ADD UNIQUE KEY `driver_token` (`driver_token`)
+    ');
+}
+
 // Default courier type setting
 add_option('courier_type', 'international');
 
