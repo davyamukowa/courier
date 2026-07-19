@@ -274,21 +274,6 @@
                     </div>
                     <nav class="courier-sidebar-nav">
 
-                        <a href="<?php echo admin_url($wb_list_url); ?>" class="courier-nav-item">
-                            <i class="fa fa-arrow-left"></i> Shipment List
-                        </a>
-
-                        <div class="courier-nav-divider"></div>
-
-                        <a href="javascript:void(0);" onclick="printWaybill();" class="courier-nav-item">
-                            <i class="fa fa-print"></i> Print Waybill
-                        </a>
-
-                        <a href="javascript:void(0);" onclick="openSendWaybillModal();" class="courier-nav-item"
-                           style="color:#1565c0;">
-                            <i class="fa fa-envelope"></i> Send Waybill by Email
-                        </a>
-
                         <?php if (!empty($shipment_details['shipment']->invoice_id)): ?>
                         <a href="<?php echo admin_url('invoices/invoice/' . $shipment_details['shipment']->invoice_id); ?>"
                            class="courier-nav-item">
