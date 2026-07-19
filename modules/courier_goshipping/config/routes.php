@@ -51,6 +51,26 @@ $route['admin/courier_goshipping/salibay_delivery/start'] = 'courier_goshipping/
 $route['admin/courier_goshipping/salibay_delivery/deliver'] = 'courier_goshipping/salibay_delivery/deliver';
 $route['admin/courier_goshipping/salibay_delivery/cancel'] = 'courier_goshipping/salibay_delivery/cancel';
 
+/*
+ * Rider PWA — installable app at the clean top-level URL /rider, see
+ * controllers/Rider_app.php (shell/manifest/sw) and Rider_api.php (JSON API).
+ **/
+$route['rider'] = 'courier_goshipping/rider_app/index';
+$route['rider/manifest'] = 'courier_goshipping/rider_app/manifest';
+$route['rider/sw'] = 'courier_goshipping/rider_app/sw';
+$route['rider/icon/(:num)'] = 'courier_goshipping/rider_app/icon/$1';
+
+$route['rider-api/register'] = 'courier_goshipping/rider_api/register';
+$route['rider-api/login'] = 'courier_goshipping/rider_api/login';
+$route['rider-api/logout'] = 'courier_goshipping/rider_api/logout';
+$route['rider-api/me'] = 'courier_goshipping/rider_api/me';
+$route['rider-api/deliveries'] = 'courier_goshipping/rider_api/deliveries';
+$route['rider-api/deliveries/(:num)/start'] = 'courier_goshipping/rider_api/delivery_start/$1';
+$route['rider-api/deliveries/(:num)/deliver'] = 'courier_goshipping/rider_api/delivery_deliver/$1';
+$route['rider-api/deliveries/(:num)/cancel'] = 'courier_goshipping/rider_api/delivery_cancel/$1';
+$route['rider-api/pickups'] = 'courier_goshipping/rider_api/pickups';
+$route['rider-api/pickups/(:num)/update'] = 'courier_goshipping/rider_api/pickup_update/$1';
+
 $route['courier_goshipping/tracking'] = 'tracker/tracking';
 $route['courier_goshipping/tracking/shipment_info'] = 'tracker/shipment_info';
 
