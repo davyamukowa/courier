@@ -2257,6 +2257,45 @@ class Shipments extends AdminController
         return $token;
     }
 
+    // ── Latest GPS ping for a Salibay shipment's live map on the waybill
+    // page (staff-facing AJAX GET) — mirrors fleet/Trips::latest_location() ──
+    public function latest_location($shipment_id)
+    {
+        header('Content-Type: application/json');
+
+        if (!$this->db->table_exists(db_prefix() . '_shipment_locations')) {
+            echo json_encode(['success' => false, 'message' => 'No location reported yet.']);
+            return;
+        }
+
+        $latest = $this->db->where('shipment_id', (int) $shipment_id)
+            ->order_by('recorded_at', 'DESC')
+            ->limit(1)
+            ->get(db_prefix() . '_shipment_locations')
+            ->row();
+
+        if (!$latest) {
+            echo json_encode(['success' => false, 'message' => 'No location reported yet.']);
+            return;
+        }
+
+        $trail = $this->db->select('latitude, longitude, recorded_at')
+            ->where('shipment_id', (int) $shipment_id)
+            ->order_by('recorded_at', 'DESC')
+            ->limit(50)
+            ->get(db_prefix() . '_shipment_locations')
+            ->result();
+
+        echo json_encode([
+            'success'     => true,
+            'latitude'    => (float) $latest->latitude,
+            'longitude'   => (float) $latest->longitude,
+            'speed'       => $latest->speed !== null ? (float) $latest->speed : null,
+            'recorded_at' => $latest->recorded_at,
+            'trail'       => array_reverse($trail),
+        ]);
+    }
+
     private function get_shipment_fleet_report(int $shipment_id): array
     {
         $empty = [
