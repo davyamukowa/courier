@@ -76,9 +76,12 @@ self.addEventListener('fetch', function (event) {
 JS;
     }
 
-    // Simple generated app icon (blue disc, red "G" mark) — avoids shipping
-    // binary asset files just for install-ability, same approach fleet's
-    // trip tracker PWA already uses.
+    // PWA home-screen icon — uses the CRM's own configured company logo
+    // (Setup > Settings > Company, same file the waybill header/invoices
+    // use) composited onto a square canvas, since an uploaded logo is
+    // rarely already square and a distorted/cropped icon looks broken on
+    // a home screen. Falls back to a generated placeholder if no logo is
+    // configured or it can't be read.
     public function icon($size = 192)
     {
         $size = (int) $size;
@@ -94,6 +97,80 @@ JS;
 
         header('Content-Type: image/png');
 
+        $img = $this->build_logo_icon($size) ?: $this->build_placeholder_icon($size);
+
+        imagepng($img);
+        imagedestroy($img);
+    }
+
+    private function build_logo_icon($size)
+    {
+        $logo_file = get_option('company_logo_dark') ?: get_option('company_logo');
+        if (empty($logo_file)) {
+            return null;
+        }
+
+        $logo_path = FCPATH . 'uploads/company/' . $logo_file;
+        if (!is_file($logo_path)) {
+            return null;
+        }
+
+        $info = @getimagesize($logo_path);
+        if (!$info) {
+            return null;
+        }
+
+        switch ($info[2]) {
+            case IMAGETYPE_PNG:
+                $source = @imagecreatefrompng($logo_path);
+                break;
+            case IMAGETYPE_JPEG:
+                $source = @imagecreatefromjpeg($logo_path);
+                break;
+            case IMAGETYPE_GIF:
+                $source = @imagecreatefromgif($logo_path);
+                break;
+            case IMAGETYPE_WEBP:
+                $source = function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($logo_path) : false;
+                break;
+            default:
+                $source = false;
+        }
+        if (!$source) {
+            return null;
+        }
+
+        $canvas = imagecreatetruecolor($size, $size);
+        imagesavealpha($canvas, true);
+        $transparent = imagecolorallocatealpha($canvas, 0, 0, 0, 127);
+        imagefill($canvas, 0, 0, $transparent);
+
+        // White backdrop — most company logos are dark-on-transparent or
+        // assume a light background, and a maskable icon with a fully
+        // transparent edge gets clipped oddly on some Android launchers.
+        $white = imagecolorallocate($canvas, 255, 255, 255);
+        imagefilledellipse($canvas, (int) ($size / 2), (int) ($size / 2), $size, $size, $white);
+
+        // Fit the logo inside ~78% of the circle, centered, preserving
+        // aspect ratio so it isn't stretched.
+        $src_w = imagesx($source);
+        $src_h = imagesy($source);
+        $target_box = (int) ($size * 0.78);
+        $scale = min($target_box / $src_w, $target_box / $src_h);
+        $dst_w = (int) round($src_w * $scale);
+        $dst_h = (int) round($src_h * $scale);
+        $dst_x = (int) (($size - $dst_w) / 2);
+        $dst_y = (int) (($size - $dst_h) / 2);
+
+        imagealphablending($canvas, true);
+        imagecopyresampled($canvas, $source, $dst_x, $dst_y, 0, 0, $dst_w, $dst_h, $src_w, $src_h);
+        imagedestroy($source);
+
+        return $canvas;
+    }
+
+    private function build_placeholder_icon($size)
+    {
         $img = imagecreatetruecolor($size, $size);
         imagesavealpha($img, true);
         $transparent = imagecolorallocatealpha($img, 0, 0, 0, 127);
@@ -118,7 +195,6 @@ JS;
             imagefilledellipse($img, (int) ($size / 2), (int) ($size / 2) - (int) ($size * 0.05), (int) ($size * 0.20), (int) ($size * 0.20), $blue);
         }
 
-        imagepng($img);
-        imagedestroy($img);
+        return $img;
     }
 }
