@@ -1209,7 +1209,25 @@ class Shopify_connector extends AdminController
                 ], $order->store_id);
             }
 
-            return ['success' => true, 'shipment_id' => $shipment_id, 'tracking_number' => $tracking_number, 'invoice_id' => $invoice_id];
+            // A pickup must never take the shipment down with it, same reasoning
+            // as the invoice block above.
+            $pickup_id = false;
+            try {
+                $pickup_id = $this->create_shipment_pickup($order_id, $shipment_id, $order, $sender_data, $branch_id);
+            } catch (\Throwable $e) {
+                $this->write_integration_log('error', 'shipment', 'Courier pickup creation crashed: ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine(), [
+                    'shopify_db_order_id' => $order_id,
+                    'shipment_id' => $shipment_id
+                ], $order->store_id);
+            }
+            if (!$pickup_id) {
+                $this->write_integration_log('warning', 'shipment', 'Shipment created but courier pickup scheduling failed', [
+                    'shopify_db_order_id' => $order_id,
+                    'shipment_id' => $shipment_id
+                ], $order->store_id);
+            }
+
+            return ['success' => true, 'shipment_id' => $shipment_id, 'tracking_number' => $tracking_number, 'invoice_id' => $invoice_id, 'pickup_id' => $pickup_id];
         }
 
         log_activity("create_courier_shipment failed: DB insertion failed for $order_id");
