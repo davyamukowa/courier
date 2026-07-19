@@ -8,32 +8,6 @@
 <?php echo '<link rel="stylesheet" href="' . base_url('modules/courier_goshipping/assets/progress.css') . '">'; ?>
 
 <script>
-    function copySalibayDeliveryLink(el) {
-        var link = el.getAttribute('data-link');
-        var done = function () {
-            if (typeof alert_float === 'function') {
-                alert_float('success', 'Rider delivery link copied — send it to the driver.');
-            } else {
-                alert('Link copied: ' + link);
-            }
-        };
-        var fallback = function () {
-            var tmp = document.createElement('textarea');
-            tmp.value = link;
-            tmp.style.position = 'fixed';
-            tmp.style.opacity = '0';
-            document.body.appendChild(tmp);
-            tmp.select();
-            try { document.execCommand('copy'); done(); } catch (e) { alert('Rider delivery link: ' + link); }
-            document.body.removeChild(tmp);
-        };
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(link).then(done).catch(fallback);
-        } else {
-            fallback();
-        }
-    }
-
     function printWaybill() {
         // Create a new iframe for printing
         const printFrame = document.createElement('iframe');
