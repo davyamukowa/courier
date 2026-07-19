@@ -15,7 +15,6 @@ class Salibay_delivery extends App_Controller
     {
         parent::__construct();
         $this->load->helper('courier_goshipping/courier');
-        courier_load_model('ShipmentStatus_model');
     }
 
     private function _get_shipment_by_token($token)
@@ -140,7 +139,6 @@ class Salibay_delivery extends App_Controller
             return;
         }
 
-        $this->load->helper('courier_goshipping/courier');
         courier_load_model('Delivery_model');
         $this->Delivery_model->add([
             'shipment_id'   => $shipment->id,
