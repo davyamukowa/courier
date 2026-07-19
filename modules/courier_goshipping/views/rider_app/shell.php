@@ -448,14 +448,17 @@
                 var card = document.createElement('div');
                 card.className = 'card' + (d.is_salibay ? ' is-salibay' : '');
                 var started = d.status_id >= 5;
+                if (started) { beginLocationSharing(d.id); }
+                var destAddress = d.recipient_address || '';
                 card.innerHTML =
                     '<div class="row1"><span class="waybill">' + d.waybill_number + '</span><span class="badge">' + (d.status_text || '') + '</span></div>' +
                     '<div class="muted">' + (d.items_summary || '-') + '</div>' +
                     '<div style="margin-top:6px;">' + (d.recipient_name || '') + (d.recipient_phone ? ' · ' + d.recipient_phone : '') + '</div>' +
-                    '<div class="muted">' + (d.recipient_address || '') + '</div>' +
+                    '<div class="muted">' + destAddress + '</div>' +
+                    (started ? '<div style="margin-top:6px;font-size:11.5px;color:#22c55e;">📍 Sharing your location</div>' : '') +
                     '<div class="actions">' +
                     (started
-                        ? '<button class="btn-success" onclick="openDeliverModal(' + d.id + ')">Delivered</button><button class="btn-danger" onclick="openCancelModal(' + d.id + ')">Cancel</button>'
+                        ? '<button class="btn-primary" onclick="openMapModal(' + d.id + ', ' + JSON.stringify(destAddress) + ')">Map</button><button class="btn-success" onclick="openDeliverModal(' + d.id + ')">Delivered</button><button class="btn-danger" onclick="openCancelModal(' + d.id + ')">Cancel</button>'
                         : '<button class="btn-primary" onclick="startDelivery(' + d.id + ', this)">Start Delivery</button>') +
                     '</div>';
                 box.appendChild(card);
@@ -471,7 +474,86 @@
                 btn.disabled = false; btn.textContent = 'Start Delivery';
                 return;
             }
+            beginLocationSharing(id);
             loadDeliveries();
+        });
+    }
+
+    // ── GPS sharing — starts once a delivery is under way, posts a
+    // throttled ping so the admin waybill's live map has something to show.
+    var locationWatches = {};
+    function beginLocationSharing(id) {
+        if (locationWatches[id] || !navigator.geolocation) { return; }
+
+        var lastSentAt = 0;
+        var MIN_INTERVAL_MS = 15000;
+
+        var watchId = navigator.geolocation.watchPosition(function (pos) {
+            var now = Date.now();
+            if (now - lastSentAt < MIN_INTERVAL_MS) { return; }
+            lastSentAt = now;
+
+            post(API.deliveryStart + id + '/location', {
+                token: token,
+                lat: pos.coords.latitude,
+                lng: pos.coords.longitude,
+                accuracy: pos.coords.accuracy || '',
+                speed: pos.coords.speed || ''
+            }).catch(function () {});
+        }, function () {
+            // Permission denied or unavailable — no visible error, the rider
+            // can still complete the delivery without live tracking.
+        }, { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 });
+
+        locationWatches[id] = watchId;
+    }
+
+    // ── Rider's own map view: last known shared position + geocoded drop-off ──
+    var riderMap = null, riderMarker = null, riderDestMarker = null;
+    function openMapModal(id, destAddress) {
+        openModal('map_modal');
+
+        function ensureLeaflet(cb) {
+            if (window.L) { cb(); return; }
+            var css = document.createElement('link');
+            css.rel = 'stylesheet';
+            css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+            document.head.appendChild(css);
+            var js = document.createElement('script');
+            js.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+            js.onload = cb;
+            document.head.appendChild(js);
+        }
+
+        ensureLeaflet(function () {
+            navigator.geolocation.getCurrentPosition(function (pos) {
+                var lat = pos.coords.latitude, lng = pos.coords.longitude;
+                if (!riderMap) {
+                    riderMap = L.map('rider_map').setView([lat, lng], 13);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '&copy; OpenStreetMap contributors'
+                    }).addTo(riderMap);
+                    riderMarker = L.marker([lat, lng]).addTo(riderMap).bindPopup('You');
+                } else {
+                    riderMap.setView([lat, lng], 13);
+                    riderMarker.setLatLng([lat, lng]);
+                }
+
+                if (destAddress) {
+                    fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(destAddress))
+                        .then(function (r) { return r.json(); })
+                        .then(function (res) {
+                            if (res && res[0]) {
+                                var dLat = parseFloat(res[0].lat), dLng = parseFloat(res[0].lon);
+                                if (riderDestMarker) { riderMap.removeLayer(riderDestMarker); }
+                                riderDestMarker = L.marker([dLat, dLng]).addTo(riderMap).bindPopup('Delivery address').openPopup();
+                                riderMap.fitBounds([[lat, lng], [dLat, dLng]], { padding: [30, 30] });
+                            }
+                        }).catch(function () {});
+                }
+            }, function () {
+                document.getElementById('rider_map').innerHTML = '<div style="padding:20px;color:#64748b;font-size:13px;">Could not get your location. Please allow location access.</div>';
+            }, { enableHighAccuracy: true });
         });
     }
 
