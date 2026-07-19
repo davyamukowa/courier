@@ -11,6 +11,7 @@
                     <tr>
                         <th>Salibay Order</th>
                         <th>Customer</th>
+                        <th>Items</th>
                         <th>Order Status</th>
                         <th>Payment</th>
                         <th>Shipment Status</th>
