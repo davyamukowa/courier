@@ -2819,7 +2819,11 @@ class Shipments extends AdminController
                             'shipment_id' => $id,
                             'first_name' => $first_name,
                             'last_name' => $last_name,
-                            'signature_url' => 'assets/pickups/signatures/' . $fileName,
+                            // Matches where the file is actually written above
+                            // (assets/deliveries/, not assets/pickups/) — the
+                            // views that render this always prefix with
+                            // base_url('modules/courier_goshipping/' . ...).
+                            'signature_url' => 'assets/deliveries/signatures/' . $fileName,
                         ]);
                     } else {
                         throw new Exception('There was an error while saving the signature');
