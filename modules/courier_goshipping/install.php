@@ -633,6 +633,21 @@ if (!$CI->db->field_exists('goods_declared_value', db_prefix() . '_shipments')) 
     ');
 }
 
+// Reason a driver gave when cancelling a shipment from the mobile trip page
+if (!$CI->db->field_exists('cancel_reason', db_prefix() . '_shipments')) {
+    $CI->db->query('ALTER TABLE `' . db_prefix() . '_shipments`
+        ADD COLUMN `cancel_reason` TEXT NULL DEFAULT NULL
+    ');
+}
+
+// Free-text note attached to a status change (e.g. a driver's cancellation
+// reason) — the history table only ever recorded the bare status_id before.
+if (!$CI->db->field_exists('notes', db_prefix() . '_shipment_status_history')) {
+    $CI->db->query('ALTER TABLE `' . db_prefix() . '_shipment_status_history`
+        ADD COLUMN `notes` TEXT NULL DEFAULT NULL
+    ');
+}
+
 // Default courier type setting
 add_option('courier_type', 'international');
 
