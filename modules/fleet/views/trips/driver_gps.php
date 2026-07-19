@@ -203,6 +203,8 @@
                 document.getElementById('trip_status_text').textContent = 'In transit';
                 document.getElementById('start_trip_section').style.display = 'none';
                 document.getElementById('sharing_section').style.display = 'block';
+                var deliverySection = document.getElementById('delivery_actions_section');
+                if (deliverySection) { deliverySection.style.display = 'block'; }
 
                 // Starting the trip means the driver is already moving — begin
                 // sharing location immediately rather than making them tap twice.
@@ -212,6 +214,128 @@
                 errBox.style.display = 'block';
                 btn.disabled = false;
                 btn.textContent = 'Start Trip';
+            });
+        }
+
+        // ── Step 3: Deliver / Cancel ─────────────────────────────────────────────
+        function hideForms() {
+            document.getElementById('deliver_form').style.display = 'none';
+            document.getElementById('cancel_form').style.display = 'none';
+            document.getElementById('deliver_error').style.display = 'none';
+            document.getElementById('cancel_error').style.display = 'none';
+        }
+
+        function showDeliverForm() {
+            hideForms();
+            document.getElementById('deliver_form').style.display = 'block';
+            if (!sigPad) {
+                sigPad = new SignaturePad(document.getElementById('signature_pad_canvas'));
+            } else {
+                sigPad.clear();
+            }
+        }
+
+        function showCancelForm() {
+            hideForms();
+            document.getElementById('cancel_form').style.display = 'block';
+        }
+
+        function clearSignature() {
+            if (sigPad) { sigPad.clear(); }
+        }
+
+        // Delivery/cancellation both end the trip — stop GPS sharing, hide the
+        // action buttons, and show a final confirmation banner.
+        function tripFinished(message) {
+            stopSharing();
+            document.getElementById('delivery_actions_section').style.display = 'none';
+            hideForms();
+            document.getElementById('sharing_section').style.display = 'none';
+            var banner = document.getElementById('trip_complete_banner');
+            banner.textContent = message;
+            banner.style.display = 'block';
+        }
+
+        function submitDelivery() {
+            var errBox = document.getElementById('deliver_error');
+            errBox.style.display = 'none';
+
+            var firstName = document.getElementById('deliver_first_name').value.trim();
+            var lastName = document.getElementById('deliver_last_name').value.trim();
+            if (!firstName || !lastName) {
+                errBox.textContent = "Please enter the customer's first and last name.";
+                errBox.style.display = 'block';
+                return;
+            }
+            if (!sigPad || sigPad.isEmpty()) {
+                errBox.textContent = 'Please have the customer sign before confirming.';
+                errBox.style.display = 'block';
+                return;
+            }
+
+            var btn = document.getElementById('confirm_deliver_btn');
+            btn.disabled = true;
+            btn.textContent = 'Saving...';
+
+            fetch(DELIVER_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                    token: TOKEN,
+                    first_name: firstName,
+                    last_name: lastName,
+                    signature: sigPad.toDataURL('image/png')
+                }).toString()
+            }).then(function (r) { return r.json(); }).then(function (res) {
+                if (!res.success) {
+                    errBox.textContent = res.message || 'Could not save the delivery. Please try again.';
+                    errBox.style.display = 'block';
+                    btn.disabled = false;
+                    btn.textContent = 'Confirm Delivery';
+                    return;
+                }
+                tripFinished('✅ Delivered — thank you!');
+            }).catch(function () {
+                errBox.textContent = 'Network error — please check your connection and try again.';
+                errBox.style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = 'Confirm Delivery';
+            });
+        }
+
+        function submitCancel() {
+            var errBox = document.getElementById('cancel_error');
+            errBox.style.display = 'none';
+
+            var reason = document.getElementById('cancel_reason').value.trim();
+            if (!reason) {
+                errBox.textContent = 'Please enter a reason for cancelling.';
+                errBox.style.display = 'block';
+                return;
+            }
+
+            var btn = document.getElementById('confirm_cancel_btn');
+            btn.disabled = true;
+            btn.textContent = 'Cancelling...';
+
+            fetch(CANCEL_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ token: TOKEN, reason: reason }).toString()
+            }).then(function (r) { return r.json(); }).then(function (res) {
+                if (!res.success) {
+                    errBox.textContent = res.message || 'Could not cancel the shipment. Please try again.';
+                    errBox.style.display = 'block';
+                    btn.disabled = false;
+                    btn.textContent = 'Confirm Cancellation';
+                    return;
+                }
+                tripFinished('✖ Shipment cancelled.');
+            }).catch(function () {
+                errBox.textContent = 'Network error — please check your connection and try again.';
+                errBox.style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = 'Confirm Cancellation';
             });
         }
 
