@@ -10,4 +10,6 @@ defined('BASEPATH') or exit('No direct script access allowed');
 return [
     'admin/fleet/trips/record_location(.*)',
     'admin/fleet/trips/driver_start_trip(.*)',
+    'admin/fleet/trips/driver_deliver_shipment(.*)',
+    'admin/fleet/trips/driver_cancel_shipment(.*)',
 ];
