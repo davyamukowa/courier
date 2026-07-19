@@ -304,13 +304,13 @@
 
                         <div style="padding:6px 10px; display:flex; flex-direction:column; gap:6px;">
                             <a href="<?php echo admin_url('courier_goshipping/shipments/courier_invoice/' . $wb_sid); ?>"
-                               style="display:flex; align-items:center; gap:8px; background:linear-gradient(135deg,#2e7d32,#1b5e20); color:#fff; padding:8px 14px; border-radius:6px; font-size:13px; font-weight:600; text-decoration:none; transition:opacity .2s;"
+                               style="display:flex; align-items:center; gap:8px; background:linear-gradient(135deg,#c62828,#8e1c1c); color:#fff; padding:8px 14px; border-radius:6px; font-size:13px; font-weight:600; text-decoration:none; transition:opacity .2s;"
                                onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
                                 <i class="fa fa-file-text"></i> Courier Invoice
                             </a>
                             <?php if (is_admin()): ?>
                             <a href="<?php echo admin_url('courier_goshipping/shipments/consignment_note/' . $wb_sid); ?>"
-                               style="display:flex; align-items:center; gap:8px; background:linear-gradient(135deg,#2e7d32,#1b5e20); color:#fff; padding:8px 14px; border-radius:6px; font-size:13px; font-weight:600; text-decoration:none; transition:opacity .2s;"
+                               style="display:flex; align-items:center; gap:8px; background:linear-gradient(135deg,#c62828,#8e1c1c); color:#fff; padding:8px 14px; border-radius:6px; font-size:13px; font-weight:600; text-decoration:none; transition:opacity .2s;"
                                onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
                                 <i class="fa fa-clipboard"></i> Consignment Note
                             </a>
