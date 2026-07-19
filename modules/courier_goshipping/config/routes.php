@@ -66,22 +66,28 @@ $route['admin/courier_goshipping/salibay_delivery/cancel'] = 'courier_goshipping
  * prefix — a truly bare "/rider" would require an entry in the *core*
  * application/config/routes.php, which today's cron deploy script
  * (modules/* only) never copies to the server.
+ *
+ * Route VALUE note: Modules::parse_routes() auto-prepends the module name
+ * to whatever's on the right-hand side (`return explode('/', $module . '/'
+ * . $val)`), same as the pre-existing 'courier_goshipping/tracking' ->
+ * 'tracker/tracking' entry below — the value must NOT repeat
+ * "courier_goshipping/" itself, or the module segment ends up doubled.
  **/
-$route['courier_goshipping/rider'] = 'courier_goshipping/rider_app/index';
-$route['courier_goshipping/rider/manifest'] = 'courier_goshipping/rider_app/manifest';
-$route['courier_goshipping/rider/sw'] = 'courier_goshipping/rider_app/sw';
-$route['courier_goshipping/rider/icon/(:num)'] = 'courier_goshipping/rider_app/icon/$1';
+$route['courier_goshipping/rider'] = 'rider_app/index';
+$route['courier_goshipping/rider/manifest'] = 'rider_app/manifest';
+$route['courier_goshipping/rider/sw'] = 'rider_app/sw';
+$route['courier_goshipping/rider/icon/(:num)'] = 'rider_app/icon/$1';
 
-$route['courier_goshipping/rider-api/register'] = 'courier_goshipping/rider_api/register';
-$route['courier_goshipping/rider-api/login'] = 'courier_goshipping/rider_api/login';
-$route['courier_goshipping/rider-api/logout'] = 'courier_goshipping/rider_api/logout';
-$route['courier_goshipping/rider-api/me'] = 'courier_goshipping/rider_api/me';
-$route['courier_goshipping/rider-api/deliveries'] = 'courier_goshipping/rider_api/deliveries';
-$route['courier_goshipping/rider-api/deliveries/(:num)/start'] = 'courier_goshipping/rider_api/delivery_start/$1';
-$route['courier_goshipping/rider-api/deliveries/(:num)/deliver'] = 'courier_goshipping/rider_api/delivery_deliver/$1';
-$route['courier_goshipping/rider-api/deliveries/(:num)/cancel'] = 'courier_goshipping/rider_api/delivery_cancel/$1';
-$route['courier_goshipping/rider-api/pickups'] = 'courier_goshipping/rider_api/pickups';
-$route['courier_goshipping/rider-api/pickups/(:num)/update'] = 'courier_goshipping/rider_api/pickup_update/$1';
+$route['courier_goshipping/rider-api/register'] = 'rider_api/register';
+$route['courier_goshipping/rider-api/login'] = 'rider_api/login';
+$route['courier_goshipping/rider-api/logout'] = 'rider_api/logout';
+$route['courier_goshipping/rider-api/me'] = 'rider_api/me';
+$route['courier_goshipping/rider-api/deliveries'] = 'rider_api/deliveries';
+$route['courier_goshipping/rider-api/deliveries/(:num)/start'] = 'rider_api/delivery_start/$1';
+$route['courier_goshipping/rider-api/deliveries/(:num)/deliver'] = 'rider_api/delivery_deliver/$1';
+$route['courier_goshipping/rider-api/deliveries/(:num)/cancel'] = 'rider_api/delivery_cancel/$1';
+$route['courier_goshipping/rider-api/pickups'] = 'rider_api/pickups';
+$route['courier_goshipping/rider-api/pickups/(:num)/update'] = 'rider_api/pickup_update/$1';
 
 $route['courier_goshipping/tracking'] = 'tracker/tracking';
 $route['courier_goshipping/tracking/shipment_info'] = 'tracker/shipment_info';
