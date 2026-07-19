@@ -681,6 +681,25 @@ if (!$CI->db->table_exists(db_prefix() . '_courier_rider_tokens')) {
     ) ENGINE=InnoDB DEFAULT CHARSET=' . $CI->db->char_set . ';');
 }
 
+// Live GPS pings from the rider app while a Salibay delivery is "in
+// progress" (Start Delivery tapped) — same shape as fleet's
+// tbl_fleet_trip_locations, but keyed by shipment_id since the short
+// delivery flow has no separate "trip" record.
+if (!$CI->db->table_exists(db_prefix() . '_shipment_locations')) {
+    $CI->db->query('CREATE TABLE `' . db_prefix() . '_shipment_locations` (
+        `id`          INT NOT NULL AUTO_INCREMENT,
+        `shipment_id` INT NOT NULL,
+        `latitude`    DECIMAL(10,7) NOT NULL,
+        `longitude`   DECIMAL(10,7) NOT NULL,
+        `accuracy`    DECIMAL(10,2) NULL DEFAULT NULL,
+        `speed`       DECIMAL(10,2) NULL DEFAULT NULL,
+        `recorded_at` DATETIME NOT NULL,
+        PRIMARY KEY (`id`),
+        KEY `shipment_id` (`shipment_id`),
+        KEY `shipment_recorded` (`shipment_id`, `recorded_at`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=' . $CI->db->char_set . ';');
+}
+
 // Opaque per-shipment token for the public, no-login Salibay rider delivery
 // link (Shipments::_get_or_create_driver_token()).
 if (!$CI->db->field_exists('driver_token', db_prefix() . '_shipments')) {
