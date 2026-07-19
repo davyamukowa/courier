@@ -2299,6 +2299,22 @@ class Shipments extends AdminController
         ]);
     }
 
+    // ── Lightweight poll target for the waybill page's auto-refresh — just
+    // the status_id, so the page can reload itself the moment a rider taps
+    // Start Delivery/Delivered/Cancel, without staff needing to hit refresh.
+    public function status_snapshot($shipment_id)
+    {
+        header('Content-Type: application/json');
+
+        $shipment = $this->db->select('status_id')->where('id', (int) $shipment_id)->get(db_prefix() . '_shipments')->row();
+        if (!$shipment) {
+            echo json_encode(['success' => false]);
+            return;
+        }
+
+        echo json_encode(['success' => true, 'status_id' => (int) $shipment->status_id]);
+    }
+
     private function get_shipment_fleet_report(int $shipment_id): array
     {
         $empty = [
