@@ -648,6 +648,39 @@ if (!$CI->db->field_exists('notes', db_prefix() . '_shipment_status_history')) {
     ');
 }
 
+// ── Rider PWA — self-service accounts for delivery riders, deliberately a
+// separate lightweight identity from tbl_staff (no admin-panel login
+// capability). `staff_id` links a rider to a real 'Fleet: Driver' staff
+// record — auto-matched by phone number at registration/login — so
+// existing driver_id/staff_id assignment fields across shipments, pickups
+// and fleet trips keep working unchanged.
+if (!$CI->db->table_exists(db_prefix() . '_courier_riders')) {
+    $CI->db->query('CREATE TABLE `' . db_prefix() . '_courier_riders` (
+        `id`            INT NOT NULL AUTO_INCREMENT,
+        `name`          VARCHAR(255) NOT NULL,
+        `phone`         VARCHAR(30) NOT NULL,
+        `password_hash` VARCHAR(255) NOT NULL,
+        `staff_id`      INT NULL DEFAULT NULL,
+        `status`        ENUM(\'active\',\'suspended\') NOT NULL DEFAULT \'active\',
+        `created_at`    DATETIME NOT NULL,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `phone` (`phone`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=' . $CI->db->char_set . ';');
+}
+
+if (!$CI->db->table_exists(db_prefix() . '_courier_rider_tokens')) {
+    $CI->db->query('CREATE TABLE `' . db_prefix() . '_courier_rider_tokens` (
+        `id`           INT NOT NULL AUTO_INCREMENT,
+        `rider_id`     INT NOT NULL,
+        `token_hash`   VARCHAR(64) NOT NULL,
+        `created_at`   DATETIME NOT NULL,
+        `last_used_at` DATETIME NULL DEFAULT NULL,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `token_hash` (`token_hash`),
+        FOREIGN KEY (`rider_id`) REFERENCES `' . db_prefix() . '_courier_riders`(`id`) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=' . $CI->db->char_set . ';');
+}
+
 // Opaque per-shipment token for the public, no-login Salibay rider delivery
 // link (Shipments::_get_or_create_driver_token()).
 if (!$CI->db->field_exists('driver_token', db_prefix() . '_shipments')) {
