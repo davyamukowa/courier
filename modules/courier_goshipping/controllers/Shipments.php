@@ -2955,6 +2955,16 @@ class Shipments extends AdminController
             // Send email notification to recipient on dispatch or delivery (outside transaction)
             $this->_send_shipment_notification((int)$id, $new_status_id);
 
+            // Keep the linked Salibay/Shopify order's fulfillment status in
+            // sync so it never shows "Unfulfilled" while we already show
+            // this delivered — must never block the status update itself.
+            try {
+                $this->load->model('shopify_connector/shopify_connector_model');
+                $this->shopify_connector_model->push_shopify_fulfillment_status((int) $id, $new_status_id);
+            } catch (\Throwable $e) {
+                log_message('error', 'Shopify fulfillment push crashed: ' . $e->getMessage());
+            }
+
             set_alert('success', 'Status updated successfully.');
             redirect(admin_url('courier_goshipping/shipments/waybill/' . $id));
 
