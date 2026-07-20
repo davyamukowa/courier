@@ -280,6 +280,24 @@ class Shopify_connector_model extends App_Model
 
     private function log_fulfillment_push($shopify_db_order_id, $status, $tracking_number, $response, $success)
     {
+        // Self-heal: install.php's migration only runs on module
+        // (re)activation, which a plain file-copy deploy never triggers.
+        if (!$this->db->table_exists(db_prefix() . 'shopify_fulfillment_updates')) {
+            $this->db->query('CREATE TABLE `' . db_prefix() . 'shopify_fulfillment_updates` (
+                `id` INT AUTO_INCREMENT PRIMARY KEY,
+                `shopify_order_id` INT NOT NULL,
+                `status` VARCHAR(50) NOT NULL,
+                `tracking_number` VARCHAR(100),
+                `tracking_url` VARCHAR(500),
+                `shopify_response` TEXT,
+                `pushed_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                `success` TINYINT(1) DEFAULT 0
+            ) ENGINE=InnoDB DEFAULT CHARSET=' . $this->db->char_set . ';');
+        }
+        if (!$this->db->field_exists('shopify_fulfillment_id', db_prefix() . 'shopify_orders')) {
+            $this->db->query('ALTER TABLE `' . db_prefix() . 'shopify_orders` ADD COLUMN `shopify_fulfillment_id` VARCHAR(50) NULL DEFAULT NULL');
+        }
+
         $this->db->insert(db_prefix() . 'shopify_fulfillment_updates', [
             'shopify_order_id' => $shopify_db_order_id,
             'status'           => $status,
