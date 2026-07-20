@@ -278,10 +278,13 @@ class Shopify_connector_model extends App_Model
         return $CI->shopify_api_out;
     }
 
-    private function log_fulfillment_push($shopify_db_order_id, $status, $tracking_number, $response, $success)
+    /**
+     * Self-heal: install.php's migration only runs on module
+     * (re)activation, which a plain file-copy deploy never triggers, so
+     * these may not exist yet on first use.
+     */
+    private function ensure_fulfillment_schema()
     {
-        // Self-heal: install.php's migration only runs on module
-        // (re)activation, which a plain file-copy deploy never triggers.
         if (!$this->db->table_exists(db_prefix() . 'shopify_fulfillment_updates')) {
             $this->db->query('CREATE TABLE `' . db_prefix() . 'shopify_fulfillment_updates` (
                 `id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -297,7 +300,10 @@ class Shopify_connector_model extends App_Model
         if (!$this->db->field_exists('shopify_fulfillment_id', db_prefix() . 'shopify_orders')) {
             $this->db->query('ALTER TABLE `' . db_prefix() . 'shopify_orders` ADD COLUMN `shopify_fulfillment_id` VARCHAR(50) NULL DEFAULT NULL');
         }
+    }
 
+    private function log_fulfillment_push($shopify_db_order_id, $status, $tracking_number, $response, $success)
+    {
         $this->db->insert(db_prefix() . 'shopify_fulfillment_updates', [
             'shopify_order_id' => $shopify_db_order_id,
             'status'           => $status,
