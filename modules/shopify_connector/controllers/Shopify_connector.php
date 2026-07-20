@@ -1227,6 +1227,24 @@ class Shopify_connector extends AdminController
                 ], $order->store_id);
             }
 
+            // Pushing the fulfillment to Shopify must never take the shipment
+            // down with it either — same reasoning as invoice/pickup above.
+            try {
+                $this->load->model('shopify_connector/shopify_connector_model');
+                $fulfilled = $this->shopify_connector_model->create_shopify_fulfillment($shipment_id);
+                if (!$fulfilled) {
+                    $this->write_integration_log('warning', 'shipment', 'Shipment created but pushing the fulfillment to Shopify failed', [
+                        'shopify_db_order_id' => $order_id,
+                        'shipment_id' => $shipment_id
+                    ], $order->store_id);
+                }
+            } catch (\Throwable $e) {
+                $this->write_integration_log('error', 'shipment', 'Shopify fulfillment push crashed: ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine(), [
+                    'shopify_db_order_id' => $order_id,
+                    'shipment_id' => $shipment_id
+                ], $order->store_id);
+            }
+
             return ['success' => true, 'shipment_id' => $shipment_id, 'tracking_number' => $tracking_number, 'invoice_id' => $invoice_id, 'pickup_id' => $pickup_id];
         }
 
