@@ -210,6 +210,42 @@ class Shopify_api
         return $this->request('GET', "orders/{$order_id}/fulfillment_orders.json");
     }
 
+    /**
+     * Creates a fulfillment via the current (fulfillment_orders-based) REST
+     * flow. The legacy create_fulfillment() above posts to
+     * orders/{id}/fulfillments.json, which Shopify deprecated in API
+     * 2022-07+ in favor of this top-level endpoint driven by
+     * fulfillment_order ids (from get_fulfillment_orders()).
+     */
+    public function create_fulfillment_v2($data)
+    {
+        return $this->request('POST', 'fulfillments.json', $data);
+    }
+
+    /**
+     * Pushes a tracking/status milestone (e.g. 'in_transit',
+     * 'out_for_delivery', 'delivered') onto an existing fulfillment, so the
+     * customer-facing order status page updates without re-fulfilling.
+     */
+    public function create_fulfillment_event($fulfillment_id, $status, $message = null)
+    {
+        $event = ['status' => $status];
+        if ($message) {
+            $event['message'] = $message;
+        }
+        return $this->request('POST', "fulfillments/{$fulfillment_id}/events.json", ['event' => $event]);
+    }
+
+    /**
+     * Cancels a fulfillment (used when a shipment is cancelled on our side
+     * after Shopify already shows it fulfilled), reopening the order's
+     * fulfillment_orders so it can be re-fulfilled or shows as unfulfilled.
+     */
+    public function cancel_fulfillment($fulfillment_id)
+    {
+        return $this->request('POST', "fulfillments/{$fulfillment_id}/cancel.json");
+    }
+
     // -------------------------------------------------------------
     // PUBLIC METHODS — PRODUCTS
     // -------------------------------------------------------------
