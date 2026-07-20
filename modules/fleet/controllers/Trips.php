@@ -383,6 +383,13 @@ class Trips extends AdminController
             ]);
         }
 
+        try {
+            $this->load->model('shopify_connector/shopify_connector_model');
+            $this->shopify_connector_model->push_shopify_fulfillment_status((int) $trip->shipment_id, $cancelled_status_id);
+        } catch (\Throwable $e) {
+            log_message('error', 'Shopify fulfillment push crashed: ' . $e->getMessage());
+        }
+
         $this->Fleet_trips_model->update($trip->id, ['status' => 'cancelled']);
         $this->db->where('courier_shipment_id', $trip->shipment_id)
             ->where('vehicle_id', $trip->vehicle_id)
