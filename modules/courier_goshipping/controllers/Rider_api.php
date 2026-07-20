@@ -402,6 +402,7 @@ class Rider_api extends App_Controller
             'changed_at'  => date('Y-m-d H:i:s'),
         ]);
         $this->mirror_salibay_order_status($shipment->id, 'cancelled');
+        $this->push_shopify_status($shipment->id, $cancelled_status_id);
         $this->respond(['success' => true]);
     }
 
