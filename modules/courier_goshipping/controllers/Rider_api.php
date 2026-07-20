@@ -257,6 +257,21 @@ class Rider_api extends App_Controller
         }
     }
 
+    /**
+     * Pushes the real Shopify fulfillment/tracking update, not just our own
+     * local order_status mirror — must never block the rider's action if
+     * Shopify's API hiccups.
+     */
+    private function push_shopify_status($shipment_id, $status_id)
+    {
+        try {
+            $this->load->model('shopify_connector/shopify_connector_model');
+            $this->shopify_connector_model->push_shopify_fulfillment_status($shipment_id, $status_id);
+        } catch (\Throwable $e) {
+            log_message('error', 'Shopify fulfillment push crashed: ' . $e->getMessage());
+        }
+    }
+
     public function delivery_start($id)
     {
         if (!$this->require_rider()) {
@@ -270,6 +285,7 @@ class Rider_api extends App_Controller
 
         $this->advance_shipment_status($shipment->id, 5); // in_transit
         $this->mirror_salibay_order_status($shipment->id, 'processing');
+        $this->push_shopify_status($shipment->id, 5);
         $this->respond(['success' => true]);
     }
 
