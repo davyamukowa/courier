@@ -323,6 +323,8 @@ class Shopify_connector_model extends App_Model
      */
     public function create_shopify_fulfillment($shipment_id)
     {
+        $this->ensure_fulfillment_schema();
+
         $order = $this->db->where('gs_shipment_id', $shipment_id)->get(db_prefix() . 'shopify_orders')->row();
         if (!$order || !empty($order->shopify_fulfillment_id)) {
             return false;
