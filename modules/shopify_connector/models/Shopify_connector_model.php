@@ -391,6 +391,8 @@ class Shopify_connector_model extends App_Model
      */
     public function push_shopify_fulfillment_status($shipment_id, $status_id)
     {
+        $this->ensure_fulfillment_schema();
+
         $order = $this->db->where('gs_shipment_id', $shipment_id)->get(db_prefix() . 'shopify_orders')->row();
         if (!$order) {
             return false;
