@@ -254,4 +254,163 @@ class Shopify_connector_model extends App_Model
         $this->db->update(db_prefix() . 'shopify_stock_reservations', $data);
         return $this->db->affected_rows() > 0;
     }
+
+    // ── Outbound fulfillment sync (courier side -> Shopify) ────────────────
+    //
+    // Called from every place a shipment's status changes (staff Update
+    // Status, the rider PWA, the Salibay short delivery link, fleet trips),
+    // so a Shopify order never shows "Unfulfilled" while our own system
+    // already shows "Delivered". Every entry point wraps this in try/catch
+    // and swallows failures — a Shopify API hiccup must never block the
+    // courier-side action that's already real and already happened.
+
+    private function get_shopify_api_for_store($store)
+    {
+        if (!$store || empty($store->shop_domain) || empty($store->access_token)) {
+            return null;
+        }
+        $CI = &get_instance();
+        $CI->load->library('shopify_connector/shopify_api', [
+            'shop_domain'  => $store->shop_domain,
+            'access_token' => $store->access_token,
+            'api_version'  => $store->api_version ?: '2024-01',
+        ], 'shopify_api_out');
+        return $CI->shopify_api_out;
+    }
+
+    private function log_fulfillment_push($shopify_db_order_id, $status, $tracking_number, $response, $success)
+    {
+        $this->db->insert(db_prefix() . 'shopify_fulfillment_updates', [
+            'shopify_order_id' => $shopify_db_order_id,
+            'status'           => $status,
+            'tracking_number'  => $tracking_number,
+            'tracking_url'     => site_url('courier_goshipping/track'),
+            'shopify_response' => json_encode($response),
+            'success'          => $success ? 1 : 0,
+        ]);
+    }
+
+    /**
+     * Creates the Shopify fulfillment for an order the first time our
+     * shipment has a tracking number — this is what flips the order from
+     * "Unfulfilled" to "Fulfilled" in Shopify and shows the tracking link
+     * to the customer. Safe to call more than once: no-ops if a fulfillment
+     * already exists for this order.
+     */
+    public function create_shopify_fulfillment($shipment_id)
+    {
+        $order = $this->db->where('gs_shipment_id', $shipment_id)->get(db_prefix() . 'shopify_orders')->row();
+        if (!$order || !empty($order->shopify_fulfillment_id)) {
+            return false;
+        }
+
+        $shipment = $this->db->select('waybill_number, tracking_id')->where('id', $shipment_id)->get(db_prefix() . '_shipments')->row();
+        $tracking_number = $shipment ? ($shipment->waybill_number ?: $shipment->tracking_id) : $order->tracking_number;
+        if (!$tracking_number) {
+            return false;
+        }
+
+        $store = $this->get_store();
+        $api = $this->get_shopify_api_for_store($store);
+        if (!$api) {
+            return false;
+        }
+
+        $fo_result = $api->get_fulfillment_orders($order->shopify_order_id);
+        if (!$fo_result['success'] || empty($fo_result['data']['fulfillment_orders'])) {
+            $this->log_fulfillment_push($order->id, 'create_failed', $tracking_number, $fo_result, false);
+            return false;
+        }
+
+        // Fulfill every still-open fulfillment order on the Shopify order
+        // (normally just one, for a single-vendor Salibay order).
+        $any_success = false;
+        $last_response = null;
+        foreach ($fo_result['data']['fulfillment_orders'] as $fo) {
+            if (($fo['status'] ?? '') === 'closed' || ($fo['status'] ?? '') === 'cancelled') {
+                continue;
+            }
+
+            $result = $api->create_fulfillment_v2([
+                'fulfillment' => [
+                    'line_items_by_fulfillment_order' => [
+                        ['fulfillment_order_id' => $fo['id']],
+                    ],
+                    'tracking_info' => [
+                        'number'  => $tracking_number,
+                        'url'     => site_url('courier_goshipping/track'),
+                        'company' => 'Go Shipping',
+                    ],
+                    'notify_customer' => true,
+                ],
+            ]);
+            $last_response = $result;
+
+            if ($result['success'] && !empty($result['data']['fulfillment']['id'])) {
+                $any_success = true;
+                $this->db->where('id', $order->id)->update(db_prefix() . 'shopify_orders', [
+                    'shopify_fulfillment_id' => $result['data']['fulfillment']['id'],
+                ]);
+            }
+        }
+
+        $this->log_fulfillment_push($order->id, 'created', $tracking_number, $last_response, $any_success);
+        return $any_success;
+    }
+
+    /**
+     * Pushes a tracking milestone or cancellation onto the Shopify order's
+     * fulfillment once it exists — self-heals by creating the fulfillment
+     * first if create_shopify_fulfillment() hadn't run yet for some reason.
+     */
+    public function push_shopify_fulfillment_status($shipment_id, $status_id)
+    {
+        $order = $this->db->where('gs_shipment_id', $shipment_id)->get(db_prefix() . 'shopify_orders')->row();
+        if (!$order) {
+            return false;
+        }
+
+        if (empty($order->shopify_fulfillment_id)) {
+            if ((int) $status_id === 9) {
+                // Nothing was ever fulfilled — there's nothing to cancel.
+                return false;
+            }
+            $this->create_shopify_fulfillment($shipment_id);
+            $order = $this->db->where('id', $order->id)->get(db_prefix() . 'shopify_orders')->row();
+            if (empty($order->shopify_fulfillment_id)) {
+                return false;
+            }
+        }
+
+        $store = $this->get_store();
+        $api = $this->get_shopify_api_for_store($store);
+        if (!$api) {
+            return false;
+        }
+
+        // Our internal shipment_statuses id -> Shopify's fulfillment event
+        // vocabulary. Statuses with no clean Shopify equivalent (Created,
+        // Picked up, Received) are simply not pushed as events.
+        $event_map = [
+            5 => 'in_transit',
+            6 => 'in_transit',
+            7 => 'out_for_delivery',
+            8 => 'delivered',
+        ];
+
+        if ((int) $status_id === 9) {
+            $result = $api->cancel_fulfillment($order->shopify_fulfillment_id);
+            $this->log_fulfillment_push($order->id, 'cancelled', $order->tracking_number, $result, $result['success']);
+            return $result['success'];
+        }
+
+        if (!isset($event_map[(int) $status_id])) {
+            return false;
+        }
+
+        $shopify_status = $event_map[(int) $status_id];
+        $result = $api->create_fulfillment_event($order->shopify_fulfillment_id, $shopify_status);
+        $this->log_fulfillment_push($order->id, $shopify_status, $order->tracking_number, $result, $result['success']);
+        return $result['success'];
+    }
 }
