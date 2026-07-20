@@ -181,6 +181,7 @@ class Salibay_delivery extends App_Controller
 
         $this->_advance_shipment_status($shipment->id, 8); // delivered
         $this->_mirror_salibay_order_status($shipment->id, 'delivered');
+        $this->_push_shopify_status($shipment->id, 8);
 
         echo json_encode(['success' => true]);
     }
