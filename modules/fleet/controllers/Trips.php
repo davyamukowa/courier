@@ -160,6 +160,15 @@ class Trips extends AdminController
             'status_id'   => $new_status_id,
             'changed_at'  => date('Y-m-d H:i:s'),
         ]);
+
+        // Keep a linked Shopify/Salibay order's fulfillment status in sync —
+        // must never block the trip action itself if Shopify's API hiccups.
+        try {
+            $this->load->model('shopify_connector/shopify_connector_model');
+            $this->shopify_connector_model->push_shopify_fulfillment_status($shipment_id, $new_status_id);
+        } catch (\Throwable $e) {
+            log_message('error', 'Shopify fulfillment push crashed: ' . $e->getMessage());
+        }
     }
 
     // ── Detail ─────────────────────────────────────────────────────────────────
