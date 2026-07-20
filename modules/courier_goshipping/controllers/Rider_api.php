@@ -367,6 +367,7 @@ class Rider_api extends App_Controller
 
         $this->advance_shipment_status($shipment->id, 8); // delivered
         $this->mirror_salibay_order_status($shipment->id, 'delivered');
+        $this->push_shopify_status($shipment->id, 8);
         $this->respond(['success' => true]);
     }
 
