@@ -312,6 +312,26 @@ class Shopify_connector_model extends App_Model
             'shopify_response' => json_encode($response),
             'success'          => $success ? 1 : 0,
         ]);
+
+        // Also mirror into the integration log staff already check under
+        // Salibay Fulfilment > Health & Logs — tblshopify_fulfillment_updates
+        // has no viewer UI of its own, so a failure logged only there was
+        // effectively invisible.
+        if ($this->db->table_exists(db_prefix() . 'shopify_integration_logs')) {
+            $this->db->insert(db_prefix() . 'shopify_integration_logs', [
+                'store_id'   => null,
+                'log_level'  => $success ? 'info' : 'error',
+                'category'   => 'shipment',
+                'message'    => ($success ? 'Shopify fulfillment push succeeded' : 'Shopify fulfillment push FAILED') . " ({$status})",
+                'context'    => json_encode([
+                    'shopify_db_order_id' => $shopify_db_order_id,
+                    'status'              => $status,
+                    'tracking_number'     => $tracking_number,
+                    'shopify_response'    => $response,
+                ]),
+                'created_at' => date('Y-m-d H:i:s'),
+            ]);
+        }
     }
 
     /**
