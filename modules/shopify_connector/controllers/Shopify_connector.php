@@ -726,6 +726,13 @@ class Shopify_connector extends AdminController
         $order_status = ($payment_status === 'paid') ? 'confirmed' : 'pending';
         $line_items = $payload['line_items'] ?? [];
 
+        // A separate sourcing app (finds products abroad when they're not
+        // available locally, then writes classification back onto the
+        // Shopify order as tags) tells us here whether this order is
+        // domestic ("Salibay Local") or needs international routing
+        // ("Salibay Global") — see parse_salibay_tags() below.
+        $salibay_tags = $this->parse_salibay_tags($payload['tags'] ?? '');
+
         // STEP 3 — INSERT INTO tblshopify_orders
         $order_data = [
             'store_id' => $store->id,
@@ -741,11 +748,25 @@ class Shopify_connector extends AdminController
             'payment_status' => $payment_status,
             'order_status' => $order_status,
             'raw_payload' => json_encode($payload),
+            'salibay_classification' => $salibay_tags['classification'],
+            'salibay_route_tag' => $salibay_tags['route_tag'],
+            'needs_manual_review' => $salibay_tags['needs_manual_review'] ? 1 : 0,
             'created_at' => date('Y-m-d H:i:s')
         ];
-        
+
         $this->db->insert(db_prefix() . 'shopify_orders', $order_data);
         $shopify_db_order_id = $this->db->insert_id();
+
+        // Best-effort — the fulfilment manifest metafield is a nice-to-have
+        // enrichment (per-line-item routing detail), never a blocker.
+        try {
+            $this->fetch_salibay_fulfillment_manifest($shopify_db_order_id, $shopify_order_id, $store);
+        } catch (\Throwable $e) {
+            $this->write_integration_log('warning', 'order', 'Could not fetch salibay.fulfillment_manifest metafield: ' . $e->getMessage(), [
+                'shopify_db_order_id' => $shopify_db_order_id,
+                'shopify_order_id' => $shopify_order_id
+            ], $store->id);
+        }
         $this->write_integration_log('info', 'order', 'Shopify order saved locally', [
             'shopify_db_order_id' => $shopify_db_order_id,
             'shopify_order_id' => $shopify_order_id,
