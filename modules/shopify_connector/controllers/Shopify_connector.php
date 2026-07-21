@@ -1613,7 +1613,12 @@ class Shopify_connector extends AdminController
                 $result['classification'] = 'global';
             } elseif ($lower === 'salibay mixed') {
                 $result['classification'] = 'mixed';
-            } elseif ($lower === 'salibay manual review' || $lower === 'manual review') {
+            } elseif ($lower === 'salibay manual review') {
+                // Deliberately NOT matching a bare "manual review" tag —
+                // Shopify's own risk analysis (or a fraud-check app) commonly
+                // tags COD/manual-payment orders with exactly that, for a
+                // reason that has nothing to do with sourcing. Only the
+                // "Salibay"-prefixed tag is our classification signal.
                 $result['classification'] = 'manual_review';
             } elseif (preg_match('/^route\s+(.+)$/i', $tag, $m)) {
                 $result['route_tag'] = trim($m[1]);
