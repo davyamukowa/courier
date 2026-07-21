@@ -139,7 +139,13 @@ class Shopify_api
             'data'      => $decoded_body,
             'http_code' => $http_code,
             'error'     => $error_msg,
-            'link_header' => $link_header
+            'link_header' => $link_header,
+            // Raw response text — kept alongside 'data' (which is null when
+            // the body isn't valid JSON, e.g. an empty 406 body) so callers
+            // that log this whole result (like the fulfillment sync model)
+            // capture the real server response without needing to also dig
+            // through this library's own separate 'api_request' log entries.
+            'raw_body'  => $body_str,
         ];
     }
 
