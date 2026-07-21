@@ -1181,13 +1181,20 @@ class Shopify_connector extends AdminController
             $branch_id = $mapping_branch_supported ? $this->resolve_order_branch_id($items) : courier_get_fallback_branch_id();
         }
 
-        // 5. Build Senders Data
+        // 5. Build Senders Data — branch-aware, so a China/Dubai-routed
+        // shipment's waybill actually shows that branch as the sender
+        // instead of always saying "Go Shipping Warehouse" with the
+        // company's default registered address. courier_get_invoice_info()
+        // already does exactly this branch-override lookup for invoices;
+        // reused here for the same reason.
+        $branch_info = courier_get_invoice_info($branch_id);
+        $branch_name_parts = explode(' ', trim($branch_info['name'] ?: 'Go Shipping Warehouse'), 2);
         $sender_data = [
-            'first_name' => 'Go Shipping',
-            'last_name' => 'Warehouse',
-            'phone_number' => get_option('company_phonenumber') ?: '000000000',
-            'email' => get_option('smtp_email') ?: 'warehouse@example.com',
-            'address' => trim(strip_tags(str_replace(['<br />', '<br/>', '<br>'], ', ', format_organization_info())), ', ') ?: 'Main Warehouse',
+            'first_name' => $branch_name_parts[0],
+            'last_name' => $branch_name_parts[1] ?? '',
+            'phone_number' => $branch_info['phone'] ?: (get_option('company_phonenumber') ?: '000000000'),
+            'email' => $branch_info['email'] ?: (get_option('smtp_email') ?: 'warehouse@example.com'),
+            'address' => trim(strip_tags(str_replace(['<br />', '<br/>', '<br>'], ', ', $branch_info['address'] ?: format_organization_info())), ', ') ?: 'Main Warehouse',
             'zipcode' => '00100',
             'address_type' => 'postal_code',
         ];
