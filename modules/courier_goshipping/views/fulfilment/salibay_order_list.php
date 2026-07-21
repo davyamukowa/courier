@@ -31,7 +31,7 @@
                                     : '';
                             ?>
                             <tr
-                                class="salibay-order-row"
+                                class="salibay-order-row<?php echo $order->needs_manual_review ? ' salibay-needs-review' : ''; ?>"
                                 <?php if ($row_href): ?>
                                     data-href="<?php echo $row_href; ?>"
                                 <?php else: ?>
@@ -41,6 +41,15 @@
                                 <td>#<?php echo htmlspecialchars((string) $order->shopify_order_number); ?></td>
                                 <td><?php echo htmlspecialchars((string) $order->customer_name); ?></td>
                                 <td><?php echo htmlspecialchars($order->items_display); ?></td>
+                                <td>
+                                    <span class="label label-<?php echo $order->classification_badge_class; ?>"><?php echo htmlspecialchars($order->classification_display); ?></span>
+                                    <?php if (!empty($order->salibay_route_tag)): ?>
+                                        <div class="text-muted" style="font-size:11px;"><?php echo htmlspecialchars($order->salibay_route_tag); ?></div>
+                                    <?php endif; ?>
+                                    <?php if ($order->needs_manual_review): ?>
+                                        <div style="color:#c62828; font-weight:700; font-size:11px;"><i class="fa fa-exclamation-triangle"></i> Needs review</div>
+                                    <?php endif; ?>
+                                </td>
                                 <td><span class="label label-<?php echo $order->fulfilment_badge_class; ?>"><?php echo htmlspecialchars($order->fulfilment_status_text); ?></span></td>
                                 <td><span class="label label-<?php echo $order->financial_badge_class; ?>"><?php echo ucfirst((string) ($order->financial_status ?: 'unknown')); ?></span></td>
                                 <td>
