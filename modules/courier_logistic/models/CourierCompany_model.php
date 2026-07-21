@@ -12,7 +12,7 @@ class CourierCompany_model extends App_Model
 
     }
 
-    public function get($return_count = false, $type = null): array|bool|int|string
+    public function get($return_count = false, $type = null)
     {
         // Select fields from the company table
         $this->db->select('c.*, cp.first_name as contact_person_first_name, cp.last_name as contact_person_last_name, cp.phone_number as contact_person_phone_number, cp.email as contact_person_email');
@@ -31,7 +31,7 @@ class CourierCompany_model extends App_Model
         }
     }
 
-    public function get_company_count_by_type($type = null): array|bool|int|string
+    public function get_company_count_by_type($type = null)
     {
         return $this->get(true, $type);
     }
@@ -45,7 +45,7 @@ class CourierCompany_model extends App_Model
     }
 
 
-    public function add($data): bool|int
+    public function add($data)
     {
         if ($this->db->insert($this->table, $data)) {
             return $this->db->insert_id();
@@ -56,7 +56,7 @@ class CourierCompany_model extends App_Model
         }
     }
 
-    public function update($id, $data): bool
+    public function update($id, $data)
     {
         $this->db->where('id', $id);
         return $this->db->update($this->table, $data);

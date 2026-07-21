@@ -21,7 +21,7 @@ class Delivery_model extends App_Model
         return $this->db->get($this->table)->result();
     }
 
-    public function add($data): bool|int
+    public function add($data)
     {
         if ($this->db->insert($this->table, $data)) {
             return $this->db->insert_id();
@@ -32,7 +32,7 @@ class Delivery_model extends App_Model
         }
     }
 
-    public function update($id, $data): bool
+    public function update($id, $data)
     {
         $this->db->where('id', $id);
         return $this->db->update($this->table, $data);

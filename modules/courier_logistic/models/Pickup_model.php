@@ -13,7 +13,7 @@ class Pickup_model extends App_Model
 
     }
 
-    public function get($return_count = false, $status = null, $staff_id = null, $role = null, $branch_ids = null): array|bool|string
+    public function get($return_count = false, $status = null, $staff_id = null, $role = null, $branch_ids = null)
     {
         $this->db->select('p.*, c.first_name AS contact_first_name, c.last_name AS contact_last_name, c.phone_number AS contact_phone_number, c.email AS contact_email, ct.short_name AS country_name');
         $this->db->from(db_prefix() . '_pickups p');
@@ -44,7 +44,7 @@ class Pickup_model extends App_Model
         }
     }
 
-    public function get_pickup_by_id($pickup_id): array
+    public function get_pickup_by_id($pickup_id)
     {
         $this->db->select('p.*, c.first_name AS contact_first_name, c.last_name AS contact_last_name, c.phone_number AS contact_phone_number, c.email AS contact_email, ct.short_name AS country_name');
         $this->db->from(db_prefix() . '_pickups p');
@@ -57,12 +57,12 @@ class Pickup_model extends App_Model
     }
 
 
-    public function get_pickup_count_by_status($status = null, $staff_id = null, $role = null): array|bool|string
+    public function get_pickup_count_by_status($status = null, $staff_id = null, $role = null)
     {
         return $role === 'driver' ? $this->get(true, $status, $staff_id, $role) : $this->get(true, $status, $staff_id);
     }
 
-    public function add($data): bool
+    public function add($data)
     {
         if ($this->db->insert($this->table, $data)) {
             $insert_id = $this->db->insert_id();
@@ -74,7 +74,7 @@ class Pickup_model extends App_Model
         }
     }
 
-    public function update($id, $data): bool
+    public function update($id, $data)
     {
         $this->db->where('id', $id);
         return $this->db->update($this->table, $data);

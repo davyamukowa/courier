@@ -22,7 +22,7 @@ class DimensionalFactor_model extends App_Model
         return $this->db->get($this->table)->result();
     }
 
-    public function add($data): bool|int
+    public function add($data)
     {
         if ($this->db->insert($this->table, $data)) {
             return $this->db->insert_id();

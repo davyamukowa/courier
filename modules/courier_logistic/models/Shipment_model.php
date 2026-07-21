@@ -23,7 +23,7 @@ class Shipment_model extends App_Model
         }
     }
 
-    public function add($data): bool|int
+    public function add($data)
     {
         if ($this->db->insert($this->table, $data)) {
             return $this->db->insert_id();
@@ -55,13 +55,13 @@ class Shipment_model extends App_Model
     }
 
 
-    public function update($id, $data): bool
+    public function update($id, $data)
     {
         $this->db->where('id', $id);
         return $this->db->update($this->table, $data);
     }
 
-    public function update_invoice($id, $data): bool
+    public function update_invoice($id, $data)
     {
         $this->db->where('id', $id);
         return $this->db->update(db_prefix() . 'invoices', $data);
@@ -102,7 +102,7 @@ class Shipment_model extends App_Model
         return $this->db->get($table)->result();
     }
 
-    public function add_invoice_item($data): int
+    public function add_invoice_item($data)
     {
         $this->db->insert(db_prefix() . 'itemable', $data);
         return $this->db->insert_id();
@@ -237,7 +237,7 @@ class Shipment_model extends App_Model
     public function get_shipment_details($shipment_id)
     {
         // Fetch the shipment details for the given shipment ID
-        // Build SELECT dynamically — new columns may not exist on older installs
+        // Build SELECT dynamically â€” new columns may not exist on older installs
         $base_cols = 's.id, (SELECT p.id FROM ' . db_prefix() . '_pickups p WHERE p.shipment_id = s.id LIMIT 1) AS pickup_id,'
             . ' s.tracking_id, s.company_type, s.shipping_mode, s.shipping_category, s.waybill_number,'
             . ' s.fcl_shipment, s.company_id, s.courier_company_id, s.invoice_id, s.status_id,'
@@ -266,7 +266,7 @@ class Shipment_model extends App_Model
             $base_cols .= ', COALESCE(s.goods_declared_value,0) as goods_declared_value';
         }
 
-        // FALSE = do not let CI3 split/escape the string — COALESCE() contains commas
+        // FALSE = do not let CI3 split/escape the string â€” COALESCE() contains commas
         // that CI3's Active Record would incorrectly split into separate columns
         $this->db->select($base_cols, FALSE);
         $this->db->from(db_prefix() . '_shipments s');
@@ -399,7 +399,7 @@ class Shipment_model extends App_Model
     public function get_shipment_by_tracking_number($shipment_tracking_id): ?array
     {
 
-        // Use a raw parameterised query — bypasses Active Record builder entirely.
+        // Use a raw parameterised query â€” bypasses Active Record builder entirely.
         // Searches both tracking_id AND waybill_number so customers can use either.
         $sql = 'SELECT s.id,'
              . ' (SELECT p.id FROM ' . db_prefix() . '_pickups p WHERE p.shipment_id = s.id LIMIT 1) AS pickup_id,'

@@ -22,7 +22,7 @@ class ThirdPartyShipment_model extends App_Model
         return $this->db->get($this->table)->result();
     }
 
-    public function add($data): bool|int
+    public function add($data)
     {
         if ($this->db->insert($this->table, $data)) {
             return $this->db->insert_id();
@@ -33,7 +33,7 @@ class ThirdPartyShipment_model extends App_Model
         }
     }
 
-    public function update($shipment_id, $data): bool
+    public function update($shipment_id, $data)
     {
         $this->db->where('shipment_id', $shipment_id);
         return $this->db->update($this->table, $data);

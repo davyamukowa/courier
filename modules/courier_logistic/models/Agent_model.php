@@ -108,7 +108,7 @@ class Agent_model extends App_Model
         return $this->db->get()->result();
     }
 
-    public function update_agent($id, $data): bool
+    public function update_agent($id, $data)
     {
         $agent_fields = ['commission_rate', 'admin_notes', 'suspended_reason', 'suspended_at', 'status', 'station', 'country_id'];
         $staff_fields = ['firstname', 'lastname', 'email', 'phonenumber'];
@@ -132,13 +132,13 @@ class Agent_model extends App_Model
         return true;
     }
 
-    public function reset_password($staff_id, $hashed_password): bool
+    public function reset_password($staff_id, $hashed_password)
     {
         $this->db->where('staffid', $staff_id);
         return $this->db->update(db_prefix() . 'staff', ['password' => $hashed_password]);
     }
 
-    public function add($data): bool|int
+    public function add($data)
     {
         if ($this->db->insert($this->table, $data)) {
             return $this->db->insert_id();
@@ -147,7 +147,7 @@ class Agent_model extends App_Model
         return false;
     }
 
-    public function update($id, $data): bool
+    public function update($id, $data)
     {
         $this->db->where('id', $id);
         return $this->db->update($this->table, $data);

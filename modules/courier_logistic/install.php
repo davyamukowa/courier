@@ -439,6 +439,10 @@ function addStates($CI)
 {
     // Load states from JSON file
     $jsonFilePath = __DIR__ . '/assets/states.json'; // Update the path to your JSON file
+    if (!file_exists($jsonFilePath)) {
+        log_message('error', 'Courier Logistic states.json file is missing.');
+        return;
+    }
     $jsonContent = file_get_contents($jsonFilePath);
     $states = json_decode($jsonContent, true);
 
@@ -639,9 +643,10 @@ add_option('courier_type', 'international');
 // ── Courier Email Templates ───────────────────────────────────────────────────
 // create_email_template() is a no-op if the slug already exists — safe to re-run.
 
-create_email_template(
-    'Your Invoice {invoice_number} from {company_name}',
-    '<p>Dear {recipient_name},</p>
+if (function_exists('create_email_template')) {
+    create_email_template(
+        'Your Invoice {invoice_number} from {company_name}',
+        '<p>Dear {recipient_name},</p>
 <p>Please find below your invoice details for shipment <strong>{waybill_number}</strong>.</p>
 <table style="width:100%;border-collapse:collapse;font-size:14px;margin:16px 0;border:1px solid #e0e0e0;">
   <tr style="background:#f5f5f5;"><td style="padding:8px 12px;border:1px solid #e0e0e0;font-weight:bold;width:40%;">Invoice #</td><td style="padding:8px 12px;border:1px solid #e0e0e0;">{invoice_number}</td></tr>
@@ -651,14 +656,14 @@ create_email_template(
 </table>
 <p>Please arrange payment before the due date. For any queries, do not hesitate to contact us.</p>
 <p>Thank you for choosing <strong>{company_name}</strong>.</p>',
-    'courier',
-    'Courier Invoice to Customer',
-    'courier_invoice_to_customer'
-);
+        'courier',
+        'Courier Invoice to Customer',
+        'courier_invoice_to_customer'
+    );
 
-create_email_template(
-    'Payment Receipt {receipt_number} - {company_name}',
-    '<p>Dear {recipient_name},</p>
+    create_email_template(
+        'Payment Receipt {receipt_number} - {company_name}',
+        '<p>Dear {recipient_name},</p>
 <p>We acknowledge receipt of your payment for shipment <strong>{waybill_number}</strong>.</p>
 <table style="width:100%;border-collapse:collapse;font-size:14px;margin:16px 0;border:1px solid #e0e0e0;">
   <tr style="background:#f5f5f5;"><td style="padding:8px 12px;border:1px solid #e0e0e0;font-weight:bold;width:40%;">Receipt #</td><td style="padding:8px 12px;border:1px solid #e0e0e0;">{receipt_number}</td></tr>
@@ -669,14 +674,14 @@ create_email_template(
   <tr><td style="padding:8px 12px;border:1px solid #e0e0e0;font-weight:bold;">Balance Due</td><td style="padding:8px 12px;border:1px solid #e0e0e0;font-weight:bold;">{balance_due}</td></tr>
 </table>
 <p>Thank you for your payment. <strong>{company_name}</strong></p>',
-    'courier',
-    'Courier Payment Receipt to Customer',
-    'courier_payment_receipt_to_customer'
-);
+        'courier',
+        'Courier Payment Receipt to Customer',
+        'courier_payment_receipt_to_customer'
+    );
 
-create_email_template(
-    'Your Shipment Waybill {waybill_number} - {company_name}',
-    '<p>Dear {recipient_name},</p>
+    create_email_template(
+        'Your Shipment Waybill {waybill_number} - {company_name}',
+        '<p>Dear {recipient_name},</p>
 <p>Your shipment waybill is ready. Please find the details below.</p>
 <table style="width:100%;border-collapse:collapse;font-size:14px;margin:16px 0;border:1px solid #e0e0e0;">
   <tr style="background:#f5f5f5;"><td style="padding:8px 12px;border:1px solid #e0e0e0;font-weight:bold;width:40%;">Waybill Number</td><td style="padding:8px 12px;border:1px solid #e0e0e0;font-size:18px;font-weight:bold;color:#2e7d32;">{waybill_number}</td></tr>
@@ -687,10 +692,11 @@ create_email_template(
 </table>
 <p>Use your waybill number <strong>{waybill_number}</strong> to track your shipment.</p>
 <p>Thank you for choosing <strong>{company_name}</strong>.</p>',
-    'courier',
-    'Courier Waybill Notification to Customer',
-    'courier_waybill_to_customer'
-);
+        'courier',
+        'Courier Waybill Notification to Customer',
+        'courier_waybill_to_customer'
+    );
+}
 
 // ── Service Points table ──────────────────────────────────────────────────────
 if (!$CI->db->table_exists(db_prefix() . '_courier_service_points')) {

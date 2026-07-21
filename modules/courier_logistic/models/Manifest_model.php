@@ -12,7 +12,7 @@ class Manifest_model extends App_Model
 
     }
 
-    public function add($data): bool
+    public function add($data)
     {
         if ($this->db->insert($this->table, $data)) {
             $insert_id = $this->db->insert_id();
@@ -89,7 +89,7 @@ class Manifest_model extends App_Model
     }
 
 
-    public function add_manifest_period($data): bool|int
+    public function add_manifest_period($data)
     {
         if ($this->db->insert(db_prefix().'_manifest_period', $data)) {
             $insert_id = $this->db->insert_id();
