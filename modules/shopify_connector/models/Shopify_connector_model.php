@@ -353,18 +353,20 @@ class Shopify_connector_model extends App_Model
         $shipment = $this->db->select('waybill_number, tracking_id')->where('id', $shipment_id)->get(db_prefix() . '_shipments')->row();
         $tracking_number = $shipment ? ($shipment->waybill_number ?: $shipment->tracking_id) : $order->tracking_number;
         if (!$tracking_number) {
+            $this->log_fulfillment_push($order->id, 'create_failed_no_tracking', null, null, false);
             return false;
         }
 
         $store = $this->get_store();
         $api = $this->get_shopify_api_for_store($store);
         if (!$api) {
+            $this->log_fulfillment_push($order->id, 'create_failed_no_store_credentials', $tracking_number, null, false);
             return false;
         }
 
         $fo_result = $api->get_fulfillment_orders($order->shopify_order_id);
         if (!$fo_result['success'] || empty($fo_result['data']['fulfillment_orders'])) {
-            $this->log_fulfillment_push($order->id, 'create_failed', $tracking_number, $fo_result, false);
+            $this->log_fulfillment_push($order->id, 'create_failed_no_fulfillment_orders', $tracking_number, $fo_result, false);
             return false;
         }
 
