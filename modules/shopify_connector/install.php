@@ -229,4 +229,44 @@ if ($CI->db->table_exists(db_prefix() . 'shopify_orders')) {
     if (!$CI->db->field_exists('assigned_staff_id', db_prefix() . 'shopify_orders')) {
         $CI->db->query("ALTER TABLE `" . db_prefix() . "shopify_orders` ADD `assigned_staff_id` INT NULL AFTER `gs_shipment_id`;");
     }
+
+    // Populated from the "Salibay Local/Global/Mixed" order tags a separate
+    // sourcing app (finds products abroad — China, Dubai, etc. — when
+    // they're not available locally) writes back onto the Shopify order,
+    // so we can tell a domestic order from an international one instead of
+    // guessing purely from the customer's own address.
+    if (!$CI->db->field_exists('salibay_classification', db_prefix() . 'shopify_orders')) {
+        $CI->db->query("ALTER TABLE `" . db_prefix() . "shopify_orders` ADD `salibay_classification` ENUM('local','global','mixed','manual_review') NULL DEFAULT NULL;");
+    }
+    // The "Route GSC-AE-DXB" style tag — which warehouse/lane the sourcing
+    // app expects this order fulfilled through.
+    if (!$CI->db->field_exists('salibay_route_tag', db_prefix() . 'shopify_orders')) {
+        $CI->db->query("ALTER TABLE `" . db_prefix() . "shopify_orders` ADD `salibay_route_tag` VARCHAR(100) NULL DEFAULT NULL;");
+    }
+    // Raw salibay.fulfillment_manifest order metafield, if the store has one
+    // (per-line-item routing detail) — stored as-is; nothing here parses
+    // deeper than the top-level classification/route tag today.
+    if (!$CI->db->field_exists('salibay_fulfillment_manifest', db_prefix() . 'shopify_orders')) {
+        $CI->db->query("ALTER TABLE `" . db_prefix() . "shopify_orders` ADD `salibay_fulfillment_manifest` TEXT NULL DEFAULT NULL;");
+    }
+    // Set when the order is 'mixed' (part local, part international — needs
+    // a human to decide whether to split it) or 'manual_review', or when a
+    // route tag couldn't be matched to a branch — so staff can find these
+    // in the order list instead of them silently auto-routing wrong.
+    if (!$CI->db->field_exists('needs_manual_review', db_prefix() . 'shopify_orders')) {
+        $CI->db->query("ALTER TABLE `" . db_prefix() . "shopify_orders` ADD `needs_manual_review` TINYINT(1) NOT NULL DEFAULT 0;");
+    }
+}
+
+// Lets staff map a sourcing-app route tag (e.g. "Route GSC-AE-DXB") to the
+// Go Shipping branch that should fulfil it — route tag formats are decided
+// by the separate sourcing app, not by us, so this has to be a configurable
+// mapping rather than assuming it lines up with tbl_courier_branches.code.
+if (!$CI->db->table_exists(db_prefix() . 'courier_route_branch_map')) {
+    $CI->db->query("CREATE TABLE `" . db_prefix() . "courier_route_branch_map` (
+        `id` INT AUTO_INCREMENT PRIMARY KEY,
+        `route_tag` VARCHAR(100) NOT NULL UNIQUE,
+        `branch_id` INT NOT NULL,
+        `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
 }
