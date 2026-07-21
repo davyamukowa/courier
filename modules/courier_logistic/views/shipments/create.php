@@ -2496,8 +2496,6 @@ function saveLogisticCompany() {
                     dataType: "json",
                     success: function (data) {
                         // Log the received data to see if it’s as expected
-                        console.log('Received states data:', data);
-
                         if (section === 'recipient') {
                             $('#recipient_country_code').val(`+${data.country_code}`);
                         }

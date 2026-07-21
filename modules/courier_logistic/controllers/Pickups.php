@@ -220,7 +220,11 @@ class Pickups extends AdminController
             $canvasData = str_replace(' ', '+', $canvasData);
             $imageData  = base64_decode($canvasData);
             $fileName   = uniqid() . '.png';
-            $filePath   = FCPATH . 'modules/courier_logistic/assets/pickups/signatures/' . $fileName;
+            $signatureDir = FCPATH . 'modules/courier_logistic/assets/pickups/signatures/';
+            if (!is_dir($signatureDir)) {
+                mkdir($signatureDir, 0755, true);
+            }
+            $filePath   = $signatureDir . $fileName;
 
             if (file_put_contents($filePath, $imageData)) {
                 $update = ['status' => $status];

@@ -302,7 +302,6 @@
                 },
                 dataType: "json",
                 success: function (data) {
-                    console.log('Store response:', data);
                     alert('Manifest Updated Successfully');
                     window.location.href = '<?php echo admin_url('courier_logistic/manifests') ?>'
                 },

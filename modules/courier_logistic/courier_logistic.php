@@ -1328,6 +1328,30 @@ class Courier_Logistic_Module {
         // tenant activation in a SaaS context — require_once would skip the
         // file if it was already included for a different tenant in the same request.
         require __DIR__ . '/install.php';
+        $this->ensure_runtime_directories();
+    }
+
+    private function ensure_runtime_directories() {
+        $directories = [
+            __DIR__ . '/assets/agent_ids',
+            __DIR__ . '/assets/agent_kras',
+            __DIR__ . '/assets/agent_location_files',
+            __DIR__ . '/assets/barcodes',
+            __DIR__ . '/assets/commercial_invoices',
+            __DIR__ . '/assets/deliveries/signatures',
+            __DIR__ . '/assets/pickups/signatures',
+        ];
+
+        foreach ($directories as $directory) {
+            if (!is_dir($directory)) {
+                mkdir($directory, 0755, true);
+            }
+
+            $indexFile = rtrim($directory, '/\\') . DIRECTORY_SEPARATOR . 'index.html';
+            if (!file_exists($indexFile)) {
+                file_put_contents($indexFile, '<!DOCTYPE html><title></title>');
+            }
+        }
     }
 
     /**

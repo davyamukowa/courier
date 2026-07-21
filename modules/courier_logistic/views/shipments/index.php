@@ -1222,7 +1222,6 @@ function printSpmReceipt() {
                 },
                 dataType: "json",
                 success: function (data) {
-                    console.log('Clear filter response:', data);
                     window.location.reload();
                 },
                 error: function (jqXHR, textStatus, errorThrown) {

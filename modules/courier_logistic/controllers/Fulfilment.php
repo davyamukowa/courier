@@ -947,8 +947,6 @@ class Fulfilment extends AdminController
 
         $this->db->db_debug = FALSE;
 
-        file_put_contents(FCPATH . 'orders_query.log', "COUNT QUERY:\n" . $this->db->get_compiled_select('', FALSE) . "\n\n", FILE_APPEND);
-
         $total_filtered = $this->db->count_all_results();
         $db_error = $this->db->error();
         if (!empty($db_error['message'])) {
@@ -964,8 +962,6 @@ class Fulfilment extends AdminController
         if ($length > -1) {
             $this->db->limit($length, $start);
         }
-
-        file_put_contents(FCPATH . 'orders_query.log', "GET QUERY:\n" . $this->db->get_compiled_select('', FALSE) . "\n\n", FILE_APPEND);
 
         $rows = $this->db->get()->result();
         $db_error = $this->db->error();
@@ -1024,11 +1020,9 @@ class Fulfilment extends AdminController
             'recordsFiltered' => $total_filtered,
             'data' => $data,
         ]);
-        file_put_contents(FCPATH . 'orders_json.log', $json_out);
         echo $json_out;
         exit;
         } catch (\Throwable $e) {
-            file_put_contents(FCPATH . 'orders_error.log', $e->getMessage() . "\n" . $this->db->last_query() . "\n" . $e->getTraceAsString());
             echo json_encode(['error' => $e->getMessage(), 'query' => $this->db->last_query()]);
         }
     }
