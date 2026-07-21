@@ -1122,17 +1122,29 @@ class Shopify_connector extends AdminController
         $delivery_address = json_decode($order->delivery_address, true);
         if (!is_array($delivery_address)) $delivery_address = [];
 
-        // 3. Load order items (only Model A)
+        // 3. Load order items. Normally only Model A (already in local
+        // warehouse stock) gets a shipment — Model B/C are meant to be
+        // handled by create_supplier_purchase_order()/flag_for_procurement().
+        // But a "Salibay Global"/"Mixed" order's items ARE the
+        // internationally-sourced ones (that's the whole point of routing
+        // them to a China/Dubai/etc. branch) — those branches procure the
+        // item themselves and use this same waybill for tracking, so they
+        // need the shipment/waybill created too, not silently skipped.
+        $is_international_sourced = in_array($order->salibay_classification ?? null, ['global', 'mixed'], true);
         $this->db->where('shopify_order_id', $order_id);
-        $this->db->where('fulfillment_model', 'A');
+        if ($is_international_sourced) {
+            $this->db->where_in('fulfillment_model', ['A', 'B', 'C']);
+        } else {
+            $this->db->where('fulfillment_model', 'A');
+        }
         $items = $this->db->get(db_prefix() . 'shopify_order_items')->result();
 
         if (empty($items)) {
             // No physical items for courier
-            $this->write_integration_log('warning', 'shipment', 'Shipment not created because no Model A items were found on the order', [
+            $this->write_integration_log('warning', 'shipment', 'Shipment not created because no fulfillable items were found on the order', [
                 'shopify_db_order_id' => $order_id
             ], $order->store_id);
-            return ['success' => false, 'error' => 'No warehouse-stock (Model A) items on this order'];
+            return ['success' => false, 'error' => 'No fulfillable items on this order'];
         }
 
         $total_weight = 0;
