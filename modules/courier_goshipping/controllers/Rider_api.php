@@ -486,7 +486,9 @@ class Rider_api extends App_Controller
         if (!empty($pickup['shipment_id'])) {
             // picked_up = collected from sender, delivered = handed to the
             // warehouse for processing — matches Pickups::update_status().
-            $this->advance_shipment_status($pickup['shipment_id'], $status === 'picked_up' ? 2 : 3);
+            $new_status_id = $status === 'picked_up' ? 2 : 3;
+            $this->advance_shipment_status($pickup['shipment_id'], $new_status_id);
+            $this->push_shopify_status($pickup['shipment_id'], $new_status_id);
         }
 
         $this->respond(['success' => true]);
