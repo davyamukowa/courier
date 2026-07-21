@@ -67,7 +67,7 @@
                         <?php endforeach; ?>
                     <?php else: ?>
                         <tr>
-                            <td colspan="10" class="text-center text-muted">No Salibay orders have been captured yet.</td>
+                            <td colspan="11" class="text-center text-muted">No Salibay orders have been captured yet.</td>
                         </tr>
                     <?php endif; ?>
                 </tbody>
