@@ -174,6 +174,66 @@
                 </table>
             </div>
 
+            <div role="tabpanel" class="tab-pane" id="route_map">
+                <div class="alert alert-info">
+                    A separate sourcing app finds products abroad (China, Dubai, etc.) when they're not available locally, and tags each Shopify order with a route like <code>Route GSC-AE-DXB</code>. Map each route tag to the Go Shipping branch that should fulfil it — it overrides the automatic SKU-based branch guess. Orders tagged <code>Salibay Mixed</code> or <code>Manual Review</code> (part local, part sourced abroad) are flagged in the order list instead of auto-routing, since those usually need a human decision on whether to split the shipment.
+                </div>
+
+                <?php echo form_open(admin_url('courier_goshipping/fulfilment/save_route_branch_map')); ?>
+                <div class="row">
+                    <div class="col-md-5">
+                        <div class="form-group">
+                            <label>Route Tag</label>
+                            <input type="text" name="route_tag" class="form-control" placeholder="e.g. GSC-AE-DXB" required>
+                        </div>
+                    </div>
+                    <div class="col-md-5">
+                        <div class="form-group">
+                            <label>Branch</label>
+                            <select name="branch_id" class="form-control" required>
+                                <option value="">-- Select branch --</option>
+                                <?php foreach ($branches as $b): ?>
+                                    <option value="<?php echo (int) $b->id; ?>"><?php echo htmlspecialchars($b->name); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <label>&nbsp;</label>
+                        <button type="submit" class="btn btn-primary btn-block">Save</button>
+                    </div>
+                </div>
+                <?php echo form_close(); ?>
+
+                <table class="table table-bordered mtop20">
+                    <thead>
+                        <tr>
+                            <th>Route Tag</th>
+                            <th>Branch</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (!empty($route_branch_map)): ?>
+                            <?php foreach ($route_branch_map as $map): ?>
+                                <tr>
+                                    <td><code><?php echo htmlspecialchars($map->route_tag); ?></code></td>
+                                    <td><?php echo htmlspecialchars($map->branch_name ?: 'Unknown branch'); ?></td>
+                                    <td>
+                                        <a href="<?php echo admin_url('courier_goshipping/fulfilment/delete_route_branch_map/' . $map->id); ?>"
+                                           class="btn btn-danger btn-xs" onclick="return confirm('Remove this route mapping?');">
+                                            <i class="fa fa-trash"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <tr><td colspan="3" class="text-center text-muted">No route mappings yet.</td></tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+
             <div role="tabpanel" class="tab-pane" id="advanced_settings">
                 <?php echo form_open(admin_url('courier_goshipping/fulfilment/save_settings')); ?>
                 <input type="hidden" name="advanced_settings" value="1">
