@@ -1578,6 +1578,96 @@ class Shopify_connector extends AdminController
     }
 
     /**
+     * Reads the classification/route tags a separate sourcing app writes
+     * onto the Shopify order (e.g. "Salibay Local", "Salibay Global",
+     * "Salibay Mixed", "Route GSC-AE-DXB") — plain Shopify order tags, a
+     * comma-separated string already present on every orders/create
+     * webhook payload, so this costs no extra API call.
+     */
+    private function parse_salibay_tags($tags_string)
+    {
+        $result = ['classification' => null, 'route_tag' => null, 'needs_manual_review' => false];
+        if (empty($tags_string) || !is_string($tags_string)) {
+            return $result;
+        }
+
+        $tags = array_map('trim', explode(',', $tags_string));
+
+        foreach ($tags as $tag) {
+            $lower = strtolower($tag);
+            if ($lower === 'salibay local') {
+                $result['classification'] = 'local';
+            } elseif ($lower === 'salibay global') {
+                $result['classification'] = 'global';
+            } elseif ($lower === 'salibay mixed') {
+                $result['classification'] = 'mixed';
+            } elseif ($lower === 'salibay manual review' || $lower === 'manual review') {
+                $result['classification'] = 'manual_review';
+            } elseif (preg_match('/^route\s+(.+)$/i', $tag, $m)) {
+                $result['route_tag'] = trim($m[1]);
+            }
+        }
+
+        // Mixed (part local, part sourced abroad) and manual_review both
+        // need a human decision — most commonly whether to split the order
+        // into two shipments — so never let those auto-route silently.
+        if (in_array($result['classification'], ['mixed', 'manual_review'], true)) {
+            $result['needs_manual_review'] = true;
+        }
+
+        return $result;
+    }
+
+    /**
+     * Best-effort fetch of the salibay.fulfillment_manifest order metafield
+     * (per-line-item routing detail, if the sourcing app writes one) —
+     * stored as-is for now; nothing here parses deeper than the top-level
+     * classification/route tag from parse_salibay_tags().
+     */
+    private function fetch_salibay_fulfillment_manifest($shopify_db_order_id, $shopify_order_id, $store)
+    {
+        if (empty($store->access_token) || empty($store->shop_domain)) {
+            return;
+        }
+
+        $this->load->library('shopify_connector/shopify_api', [
+            'shop_domain'  => $store->shop_domain,
+            'access_token' => $store->access_token,
+            'api_version'  => $store->api_version ?: '2024-01',
+        ], 'shopify_api_manifest');
+
+        $result = $this->shopify_api_manifest->get_order_metafields($shopify_order_id);
+        if (!$result['success'] || empty($result['data']['metafields'])) {
+            return;
+        }
+
+        foreach ($result['data']['metafields'] as $metafield) {
+            if (($metafield['namespace'] ?? '') === 'salibay' && ($metafield['key'] ?? '') === 'fulfillment_manifest') {
+                $this->db->where('id', $shopify_db_order_id)->update(db_prefix() . 'shopify_orders', [
+                    'salibay_fulfillment_manifest' => $metafield['value'] ?? null,
+                ]);
+                return;
+            }
+        }
+    }
+
+    /**
+     * Maps a "Route GSC-AE-DXB" style tag to a Go Shipping branch, via the
+     * staff-configured tbl_courier_route_branch_map — route tag formats are
+     * decided by the sourcing app, not us, so this can't assume they line
+     * up with tbl_courier_branches.code.
+     */
+    private function resolve_branch_from_route_tag($route_tag)
+    {
+        if (empty($route_tag) || !$this->db->table_exists(db_prefix() . 'courier_route_branch_map')) {
+            return null;
+        }
+
+        $map = $this->db->where('route_tag', $route_tag)->get(db_prefix() . 'courier_route_branch_map')->row();
+        return $map ? (int) $map->branch_id : null;
+    }
+
+    /**
      * Resolves which Go Shipping branch/office should fulfil an order from its
      * Model A line items' shopify_product_mappings.courier_branch_id (majority
      * vote), falling back to the org-wide default branch when unresolved.
