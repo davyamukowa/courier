@@ -2064,6 +2064,7 @@ class Fulfilment extends AdminController
                 so.created_at AS order_created_at,
                 so.gs_shipment_id,
                 {$assigned_select}
+                {$salibay_tags_select}
                 s.id AS shipment_id,
                 s.waybill_number,
                 s.tracking_id,
