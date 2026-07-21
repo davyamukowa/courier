@@ -280,6 +280,16 @@ class Pickups extends AdminController
             'changed_at' => date('Y-m-d H:i:s'),
         ]);
 
+        // A confirmed pickup is the real "courier has it" moment for a
+        // linked Shopify/Salibay order — this is what creates the Shopify
+        // fulfillment (see push_shopify_fulfillment_status()), not the
+        // waybill merely existing. Must never block the pickup action.
+        try {
+            $this->load->model('shopify_connector/shopify_connector_model');
+            $this->shopify_connector_model->push_shopify_fulfillment_status($shipment_id, $status_id);
+        } catch (\Throwable $e) {
+            log_message('error', 'Shopify fulfillment push crashed: ' . $e->getMessage());
+        }
     }
 
     public function delete($id)
