@@ -1133,10 +1133,15 @@ class Shopify_connector extends AdminController
         $padded_id = str_pad($order_id, 6, '0', STR_PAD_LEFT);
         $tracking_number = 'GS' . date('Ymd') . $padded_id;
 
-        // Resolve which Go Shipping branch/office fulfils this order (based on
-        // where its Model A items are stocked — see shopify_product_mappings.courier_branch_id)
+        // Resolve which Go Shipping branch/office fulfils this order. A
+        // sourcing-app route tag (e.g. "Route GSC-AE-DXB"), if mapped by
+        // staff to a branch, wins over the SKU-based guess — it reflects an
+        // actual sourcing/warehouse decision already made upstream.
         $this->load->helper('courier_goshipping/courier');
-        $branch_id = $mapping_branch_supported ? $this->resolve_order_branch_id($items) : courier_get_fallback_branch_id();
+        $branch_id = $this->resolve_branch_from_route_tag($order->salibay_route_tag ?? null);
+        if (!$branch_id) {
+            $branch_id = $mapping_branch_supported ? $this->resolve_order_branch_id($items) : courier_get_fallback_branch_id();
+        }
 
         // 5. Build Senders Data
         $sender_data = [
