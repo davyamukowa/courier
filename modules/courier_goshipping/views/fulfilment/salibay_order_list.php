@@ -92,6 +92,9 @@
 .salibay-order-row:hover {
     background-color: #f5f7fa;
 }
+.salibay-needs-review {
+    background-color: #fdeaea !important;
+}
 </style>
 
 <script>
