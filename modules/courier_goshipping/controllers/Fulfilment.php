@@ -292,8 +292,71 @@ class Fulfilment extends AdminController
         $data['webhook_endpoint'] = $this->get_shopify_webhook_endpoint();
         $data['branches'] = $this->db->where('is_active', 1)->order_by('name', 'asc')->get(db_prefix() . '_courier_branches')->result();
         $data['shopify_locations'] = $this->db->order_by('name', 'asc')->get(db_prefix() . '_courier_shopify_locations')->result();
+
+        $data['route_branch_map'] = [];
+        if ($this->db->table_exists(db_prefix() . 'courier_route_branch_map')) {
+            $data['route_branch_map'] = $this->db->select('m.id, m.route_tag, m.branch_id, b.name AS branch_name')
+                ->from(db_prefix() . 'courier_route_branch_map m')
+                ->join(db_prefix() . '_courier_branches b', 'b.id = m.branch_id', 'left')
+                ->order_by('m.route_tag', 'asc')
+                ->get()
+                ->result();
+        }
+
         $data['group_content'] = $this->load->view('courier_goshipping/fulfilment/settings', $data, true);
         $this->load->view('courier_goshipping/fulfilment/main', $data);
+    }
+
+    // ── Maps a sourcing-app "Route GSC-AE-DXB" style order tag to the Go
+    // Shipping branch that should fulfil it (see Shopify_connector::
+    // resolve_branch_from_route_tag()) ──────────────────────────────────────
+    public function save_route_branch_map()
+    {
+        if (!$this->can_manage_fulfilment()) {
+            access_denied('Salibay Fulfilment Settings');
+        }
+
+        $route_tag = trim((string) $this->input->post('route_tag'));
+        $branch_id = (int) $this->input->post('branch_id');
+
+        if ($route_tag === '' || !$branch_id) {
+            set_alert('danger', 'Please enter a route tag and select a branch.');
+            redirect(admin_url('courier_goshipping/fulfilment/settings#tab_route_map'));
+            return;
+        }
+
+        if (!$this->db->table_exists(db_prefix() . 'courier_route_branch_map')) {
+            $this->db->query("CREATE TABLE `" . db_prefix() . "courier_route_branch_map` (
+                `id` INT AUTO_INCREMENT PRIMARY KEY,
+                `route_tag` VARCHAR(100) NOT NULL UNIQUE,
+                `branch_id` INT NOT NULL,
+                `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=" . $this->db->char_set . ";");
+        }
+
+        $existing = $this->db->where('route_tag', $route_tag)->get(db_prefix() . 'courier_route_branch_map')->row();
+        if ($existing) {
+            $this->db->where('id', $existing->id)->update(db_prefix() . 'courier_route_branch_map', ['branch_id' => $branch_id]);
+        } else {
+            $this->db->insert(db_prefix() . 'courier_route_branch_map', [
+                'route_tag' => $route_tag,
+                'branch_id' => $branch_id,
+            ]);
+        }
+
+        set_alert('success', 'Route mapping saved.');
+        redirect(admin_url('courier_goshipping/fulfilment/settings#tab_route_map'));
+    }
+
+    public function delete_route_branch_map($id)
+    {
+        if (!$this->can_manage_fulfilment()) {
+            access_denied('Salibay Fulfilment Settings');
+        }
+
+        $this->db->where('id', (int) $id)->delete(db_prefix() . 'courier_route_branch_map');
+        set_alert('success', 'Route mapping removed.');
+        redirect(admin_url('courier_goshipping/fulfilment/settings#tab_route_map'));
     }
 
     public function save_settings()
