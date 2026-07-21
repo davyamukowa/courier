@@ -2045,6 +2045,10 @@ class Fulfilment extends AdminController
         $assigned_join = $assigned_staff_supported
             ? "LEFT JOIN {$prefix}staff owner ON owner.staffid = so.assigned_staff_id"
             : '';
+        $salibay_tags_supported = $this->db->field_exists('salibay_classification', "{$prefix}shopify_orders");
+        $salibay_tags_select = $salibay_tags_supported
+            ? 'so.salibay_classification, so.salibay_route_tag, so.needs_manual_review,'
+            : "NULL AS salibay_classification, NULL AS salibay_route_tag, 0 AS needs_manual_review,";
 
         $rows = $this->db->query("
             SELECT
