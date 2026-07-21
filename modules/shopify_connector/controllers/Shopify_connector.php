@@ -38,6 +38,32 @@ class Shopify_connector extends AdminController
         ) {
             $this->db->query('ALTER TABLE `' . db_prefix() . 'shopify_product_mappings` ADD `courier_branch_id` INT NULL;');
         }
+
+        // Same self-heal reasoning — the Salibay local/global sourcing-app
+        // classification columns and route->branch map, added later than
+        // this table's original install.
+        if ($this->db->table_exists(db_prefix() . 'shopify_orders')) {
+            if (!$this->db->field_exists('salibay_classification', db_prefix() . 'shopify_orders')) {
+                $this->db->query("ALTER TABLE `" . db_prefix() . "shopify_orders` ADD `salibay_classification` ENUM('local','global','mixed','manual_review') NULL DEFAULT NULL;");
+            }
+            if (!$this->db->field_exists('salibay_route_tag', db_prefix() . 'shopify_orders')) {
+                $this->db->query("ALTER TABLE `" . db_prefix() . "shopify_orders` ADD `salibay_route_tag` VARCHAR(100) NULL DEFAULT NULL;");
+            }
+            if (!$this->db->field_exists('salibay_fulfillment_manifest', db_prefix() . 'shopify_orders')) {
+                $this->db->query("ALTER TABLE `" . db_prefix() . "shopify_orders` ADD `salibay_fulfillment_manifest` TEXT NULL DEFAULT NULL;");
+            }
+            if (!$this->db->field_exists('needs_manual_review', db_prefix() . 'shopify_orders')) {
+                $this->db->query("ALTER TABLE `" . db_prefix() . "shopify_orders` ADD `needs_manual_review` TINYINT(1) NOT NULL DEFAULT 0;");
+            }
+        }
+        if (!$this->db->table_exists(db_prefix() . 'courier_route_branch_map')) {
+            $this->db->query("CREATE TABLE `" . db_prefix() . "courier_route_branch_map` (
+                `id` INT AUTO_INCREMENT PRIMARY KEY,
+                `route_tag` VARCHAR(100) NOT NULL UNIQUE,
+                `branch_id` INT NOT NULL,
+                `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=" . $this->db->char_set . ";");
+        }
     }
 
     public function index()
