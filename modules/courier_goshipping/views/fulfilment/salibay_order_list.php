@@ -12,6 +12,7 @@
                         <th>Salibay Order</th>
                         <th>Customer</th>
                         <th>Items</th>
+                        <th>Sourcing</th>
                         <th>Fulfilment Status</th>
                         <th>Payment</th>
                         <th>Waybill / Shipment</th>
