@@ -1154,8 +1154,17 @@ class Shopify_connector extends AdminController
             'address_type' => 'postal_code',
         ];
 
-        // 6. Resolve recipient country/state and domestic-vs-international
+        // 6. Resolve recipient country/state and domestic-vs-international.
+        // A confident "Salibay Local"/"Salibay Global" tag overrides the
+        // geography guess — the sourcing app already knows whether this
+        // order was fulfilled from local stock or sourced abroad, which is
+        // the real signal, not just where the customer happens to live.
         $location = $this->resolve_shipping_location($delivery_address, $branch_id);
+        if (($order->salibay_classification ?? null) === 'local') {
+            $location['shipping_category'] = 'domestic';
+        } elseif (($order->salibay_classification ?? null) === 'global') {
+            $location['shipping_category'] = 'international';
+        }
 
         // 7. Build Recipients Data
         $name_parts = explode(' ', $delivery_address['name'] ?? $order->customer_name ?? 'Customer', 2);
