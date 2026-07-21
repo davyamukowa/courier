@@ -2097,6 +2097,12 @@ class Fulfilment extends AdminController
                 ? app_format_money((float) $row->total_price, $row->currency ?: get_base_currency()->name)
                 : '-';
 
+            $classification_labels = ['local' => 'Local', 'global' => 'Global', 'mixed' => 'Mixed', 'manual_review' => 'Manual Review'];
+            $classification_badges = ['local' => 'success', 'global' => 'info', 'mixed' => 'warning', 'manual_review' => 'danger'];
+            $row->classification_display = $classification_labels[$row->salibay_classification] ?? '-';
+            $row->classification_badge_class = $classification_badges[$row->salibay_classification] ?? 'default';
+            $row->needs_manual_review = !empty($row->needs_manual_review);
+
             $is_delivered = strtolower((string) $row->order_status) === 'delivered'
                 || in_array(strtolower((string) $row->status_name), ['delivered', 'received'], true);
 
