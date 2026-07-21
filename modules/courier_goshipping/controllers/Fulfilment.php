@@ -321,7 +321,7 @@ class Fulfilment extends AdminController
 
         if ($route_tag === '' || !$branch_id) {
             set_alert('danger', 'Please enter a route tag and select a branch.');
-            redirect(admin_url('courier_goshipping/fulfilment/settings#tab_route_map'));
+            redirect(admin_url('courier_goshipping/fulfilment/settings#route_map'));
             return;
         }
 
@@ -345,7 +345,7 @@ class Fulfilment extends AdminController
         }
 
         set_alert('success', 'Route mapping saved.');
-        redirect(admin_url('courier_goshipping/fulfilment/settings#tab_route_map'));
+        redirect(admin_url('courier_goshipping/fulfilment/settings#route_map'));
     }
 
     public function delete_route_branch_map($id)
@@ -356,7 +356,7 @@ class Fulfilment extends AdminController
 
         $this->db->where('id', (int) $id)->delete(db_prefix() . 'courier_route_branch_map');
         set_alert('success', 'Route mapping removed.');
-        redirect(admin_url('courier_goshipping/fulfilment/settings#tab_route_map'));
+        redirect(admin_url('courier_goshipping/fulfilment/settings#route_map'));
     }
 
     public function save_settings()
