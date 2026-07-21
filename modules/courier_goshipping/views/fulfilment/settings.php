@@ -8,6 +8,7 @@
                     <li role="presentation"><a href="#webhooks" aria-controls="webhooks" role="tab" data-toggle="tab">Webhooks</a></li>
                     <li role="presentation"><a href="#product_mappings" aria-controls="product_mappings" role="tab" data-toggle="tab">Product Mappings</a></li>
                     <li role="presentation"><a href="#locations_branches" aria-controls="locations_branches" role="tab" data-toggle="tab">Locations &amp; Branches</a></li>
+                    <li role="presentation"><a href="#route_map" aria-controls="route_map" role="tab" data-toggle="tab">Route Mapping</a></li>
                     <li role="presentation"><a href="#advanced_settings" aria-controls="advanced_settings" role="tab" data-toggle="tab">Advanced Settings</a></li>
                 </ul>
             </div>
