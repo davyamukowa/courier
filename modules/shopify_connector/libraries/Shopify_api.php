@@ -192,6 +192,11 @@ class Shopify_api
         return $this->request('GET', 'orders/count.json', $params);
     }
 
+    public function get_order_metafields($order_id)
+    {
+        return $this->request('GET', "orders/{$order_id}/metafields.json");
+    }
+
     // -------------------------------------------------------------
     // PUBLIC METHODS — FULFILLMENTS
     // -------------------------------------------------------------
