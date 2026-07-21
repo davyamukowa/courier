@@ -435,6 +435,7 @@ class Shopify_connector_model extends App_Model
         $store = $this->get_store();
         $api = $this->get_shopify_api_for_store($store);
         if (!$api) {
+            $this->log_fulfillment_push($order->id, 'event_push_failed_no_store_credentials', $order->tracking_number, null, false);
             return false;
         }
 
