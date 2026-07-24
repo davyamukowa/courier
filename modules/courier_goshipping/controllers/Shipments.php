@@ -2465,6 +2465,26 @@ class Shipments extends AdminController
             if ($assigned_staff_id > 0) {
                 $this->db->where('id', (int)$id)->update(db_prefix() . '_shipments', ['staff_id' => $assigned_staff_id]);
                 log_activity('Shipment Assigned [ID: ' . $id . ', Staff ID: ' . $assigned_staff_id . ']');
+
+                // Record it on the shipment's own timeline too, not just the
+                // global activity log — same changed_by_staff_id/label
+                // convention as update_status(), so "David assigned the
+                // agent" shows up right alongside "David updated the status".
+                if ($this->db->field_exists('changed_by_label', db_prefix() . '_shipment_status_history')) {
+                    $current_status_id = (int) $this->db->select('status_id')->where('id', (int) $id)->get(db_prefix() . '_shipments')->row()->status_id;
+                    $acting_staff_id = get_staff_user_id();
+                    $acting_staff = $this->db->select('firstname, lastname')->where('staffid', $acting_staff_id)->get(db_prefix() . 'staff')->row();
+                    $assigned_staff = $this->db->select('firstname, lastname')->where('staffid', $assigned_staff_id)->get(db_prefix() . 'staff')->row();
+                    $this->db->insert(db_prefix() . '_shipment_status_history', [
+                        'shipment_id'         => (int) $id,
+                        'status_id'           => $current_status_id,
+                        'notes'               => 'Assigned to ' . ($assigned_staff ? trim($assigned_staff->firstname . ' ' . $assigned_staff->lastname) : 'staff #' . $assigned_staff_id),
+                        'changed_at'          => date('Y-m-d H:i:s'),
+                        'changed_by_staff_id' => $acting_staff_id,
+                        'changed_by_label'    => $acting_staff ? trim($acting_staff->firstname . ' ' . $acting_staff->lastname) : null,
+                    ]);
+                }
+
                 set_alert('success', 'Shipment assigned successfully.');
             } else {
                 set_alert('danger', 'Invalid agent/staff selected.');
