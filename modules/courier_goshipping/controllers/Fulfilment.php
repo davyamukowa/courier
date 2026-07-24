@@ -2166,11 +2166,15 @@ class Fulfilment extends AdminController
             $row->classification_badge_class = $classification_badges[$row->salibay_classification] ?? 'default';
             $row->needs_manual_review = !empty($row->needs_manual_review);
 
-            // Sender column: for a route-tagged order (e.g. "GSC-CN-SZX"),
-            // show that route code — it identifies which international
-            // sourcing office is fulfilling this, which is more useful here
-            // than the generic branch/warehouse name.
-            $row->sender_column_display = !empty($row->salibay_route_tag) ? $row->salibay_route_tag : $row->sender_display;
+            // Sender column: show both the route code AND the branch it
+            // actually resolved to (the shipment's real sender name) —
+            // showing only the route code hid which physical branch entity
+            // the order landed under, which is exactly what caused staff to
+            // assign themselves to the wrong same-country branch (e.g. "UAE
+            // Branch" instead of "Dubai Branch") when both exist separately.
+            $row->sender_column_display = !empty($row->salibay_route_tag)
+                ? $row->salibay_route_tag . ' — ' . $row->sender_display
+                : $row->sender_display;
 
             $is_delivered = strtolower((string) $row->order_status) === 'delivered'
                 || in_array(strtolower((string) $row->status_name), ['delivered', 'received'], true);
