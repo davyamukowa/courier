@@ -64,6 +64,21 @@ class Shopify_connector extends AdminController
                 `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=" . $this->db->char_set . ";");
         }
+
+        // The webhook idempotency check used to key on (shopify_order_id,
+        // topic) alone — which discards every orders/updated webhook after
+        // the first one ever processed for an order, since Shopify fires a
+        // fresh one on every single change to that order (tags added,
+        // fields edited, etc.), all sharing the same order_id+topic. That
+        // silently ate the exact webhook carrying a late-arriving "Salibay
+        // Global"/route tag. Dedup needs Shopify's actual unique per-delivery
+        // ID instead (X-Shopify-Webhook-Id).
+        if (
+            $this->db->table_exists(db_prefix() . 'shopify_webhook_events')
+            && !$this->db->field_exists('webhook_event_id', db_prefix() . 'shopify_webhook_events')
+        ) {
+            $this->db->query('ALTER TABLE `' . db_prefix() . 'shopify_webhook_events` ADD COLUMN `webhook_event_id` VARCHAR(100) NULL DEFAULT NULL, ADD INDEX `webhook_event_id` (`webhook_event_id`)');
+        }
     }
 
     public function index()
