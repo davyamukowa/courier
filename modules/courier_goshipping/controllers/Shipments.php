@@ -2440,6 +2440,19 @@ class Shipments extends AdminController
             if ($assigned_staff_id > 0) {
                 $this->db->where('id', (int)$id)->update(db_prefix() . '_shipments', ['staff_id' => $assigned_staff_id]);
                 log_activity('Shipment Assigned [ID: ' . $id . ', Staff ID: ' . $assigned_staff_id . ']');
+
+                // Push the waybill to Shopify as soon as a rider is assigned
+                // — by this point Go Shipping has the product in hand, so the
+                // customer's tracking number/link should already be live by
+                // the time the rider starts the trip. Must never block the
+                // assignment itself.
+                try {
+                    $this->load->model('shopify_connector/shopify_connector_model');
+                    $this->shopify_connector_model->create_shopify_fulfillment((int) $id);
+                } catch (\Throwable $e) {
+                    log_message('error', 'Shopify fulfillment push crashed: ' . $e->getMessage());
+                }
+
                 set_alert('success', 'Shipment assigned successfully.');
             } else {
                 set_alert('danger', 'Invalid agent/staff selected.');
