@@ -56,7 +56,8 @@ class Courier extends AdminController
 
         // Portal (customer) requests awaiting confirmation (invoice_id = 0 means not yet confirmed)
         $this->db->where('is_portal_request', 1)->where('invoice_id', 0);
-        if (!$can_all) { $this->db->where('staff_id', $staff_id); }
+        if (!$can_all) { $this->db->where('(staff_id = ' . (int) $staff_id . ' OR staff_id = 0)', null, false); }
+        if ($branch_ids !== null) { $this->db->where_in('branch_id', !empty($branch_ids) ? $branch_ids : [0]); }
         $data['portal_requests'] = (int)$this->db->get(db_prefix() . '_shipments')->num_rows();
 
         // Courier companies
