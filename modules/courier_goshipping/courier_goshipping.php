@@ -1215,6 +1215,31 @@ class Courier_Logistic_System {
     }
 
     /**
+     * v31: record WHO made each status change — tbl_shipment_status_history
+     * previously only stored shipment_id/status_id/changed_at, with no actor,
+     * so a shipment's page had no way to show "David updated the status" or
+     * "John assigned the agent". changed_by_staff_id links to tblstaff when
+     * the actor is a real logged-in staff member; changed_by_label covers
+     * actors that aren't (a rider in the token-based delivery app), so the
+     * timeline always has a readable name either way.
+     */
+    public function run_db_upgrades_v31() {
+        if (get_option('courier_schema_v31_done')) return;
+        $CI = &get_instance();
+
+        if ($CI->db->table_exists(db_prefix() . '_shipment_status_history')) {
+            if (!$CI->db->field_exists('changed_by_staff_id', db_prefix() . '_shipment_status_history')) {
+                $CI->db->query('ALTER TABLE `' . db_prefix() . '_shipment_status_history` ADD COLUMN `changed_by_staff_id` INT NULL DEFAULT NULL');
+            }
+            if (!$CI->db->field_exists('changed_by_label', db_prefix() . '_shipment_status_history')) {
+                $CI->db->query('ALTER TABLE `' . db_prefix() . '_shipment_status_history` ADD COLUMN `changed_by_label` VARCHAR(150) NULL DEFAULT NULL');
+            }
+        }
+
+        update_option('courier_schema_v31_done', '1');
+    }
+
+    /**
      * v19: add kra_pin to shipment senders and companies tables.
      */
     public function run_db_upgrades_v19() {
