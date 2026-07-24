@@ -415,23 +415,15 @@ class Shopify_connector_model extends App_Model
      * Pushes a tracking milestone or cancellation onto the Shopify order's
      * fulfillment.
      *
-     * The normal path is for the fulfillment to already exist by the time
-     * this runs: Shipments::assign_agent() calls create_shopify_fulfillment()
-     * the moment a rider is assigned, on the theory that Go Shipping only
-     * assigns a rider once it physically has the product — so the waybill
-     * is already live on Shopify well before the rider taps "Start Delivery".
-     * The block below is just a safety net for shipments that somehow reach
-     * "delivered" without ever going through that assignment step: it
-     * self-heals by creating the fulfillment on demand rather than losing
-     * the tracking push entirely. Earlier milestones (in_transit /
-     * out_for_delivery) are skipped if no fulfillment exists yet — there's
-     * nothing in Shopify to attach the event to before that.
-     *
-     * (A "mark fulfillment order as in progress" push was tried too, via
-     * fulfillmentOrderReportProgress, but Shopify rejects it: "Field
-     * 'fulfillmentOrderReportProgress' doesn't exist on type 'Mutation'" —
-     * it only exists in Shopify's unstable/preview API, not any released
-     * stable version, so it isn't usable here.)
+     * Per Salibay's own ops semantics (confirmed by their team): "Fulfilled"
+     * means the goods have left the warehouse and are on the way — i.e. our
+     * status_id 5/6 (in_transit). So the Shopify fulfillment is created
+     * on-demand here the first time status reaches in_transit (not earlier,
+     * at rider assignment — Salibay isn't watching a finer-grained "assigned
+     * but not moving" state, so there's no point creating it sooner). Once
+     * created, the "delivered" event later marks it Delivered too. Anything
+     * before in_transit (Created/Picked up/Received/Dispatched) is simply
+     * skipped — nothing in Shopify to attach an event to yet.
      */
     public function push_shopify_fulfillment_status($shipment_id, $status_id)
     {
@@ -443,11 +435,13 @@ class Shopify_connector_model extends App_Model
         }
 
         if (empty($order->shopify_fulfillment_id)) {
-            if ((int) $status_id !== 8) {
-                // Nothing was ever fulfilled — nothing to cancel, and no
-                // fulfillment worth creating yet for an in-transit milestone
-                // (this shipment was never assigned a rider through the
-                // normal flow, so there's no waybill Shopify would show yet).
+            if ((int) $status_id === 9) {
+                // Nothing was ever fulfilled — there's nothing to cancel.
+                return false;
+            }
+            if (!in_array((int) $status_id, [5, 6, 7, 8], true)) {
+                // Created / Picked up / Received / Dispatched — too early;
+                // no fulfillment worth creating yet.
                 return false;
             }
             $this->create_shopify_fulfillment($shipment_id);
