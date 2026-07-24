@@ -2197,6 +2197,31 @@ class Shipments extends AdminController
         $data['current_date'] = date('F j, Y');
         $data['fleet_report'] = $this->get_shipment_fleet_report((int) $id);
 
+        // Who did what, when — assign_agent()/update_status() (and the rider
+        // app) stamp changed_by_staff_id/changed_by_label on every history
+        // row, so staff can tell "David updated the status" apart from
+        // "John assigned the agent" instead of an anonymous timeline.
+        $data['status_history'] = [];
+        if ($this->db->field_exists('changed_by_label', db_prefix() . '_shipment_status_history')) {
+            $data['status_history'] = $this->db->select(
+                    'h.status_id, h.changed_at, h.notes, h.changed_by_label, ' .
+                    'st.firstname AS staff_firstname, st.lastname AS staff_lastname, ' .
+                    (
+                        $this->db->field_exists('status_description', db_prefix() . '_shipment_statuses')
+                            ? 'ss.status_description'
+                            : 'ss.description'
+                    ) . ' AS status_description, ss.status_name'
+                )
+                ->from(db_prefix() . '_shipment_status_history h')
+                ->join(db_prefix() . '_shipment_statuses ss', 'ss.id = h.status_id', 'left')
+                ->join(db_prefix() . 'staff st', 'st.staffid = h.changed_by_staff_id', 'left')
+                ->where('h.shipment_id', (int) $id)
+                ->order_by('h.changed_at', 'desc')
+                ->order_by('h.id', 'desc')
+                ->get()
+                ->result();
+        }
+
         // Load active staff members and agents for the assignment dropdown
         $data['staff_members'] = $this->db->select('s.staffid, s.firstname, s.lastname, a.id as agent_id')
             ->from(db_prefix() . 'staff s')
