@@ -401,9 +401,21 @@ class Shopify_connector_model extends App_Model
 
             if ($result['success'] && !empty($result['data']['fulfillment']['id'])) {
                 $any_success = true;
+                $fulfillment_id = $result['data']['fulfillment']['id'];
                 $this->db->where('id', $order->id)->update(db_prefix() . 'shopify_orders', [
-                    'shopify_fulfillment_id' => $result['data']['fulfillment']['id'],
+                    'shopify_fulfillment_id' => $fulfillment_id,
                 ]);
+
+                // A fresh fulfillment created here (at rider assignment) is
+                // "Fulfilled" in Shopify's badge, but the goods haven't moved
+                // yet — tag it "ready_for_pickup" immediately so anyone
+                // watching the order (e.g. Salibay's ops team) can tell
+                // "assigned, still at the warehouse" apart from "actually in
+                // transit", instead of just seeing a bare "Fulfilled" with no
+                // further detail. Best-effort: never blocks fulfillment
+                // creation itself if this particular push fails.
+                $event_result = $api->create_fulfillment_event($fulfillment_id, 'ready_for_pickup');
+                $this->log_fulfillment_push($order->id, 'ready_for_pickup', $tracking_number, $event_result, $event_result['success']);
             }
         }
 
