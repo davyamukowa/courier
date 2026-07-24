@@ -292,6 +292,44 @@ GRAPHQL;
         return $this->request('POST', "fulfillments/{$fulfillment_id}/cancel.json");
     }
 
+    /**
+     * Moves an OPEN fulfillment order to Shopify's "In progress" state —
+     * the same state the "Mark as in progress" button in the order admin
+     * sets manually — without creating an actual Fulfillment (so the order
+     * stays "Unfulfilled" rather than jumping straight to "Fulfilled").
+     * Requires the write_merchant_managed_fulfillment_orders scope; if the
+     * store's access token doesn't have it, this fails gracefully via
+     * userErrors and callers just log it and move on.
+     */
+    public function report_fulfillment_order_progress($fulfillment_order_id)
+    {
+        $query = <<<'GRAPHQL'
+mutation FulfillmentOrderReportProgress($id: ID!) {
+  fulfillmentOrderReportProgress(id: $id) {
+    fulfillmentOrder { id status }
+    userErrors { field message }
+  }
+}
+GRAPHQL;
+
+        $variables = ['id' => 'gid://shopify/FulfillmentOrder/' . $fulfillment_order_id];
+
+        $result = $this->request('POST', 'graphql.json', ['query' => $query, 'variables' => $variables]);
+
+        $user_errors = $result['data']['data']['fulfillmentOrderReportProgress']['userErrors'] ?? null;
+        $updated     = $result['data']['data']['fulfillmentOrderReportProgress']['fulfillmentOrder'] ?? null;
+
+        if ($result['success'] && !empty($user_errors)) {
+            $result['success'] = false;
+            $result['error'] = json_encode($user_errors);
+        } elseif ($result['success'] && empty($updated)) {
+            $result['success'] = false;
+            $result['error'] = $result['error'] ?: 'fulfillmentOrderReportProgress returned no fulfillment order and no userErrors';
+        }
+
+        return $result;
+    }
+
     // -------------------------------------------------------------
     // PUBLIC METHODS — PRODUCTS
     // -------------------------------------------------------------
