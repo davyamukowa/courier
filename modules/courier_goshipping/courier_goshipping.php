@@ -1011,6 +1011,123 @@ class Courier_Logistic_System {
     }
 
     /**
+     * v29: switch international branch codes onto the same {PREFIX}/B/{YEAR}/{SEQ}
+     * pattern Branches::generate_branch_code() uses for branches created via the
+     * admin UI, add capital-city values, and expand the single "Europe" catch-all
+     * from v28 into one branch per European country (UK stays separate — it
+     * already has its own branch). Dubai keeps "Dubai" as its city since the
+     * branch is explicitly named after the city, not the UAE capital.
+     */
+    public function run_db_upgrades_v29() {
+        if (get_option('courier_schema_v29_done')) return;
+        $CI = &get_instance();
+
+        if (!$CI->db->table_exists(db_prefix() . '_courier_branches')) {
+            return;
+        }
+
+        $year = '2026';
+        $seq = 0;
+        $make_code = function ($name) use (&$seq, $year) {
+            $seq++;
+            $prefix = strtoupper(trim((string) preg_replace('/\s+/', '-', preg_replace('/[^A-Za-z0-9]+/', ' ', $name))));
+            return $prefix . '/B/' . $year . '/' . str_pad((string) $seq, 2, '0', STR_PAD_LEFT);
+        };
+
+        // name => [country short_name or null, city]
+        $entries = [
+            'Dubai Branch'      => ['United Arab Emirates', 'Dubai'],
+            'China Branch'      => ['China', 'Beijing'],
+            'Hong Kong Branch'  => ['Hong Kong', 'Hong Kong'],
+            'Thailand Branch'   => ['Thailand', 'Bangkok'],
+            'UK Branch'         => ['United Kingdom', 'London'],
+            'UAE Branch'        => ['United Arab Emirates', 'Abu Dhabi'],
+
+            'Albania Branch'                => ['Albania', 'Tirana'],
+            'Andorra Branch'                => ['Andorra', 'Andorra la Vella'],
+            'Austria Branch'                => ['Austria', 'Vienna'],
+            'Belarus Branch'                => ['Belarus', 'Minsk'],
+            'Belgium Branch'                => ['Belgium', 'Brussels'],
+            'Bosnia and Herzegovina Branch' => ['Bosnia and Herzegovina', 'Sarajevo'],
+            'Bulgaria Branch'               => ['Bulgaria', 'Sofia'],
+            'Croatia Branch'                => ['Croatia', 'Zagreb'],
+            'Cyprus Branch'                 => ['Cyprus', 'Nicosia'],
+            'Czech Republic Branch'         => ['Czech Republic', 'Prague'],
+            'Denmark Branch'                => ['Denmark', 'Copenhagen'],
+            'Estonia Branch'                => ['Estonia', 'Tallinn'],
+            'Finland Branch'                => ['Finland', 'Helsinki'],
+            'France Branch'                 => ['France', 'Paris'],
+            'Germany Branch'                => ['Germany', 'Berlin'],
+            'Greece Branch'                 => ['Greece', 'Athens'],
+            'Hungary Branch'                => ['Hungary', 'Budapest'],
+            'Iceland Branch'                => ['Iceland', 'Reykjavik'],
+            'Ireland Branch'                => ['Ireland', 'Dublin'],
+            'Italy Branch'                  => ['Italy', 'Rome'],
+            'Kosovo Branch'                 => ['Kosovo', 'Pristina'],
+            'Latvia Branch'                 => ['Latvia', 'Riga'],
+            'Liechtenstein Branch'          => ['Liechtenstein', 'Vaduz'],
+            'Lithuania Branch'              => ['Lithuania', 'Vilnius'],
+            'Luxembourg Branch'             => ['Luxembourg', 'Luxembourg City'],
+            'Malta Branch'                  => ['Malta', 'Valletta'],
+            'Moldova Branch'                => ['Moldava', 'Chisinau'],
+            'Monaco Branch'                 => ['Monaco', 'Monaco'],
+            'Montenegro Branch'             => ['Montenegro', 'Podgorica'],
+            'Netherlands Branch'            => ['Netherlands', 'Amsterdam'],
+            'North Macedonia Branch'        => ['North Macedonia', 'Skopje'],
+            'Norway Branch'                 => ['Norway', 'Oslo'],
+            'Poland Branch'                 => ['Poland', 'Warsaw'],
+            'Portugal Branch'               => ['Portugal', 'Lisbon'],
+            'Romania Branch'                => ['Romania', 'Bucharest'],
+            'Russia Branch'                 => ['Russia', 'Moscow'],
+            'San Marino Branch'             => ['San Marino', 'San Marino'],
+            'Serbia Branch'                 => ['Serbia', 'Belgrade'],
+            'Slovakia Branch'               => ['Slovakia', 'Bratislava'],
+            'Slovenia Branch'               => ['Slovenia', 'Ljubljana'],
+            'Spain Branch'                  => ['Spain', 'Madrid'],
+            'Sweden Branch'                 => ['Sweden', 'Stockholm'],
+            'Switzerland Branch'            => ['Switzerland', 'Bern'],
+            'Ukraine Branch'                => ['Ukraine', 'Kyiv'],
+            'Vatican City Branch'           => ['Vatican City', 'Vatican City'],
+        ];
+
+        // The v28 catch-all is superseded by individual country branches.
+        $CI->db->where('name', 'Europe Branch')->delete(db_prefix() . '_courier_branches');
+
+        $country_ids = [];
+        foreach ($CI->db->get(db_prefix() . 'countries')->result() as $row) {
+            $country_ids[$row->short_name] = (int) $row->country_id;
+        }
+
+        foreach ($entries as $name => $info) {
+            [$country_name, $city] = $info;
+            $country_id = $country_ids[$country_name] ?? null;
+            $code = $make_code($name);
+
+            $existing = $CI->db->where('name', $name)->get(db_prefix() . '_courier_branches')->row();
+            if ($existing) {
+                $CI->db->where('id', $existing->id)->update(db_prefix() . '_courier_branches', [
+                    'code'       => $code,
+                    'city'       => $city,
+                    'country_id' => $country_id,
+                ]);
+                continue;
+            }
+
+            $CI->db->insert(db_prefix() . '_courier_branches', [
+                'name'        => $name,
+                'code'        => $code,
+                'branch_type' => 'international',
+                'country_id'  => $country_id,
+                'city'        => $city,
+                'is_active'   => 1,
+                'is_default'  => 0,
+            ]);
+        }
+
+        update_option('courier_schema_v29_done', '1');
+    }
+
+    /**
      * v19: add kra_pin to shipment senders and companies tables.
      */
     public function run_db_upgrades_v19() {
