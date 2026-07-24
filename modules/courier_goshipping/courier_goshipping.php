@@ -791,7 +791,7 @@ class Courier_Logistic_System {
             $CI->db->query('CREATE TABLE `' . db_prefix() . '_courier_branches` (
                 `id`          INT NOT NULL AUTO_INCREMENT,
                 `name`        VARCHAR(150) NOT NULL,
-                `code`        VARCHAR(30)  NOT NULL,
+                `code`        VARCHAR(80)  NOT NULL,
                 `branch_type` ENUM(\'local\',\'international\') NOT NULL DEFAULT \'local\',
                 `country_id`  INT NULL DEFAULT NULL,
                 `city`        VARCHAR(100) NULL DEFAULT NULL,
