@@ -2322,7 +2322,10 @@ class Fulfilment extends AdminController
             'waybill_number' => $tracking_number,
             'company_type' => 'company',
             'status_id' => $status_row ? $status_row->id : 1,
-            'staff_id' => $this->get_default_staff_id(),
+            // Unassigned (0), not get_default_staff_id() — see the matching
+            // comment in Shopify_connector::create_courier_shipment(). Stays
+            // visible to any branch-scoped staff until someone assigns it.
+            'staff_id' => 0,
             'packaging_charges' => 0.00,
             'branch_id' => $branch_id,
             'created_at' => date('Y-m-d H:i:s'),
