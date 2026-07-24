@@ -1450,10 +1450,10 @@ class Courier_Logistic_System {
         <script>
         (function() {
             function injectCourierBranchField() {
-                if (document.getElementById('courier-branch-field-wrap')) return;
+                if (document.getElementById('courier-branch-field-wrap')) return true;
 
                 var pwLabel = document.querySelector('label[for="password"]');
-                if (!pwLabel) return;
+                if (!pwLabel) return false;
 
                 var anchor = pwLabel;
                 var prev = pwLabel.previousElementSibling;
@@ -1474,12 +1474,35 @@ class Courier_Logistic_System {
                     '</div>';
 
                 anchor.parentNode.insertBefore(wrap, anchor);
+                return true;
             }
 
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', injectCourierBranchField);
-            } else {
-                injectCourierBranchField();
+            // The staff EDIT page (unlike Add New) loads its Profile tab
+            // fields — including the password field this anchors next to —
+            // via AJAX after the initial page render, so a single check at
+            // DOMContentLoaded runs too early and finds nothing to anchor
+            // to, silently never injecting the branch checklist at all.
+            // Keep retrying (via MutationObserver, backed by a polling
+            // fallback) until the field actually shows up, then stop.
+            if (injectCourierBranchField()) return;
+
+            var attempts = 0;
+            var maxAttempts = 100; // ~20s at 200ms, generous for slow AJAX tab loads
+            var poll = setInterval(function () {
+                attempts++;
+                if (injectCourierBranchField() || attempts >= maxAttempts) {
+                    clearInterval(poll);
+                }
+            }, 200);
+
+            if (window.MutationObserver) {
+                var observer = new MutationObserver(function () {
+                    if (injectCourierBranchField()) {
+                        observer.disconnect();
+                        clearInterval(poll);
+                    }
+                });
+                observer.observe(document.body, { childList: true, subtree: true });
             }
         })();
         </script>
