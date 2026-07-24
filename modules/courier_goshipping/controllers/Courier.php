@@ -77,12 +77,14 @@ class Courier extends AdminController
 
         // Today's and this month's totals
         $this->db->where('DATE(created_at)', date('Y-m-d'));
-        if (!$can_all) { $this->db->where('staff_id', $staff_id); }
+        if (!$can_all) { $this->db->where('(staff_id = ' . (int) $staff_id . ' OR staff_id = 0)', null, false); }
+        if ($branch_ids !== null) { $this->db->where_in('branch_id', !empty($branch_ids) ? $branch_ids : [0]); }
         $data['today_count'] = (int)$this->db->count_all_results(db_prefix() . '_shipments');
 
         $this->db->where('YEAR(created_at)', date('Y'));
         $this->db->where('MONTH(created_at)', date('n'));
-        if (!$can_all) { $this->db->where('staff_id', $staff_id); }
+        if (!$can_all) { $this->db->where('(staff_id = ' . (int) $staff_id . ' OR staff_id = 0)', null, false); }
+        if ($branch_ids !== null) { $this->db->where_in('branch_id', !empty($branch_ids) ? $branch_ids : [0]); }
         $data['month_count'] = (int)$this->db->count_all_results(db_prefix() . '_shipments');
 
         // Recent 8 shipments with sender/recipient names and status
@@ -95,7 +97,8 @@ class Courier extends AdminController
             ->join(db_prefix() . '_shipment_senders sn',    'sh.sender_id    = sn.id', 'left')
             ->join(db_prefix() . '_shipment_recipients rp', 'sh.recipient_id = rp.id', 'left')
             ->join(db_prefix() . '_shipment_statuses ss',   'sh.status_id    = ss.id', 'left');
-        if (!$can_all) { $recent_q->where('sh.staff_id', $staff_id); }
+        if (!$can_all) { $recent_q->where('(sh.staff_id = ' . (int) $staff_id . ' OR sh.staff_id = 0)', null, false); }
+        if ($branch_ids !== null) { $recent_q->where_in('sh.branch_id', !empty($branch_ids) ? $branch_ids : [0]); }
         $data['recent_shipments'] = $recent_q->order_by('sh.id', 'DESC')->limit(8)->get()->result();
 
         // Status badge classes (keyed by status_name slug)
