@@ -404,10 +404,12 @@ class Rider_api extends App_Controller
             'cancel_reason' => $reason,
         ]);
         $this->db->insert(db_prefix() . '_shipment_status_history', [
-            'shipment_id' => $shipment->id,
-            'status_id'   => $cancelled_status_id,
-            'notes'       => $reason,
-            'changed_at'  => date('Y-m-d H:i:s'),
+            'shipment_id'         => $shipment->id,
+            'status_id'           => $cancelled_status_id,
+            'notes'               => $reason,
+            'changed_at'          => date('Y-m-d H:i:s'),
+            'changed_by_staff_id' => $this->rider->staff_id ?? null,
+            'changed_by_label'    => trim(($this->rider->name ?? 'Rider') . ' (Rider)'),
         ]);
         $this->mirror_salibay_order_status($shipment->id, 'cancelled');
         $this->push_shopify_status($shipment->id, $cancelled_status_id);
