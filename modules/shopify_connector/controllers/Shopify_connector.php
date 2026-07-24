@@ -938,10 +938,20 @@ class Shopify_connector extends AdminController
                             ], $store->id);
                         }
                     }
-                } elseif ($route_changed) {
-                    $this->reroute_shipment_to_branch($order);
                 }
             }
+        }
+
+        // Re-check branch routing on every update, not just when the route
+        // tag text itself changed — a shipment can be resolved wrong the
+        // very first time (e.g. the SKU-based fallback ran before the route
+        // mapping existed yet) and then never get corrected, since its
+        // stored route tag never actually changes afterward. This is a
+        // cheap no-op when the branch is already correct (reroute_shipment_
+        // to_branch() bails immediately if resolution agrees with what's
+        // already set), so it's safe to run unconditionally here.
+        if (!empty($order->gs_shipment_id)) {
+            $this->reroute_shipment_to_branch($order);
         }
 
         log_activity("Shopify Webhook: received orders/updated for order {$shopify_order_id}");
