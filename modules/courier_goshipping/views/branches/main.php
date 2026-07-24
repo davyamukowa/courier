@@ -316,6 +316,31 @@ document.getElementById('branch_name').addEventListener('input', function() {
     }
 });
 
+function saveStaffBranchAssignment(staffId, btnEl) {
+    var wrap = document.querySelector('.staff-branch-checklist[data-staff-id="' + staffId + '"]');
+    var checked = Array.prototype.slice.call(wrap.querySelectorAll('.sbc-branch:checked')).map(function (el) { return el.value; });
+
+    var $btn = $(btnEl);
+    var originalText = $btn.html();
+    $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i>');
+
+    $.post('<?php echo admin_url('courier_goshipping/branches/save_staff_branch_assignment'); ?>', {
+        staff_id: staffId,
+        'branch_ids[]': checked,
+        default_branch_id: checked[0] || '',
+        <?php echo $this->security->get_csrf_token_name(); ?>: '<?php echo $this->security->get_csrf_hash(); ?>'
+    }, function (res) {
+        alert_float(res.success ? 'success' : 'danger', res.message || (res.success ? 'Saved.' : 'Save failed.'));
+        $btn.prop('disabled', false).html(originalText);
+        if (res.success) {
+            window.location.reload();
+        }
+    }, 'json').fail(function () {
+        alert_float('danger', 'Unable to contact the server. Please refresh and try again.');
+        $btn.prop('disabled', false).html(originalText);
+    });
+}
+
 document.getElementById('branchForm').addEventListener('submit', function(e) {
     e.preventDefault();
 
