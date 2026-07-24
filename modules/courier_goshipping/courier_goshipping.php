@@ -1091,6 +1091,11 @@ class Courier_Logistic_System {
             'Vatican City Branch'           => ['Vatican City', 'Vatican City'],
         ];
 
+        // Widen code: the original CREATE TABLE used VARCHAR(30), too short for
+        // codes like "BOSNIA-AND-HERZEGOVINA-BRANCH/B/2026/12" (would silently
+        // truncate rather than error, since strict mode isn't guaranteed).
+        $CI->db->query('ALTER TABLE `' . db_prefix() . '_courier_branches` MODIFY COLUMN `code` VARCHAR(80) NOT NULL');
+
         // The v28 catch-all is superseded by individual country branches.
         $CI->db->where('name', 'Europe Branch')->delete(db_prefix() . '_courier_branches');
 
@@ -1104,7 +1109,10 @@ class Courier_Logistic_System {
             $country_id = $country_ids[$country_name] ?? null;
             $code = $make_code($name);
 
-            $existing = $CI->db->where('name', $name)->get(db_prefix() . '_courier_branches')->row();
+            // Trim: the pre-existing "Dubai Branch" row was seeded with a
+            // trailing space in its name, which would otherwise dodge this
+            // exact-match lookup and create a duplicate.
+            $existing = $CI->db->where('TRIM(name)', $name)->get(db_prefix() . '_courier_branches')->row();
             if ($existing) {
                 $CI->db->where('id', $existing->id)->update(db_prefix() . '_courier_branches', [
                     'code'       => $code,
