@@ -335,11 +335,12 @@ class Shopify_connector_model extends App_Model
     }
 
     /**
-     * Creates the Shopify fulfillment for an order the first time our
-     * shipment has a tracking number — this is what flips the order from
-     * "Unfulfilled" to "Fulfilled" in Shopify and shows the tracking link
-     * to the customer. Safe to call more than once: no-ops if a fulfillment
-     * already exists for this order.
+     * Creates the Shopify fulfillment for an order — this is what flips the
+     * order from "Unfulfilled" to "Fulfilled" in Shopify and shows the
+     * tracking link to the customer. Called on-demand by
+     * push_shopify_fulfillment_status() once the shipment is actually
+     * delivered, not earlier. Safe to call more than once: no-ops if a
+     * fulfillment already exists for this order.
      */
     public function create_shopify_fulfillment($shipment_id)
     {
