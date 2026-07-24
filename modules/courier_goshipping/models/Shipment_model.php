@@ -683,7 +683,9 @@ class Shipment_model extends App_Model
         }
 
         if (!empty($staff_id)) {
-            $this->db->where('s.staff_id', $staff_id);
+            // Same "unassigned shows to everyone in the branch" rule as
+            // get_shipments_details() — see the comment there.
+            $this->db->where('(s.staff_id = ' . (int) $staff_id . ' OR s.staff_id = 0)', null, false);
         }
 
 
