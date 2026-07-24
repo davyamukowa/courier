@@ -434,6 +434,12 @@ class Shopify_connector_model extends App_Model
             if ((int) $status_id !== 8) {
                 // Nothing was ever fulfilled — nothing to cancel, and no
                 // fulfillment worth creating yet for an in-transit milestone.
+                // Best-effort nudge Shopify's fulfillment order to "In
+                // progress" instead, so staff see more than a bare
+                // "Unfulfilled" badge while the rider is en route.
+                if (in_array((int) $status_id, [5, 6], true)) {
+                    $this->mark_fulfillment_order_in_progress($shipment_id, $order);
+                }
                 return false;
             }
             $this->create_shopify_fulfillment($shipment_id);
