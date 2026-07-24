@@ -237,14 +237,49 @@ class Shopify_api
      * Pushes a tracking/status milestone (e.g. 'in_transit',
      * 'out_for_delivery', 'delivered') onto an existing fulfillment, so the
      * customer-facing order status page updates without re-fulfilling.
+     *
+     * Uses the GraphQL fulfillmentEventCreate mutation rather than the
+     * legacy REST `fulfillments/{id}/events.json` endpoint: that REST
+     * endpoint 406s with an empty body for fulfillments created through the
+     * fulfillment-orders-based flow (create_fulfillment_v2 / fulfillments.json,
+     * which is what create_shopify_fulfillment() uses) — Shopify only
+     * supports shipment-status tracking events for those via GraphQL.
      */
     public function create_fulfillment_event($fulfillment_id, $status, $message = null)
     {
-        $event = ['status' => $status];
-        if ($message) {
-            $event['message'] = $message;
+        $query = <<<'GRAPHQL'
+mutation FulfillmentEventCreate($fulfillmentEvent: FulfillmentEventInput!) {
+  fulfillmentEventCreate(fulfillmentEvent: $fulfillmentEvent) {
+    fulfillmentEvent { id status }
+    userErrors { field message }
+  }
+}
+GRAPHQL;
+
+        $variables = [
+            'fulfillmentEvent' => array_filter([
+                'fulfillmentId' => 'gid://shopify/Fulfillment/' . $fulfillment_id,
+                'status'        => strtoupper($status),
+                'message'       => $message,
+            ], static function ($value) {
+                return $value !== null && $value !== '';
+            }),
+        ];
+
+        $result = $this->request('POST', 'graphql.json', ['query' => $query, 'variables' => $variables]);
+
+        $user_errors = $result['data']['data']['fulfillmentEventCreate']['userErrors'] ?? null;
+        $created     = $result['data']['data']['fulfillmentEventCreate']['fulfillmentEvent'] ?? null;
+
+        if ($result['success'] && !empty($user_errors)) {
+            $result['success'] = false;
+            $result['error'] = json_encode($user_errors);
+        } elseif ($result['success'] && empty($created)) {
+            $result['success'] = false;
+            $result['error'] = $result['error'] ?: 'fulfillmentEventCreate returned no event and no userErrors';
         }
-        return $this->request('POST', "fulfillments/{$fulfillment_id}/events.json", ['event' => $event]);
+
+        return $result;
     }
 
     /**
