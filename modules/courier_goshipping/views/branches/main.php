@@ -7,7 +7,7 @@
         <div class="row mbot15">
             <div class="col-md-8">
                 <h4 class="no-margin">Branches / Offices</h4>
-                <p class="text-muted mtop5">Local and international Go Shipping offices. Staff are assigned to branches from their profile page, and only see data belonging to their assigned branch(es) unless they hold "View All Branches".</p>
+                <p class="text-muted mtop5">Local and international Go Shipping offices. Open a branch's Edit form to assign staff to it — staff without "View All Branches" only see data belonging to their assigned branch(es).</p>
             </div>
             <div class="col-md-4 text-right">
                 <?php if ($can_manage): ?>
