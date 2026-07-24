@@ -247,6 +247,11 @@ function resetBranchModal() {
     document.getElementById('branch_active_wrap').style.display = 'none';
     document.getElementById('branch_code').value = buildBranchCodePreview('');
     setBranchCityOptions([], '');
+
+    _currentBranchId = null;
+    _currentBranchStaff = [];
+    document.getElementById('branch_staff_section').style.display = 'none';
+    document.getElementById('branch_staff_hint').style.display = 'block';
 }
 
 function openEditBranchModal(branch) {
@@ -264,6 +269,13 @@ function openEditBranchModal(branch) {
     document.getElementById('branch_is_active').checked = !!parseInt(branch.is_active);
     document.getElementById('branch_active_wrap').style.display = 'block';
     loadBranchCities(branch.country_id || '', branch.city || '');
+
+    _currentBranchId = branch.id;
+    _currentBranchStaff = (branch.assigned_staff || []).slice();
+    document.getElementById('branch_staff_section').style.display = 'block';
+    document.getElementById('branch_staff_hint').style.display = 'none';
+    renderBranchStaffUI();
+
     $('#branchModal').modal('show');
 }
 
@@ -277,28 +289,77 @@ document.getElementById('branch_name').addEventListener('input', function() {
     }
 });
 
-function saveStaffBranchAssignment(staffId, btnEl) {
-    var wrap = document.querySelector('.staff-branch-checklist[data-staff-id="' + staffId + '"]');
-    var checked = Array.prototype.slice.call(wrap.querySelectorAll('.sbc-branch:checked')).map(function (el) { return el.value; });
+function renderBranchStaffUI() {
+    var assignedIds = _currentBranchStaff.map(function (s) { return s.staff_id; });
 
-    var $btn = $(btnEl);
-    var originalText = $btn.html();
-    $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i>');
+    // "Add staff" dropdown — only staff not already on this branch.
+    var select = document.getElementById('branch_add_staff_select');
+    var options = '<option value="">-- Select staff to add --</option>';
+    _allStaff.forEach(function (s) {
+        if (assignedIds.indexOf(s.id) === -1) {
+            options += '<option value="' + s.id + '">' + $('<div>').text(s.name).html() + '</option>';
+        }
+    });
+    select.innerHTML = options;
 
-    $.post('<?php echo admin_url('courier_goshipping/branches/save_staff_branch_assignment'); ?>', {
+    // Chips of currently-assigned staff, each removable.
+    var chips = document.getElementById('branch_staff_chips');
+    if (!_currentBranchStaff.length) {
+        chips.innerHTML = '<span class="text-muted">No staff assigned yet.</span>';
+        return;
+    }
+    chips.innerHTML = _currentBranchStaff.map(function (s) {
+        return '<span class="label label-default" style="display:inline-flex; align-items:center; gap:6px; padding:6px 8px; margin:2px 4px 2px 0; font-size:12px;">'
+            + $('<div>').text(s.name).html()
+            + ' <a href="#" onclick="removeBranchStaff(' + s.staff_id + '); return false;" style="color:#c62828;" title="Remove"><i class="fa fa-times"></i></a>'
+            + '</span>';
+    }).join('');
+}
+
+document.getElementById('branch_add_staff_btn').addEventListener('click', function () {
+    var select = document.getElementById('branch_add_staff_select');
+    var staffId = parseInt(select.value);
+    if (!staffId || !_currentBranchId) {
+        return;
+    }
+
+    var $btn = $(this);
+    $btn.prop('disabled', true);
+    $.post('<?php echo admin_url('courier_goshipping/branches/add_staff_to_branch'); ?>', {
+        branch_id: _currentBranchId,
         staff_id: staffId,
-        'branch_ids[]': checked,
-        default_branch_id: checked[0] || '',
         <?php echo $this->security->get_csrf_token_name(); ?>: '<?php echo $this->security->get_csrf_hash(); ?>'
     }, function (res) {
-        alert_float(res.success ? 'success' : 'danger', res.message || (res.success ? 'Saved.' : 'Save failed.'));
-        $btn.prop('disabled', false).html(originalText);
+        $btn.prop('disabled', false);
         if (res.success) {
-            window.location.reload();
+            _currentBranchStaff.push({ staff_id: res.staff_id, name: res.staff_name });
+            renderBranchStaffUI();
+        } else {
+            alert_float('danger', res.message || 'Could not add staff.');
         }
     }, 'json').fail(function () {
-        alert_float('danger', 'Unable to contact the server. Please refresh and try again.');
-        $btn.prop('disabled', false).html(originalText);
+        $btn.prop('disabled', false);
+        alert_float('danger', 'Unable to contact the server. Please try again.');
+    });
+});
+
+function removeBranchStaff(staffId) {
+    if (!_currentBranchId) {
+        return;
+    }
+    $.post('<?php echo admin_url('courier_goshipping/branches/remove_staff_from_branch'); ?>', {
+        branch_id: _currentBranchId,
+        staff_id: staffId,
+        <?php echo $this->security->get_csrf_token_name(); ?>: '<?php echo $this->security->get_csrf_hash(); ?>'
+    }, function (res) {
+        if (res.success) {
+            _currentBranchStaff = _currentBranchStaff.filter(function (s) { return s.staff_id !== staffId; });
+            renderBranchStaffUI();
+        } else {
+            alert_float('danger', res.message || 'Could not remove staff.');
+        }
+    }, 'json').fail(function () {
+        alert_float('danger', 'Unable to contact the server. Please try again.');
     });
 }
 
