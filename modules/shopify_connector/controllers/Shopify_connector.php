@@ -1248,7 +1248,14 @@ class Shopify_connector extends AdminController
             'waybill_number' => $tracking_number,
             'company_type' => 'company',
             'status_id' => $status_id,
-            'staff_id' => $this->get_default_staff_id(),
+            // Deliberately unassigned (0), not get_default_staff_id() — an
+            // auto-created shipment belongs to the fulfilling branch, not to
+            // whichever staff member happens to be configured as the
+            // Shopify default. Shipment_model's staff-restricted queries
+            // treat staff_id = 0 as visible to everyone in the branch;
+            // assign_agent() sets a real staff_id once someone actually
+            // picks it up.
+            'staff_id' => 0,
             'packaging_charges' => 0.00,
             'created_at' => date('Y-m-d H:i:s'),
         ];
