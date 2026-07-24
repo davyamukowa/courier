@@ -408,43 +408,6 @@ class Shopify_connector_model extends App_Model
     }
 
     /**
-     * Best-effort: nudges Shopify's fulfillment order to "In progress" (the
-     * same state Shopify's own "Mark as in progress" button sets) once the
-     * rider starts the trip, without creating an actual Fulfillment — so the
-     * order still reads "Unfulfilled" rather than jumping to "Fulfilled"
-     * before delivery. Never blocks the caller: any failure (including a
-     * missing API scope) is just logged to the fulfillment push log.
-     */
-    private function mark_fulfillment_order_in_progress($shipment_id, $order)
-    {
-        $store = $this->get_store();
-        $api = $this->get_shopify_api_for_store($store);
-        if (!$api) {
-            return false;
-        }
-
-        $fo_result = $api->get_fulfillment_orders($order->shopify_order_id);
-        if (!$fo_result['success'] || empty($fo_result['data']['fulfillment_orders'])) {
-            $this->log_fulfillment_push($order->id, 'in_progress_failed_no_fulfillment_orders', $order->tracking_number, $fo_result, false);
-            return false;
-        }
-
-        $any_success = false;
-        foreach ($fo_result['data']['fulfillment_orders'] as $fo) {
-            if (($fo['status'] ?? '') !== 'open') {
-                continue;
-            }
-            $result = $api->report_fulfillment_order_progress($fo['id']);
-            $this->log_fulfillment_push($order->id, 'in_progress', $order->tracking_number, $result, $result['success']);
-            if ($result['success']) {
-                $any_success = true;
-            }
-        }
-
-        return $any_success;
-    }
-
-    /**
      * Pushes a tracking milestone or cancellation onto the Shopify order's
      * fulfillment.
      *
