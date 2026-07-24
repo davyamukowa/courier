@@ -221,11 +221,14 @@ class Salibay_delivery extends App_Controller
             'status_id'     => $cancelled_status_id,
             'cancel_reason' => $reason,
         ]);
+        $assigned = $this->db->select('firstname, lastname')->where('staffid', $shipment->staff_id)->get(db_prefix() . 'staff')->row();
         $this->db->insert(db_prefix() . '_shipment_status_history', [
-            'shipment_id' => $shipment->id,
-            'status_id'   => $cancelled_status_id,
-            'notes'       => $reason,
-            'changed_at'  => date('Y-m-d H:i:s'),
+            'shipment_id'         => $shipment->id,
+            'status_id'           => $cancelled_status_id,
+            'notes'               => $reason,
+            'changed_at'          => date('Y-m-d H:i:s'),
+            'changed_by_staff_id' => $shipment->staff_id ?: null,
+            'changed_by_label'    => $assigned ? trim($assigned->firstname . ' ' . $assigned->lastname) . ' (Rider link)' : 'Rider link',
         ]);
         $this->_mirror_salibay_order_status($shipment->id, 'cancelled');
         $this->_push_shopify_status($shipment->id, $cancelled_status_id);
