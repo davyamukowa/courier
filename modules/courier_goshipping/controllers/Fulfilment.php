@@ -2160,11 +2160,17 @@ class Fulfilment extends AdminController
                 ? app_format_money((float) $row->total_price, $row->currency ?: get_base_currency()->name)
                 : '-';
 
-            $classification_labels = ['local' => 'Local', 'global' => 'Global', 'mixed' => 'Mixed', 'manual_review' => 'Manual Review'];
+            $classification_labels = ['local' => 'Salibay Local', 'global' => 'Salibay Global', 'mixed' => 'Salibay Mixed', 'manual_review' => 'Manual Review'];
             $classification_badges = ['local' => 'success', 'global' => 'info', 'mixed' => 'warning', 'manual_review' => 'danger'];
             $row->classification_display = $classification_labels[$row->salibay_classification] ?? '-';
             $row->classification_badge_class = $classification_badges[$row->salibay_classification] ?? 'default';
             $row->needs_manual_review = !empty($row->needs_manual_review);
+
+            // Sender column: for a route-tagged order (e.g. "GSC-CN-SZX"),
+            // show that route code — it identifies which international
+            // sourcing office is fulfilling this, which is more useful here
+            // than the generic branch/warehouse name.
+            $row->sender_column_display = !empty($row->salibay_route_tag) ? $row->salibay_route_tag : $row->sender_display;
 
             $is_delivered = strtolower((string) $row->order_status) === 'delivered'
                 || in_array(strtolower((string) $row->status_name), ['delivered', 'received'], true);
