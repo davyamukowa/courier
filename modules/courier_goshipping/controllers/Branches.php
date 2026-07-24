@@ -28,7 +28,68 @@ class Branches extends AdminController
         $data['next_branch_sequence'] = $this->get_next_branch_sequence();
         $data['title'] = 'Branches / Offices';
         $data['can_manage'] = is_admin() || has_permission('courier-branches', '', 'create_branches') || has_permission('courier-branches', '', 'edit_branches');
+
+        // Staff <-> branch assignments, managed right here instead of via the
+        // JS injected onto Perfex's own staff-edit page — that injection
+        // depends on the password field already being in the DOM, which
+        // isn't reliable across every tab-loading path on that page. This
+        // panel is self-contained and always renders the same way.
+        $data['staff_members'] = $this->db->select('staffid, firstname, lastname')
+            ->where('active', 1)
+            ->order_by('firstname', 'asc')
+            ->get(db_prefix() . 'staff')
+            ->result();
+
+        $staff_branch_map = [];
+        foreach ($data['staff_members'] as $staff) {
+            $staff_branch_map[$staff->staffid] = [
+                'branch_ids' => courier_get_staff_branch_ids($staff->staffid),
+                'default_id' => courier_get_default_staff_branch_id($staff->staffid),
+            ];
+        }
+        $data['staff_branch_map'] = $staff_branch_map;
+
         $this->load->view('courier_goshipping/branches/main', $data);
+    }
+
+    /**
+     * Replaces one staff member's branch assignments — same replace-all
+     * logic as courier_goshipping.php's save_staff_branches(), just reachable
+     * directly instead of only through the (unreliable) staff-edit-page
+     * injection.
+     */
+    public function save_staff_branch_assignment()
+    {
+        if (!is_admin() && !has_permission('courier-branches', '', 'edit_branches')) {
+            ajax_access_denied();
+        }
+
+        $staff_id = (int) $this->input->post('staff_id');
+        $branch_ids = array_values(array_unique(array_filter(array_map('intval', (array) $this->input->post('branch_ids')))));
+        $default_branch_id = (int) $this->input->post('default_branch_id');
+
+        if (!$staff_id) {
+            echo json_encode(['success' => false, 'message' => 'Invalid staff member.']);
+            return;
+        }
+
+        $tbl = db_prefix() . '_courier_staff_branches';
+        $this->db->where('staff_id', $staff_id)->delete($tbl);
+
+        if (!empty($branch_ids)) {
+            if (!in_array($default_branch_id, $branch_ids, true)) {
+                $default_branch_id = $branch_ids[0];
+            }
+            foreach ($branch_ids as $branch_id) {
+                $this->db->insert($tbl, [
+                    'staff_id'   => $staff_id,
+                    'branch_id'  => $branch_id,
+                    'is_default' => ($branch_id === $default_branch_id) ? 1 : 0,
+                ]);
+            }
+        }
+
+        echo json_encode(['success' => true, 'message' => 'Branch assignment saved.']);
     }
 
     public function store()
