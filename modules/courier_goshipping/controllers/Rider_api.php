@@ -250,9 +250,11 @@ class Rider_api extends App_Controller
         }
         $this->db->where('id', $shipment_id)->update(db_prefix() . '_shipments', ['status_id' => $new_status_id]);
         $this->db->insert(db_prefix() . '_shipment_status_history', [
-            'shipment_id' => $shipment_id,
-            'status_id'   => $new_status_id,
-            'changed_at'  => date('Y-m-d H:i:s'),
+            'shipment_id'         => $shipment_id,
+            'status_id'           => $new_status_id,
+            'changed_at'          => date('Y-m-d H:i:s'),
+            'changed_by_staff_id' => $this->rider->staff_id ?? null,
+            'changed_by_label'    => trim(($this->rider->name ?? 'Rider') . ' (Rider)'),
         ]);
     }
 
