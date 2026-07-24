@@ -2308,8 +2308,15 @@ class Fulfilment extends AdminController
         ];
 
         $status_row = $this->db->where('status_name', 'created')->get(db_prefix() . '_shipment_statuses')->row();
+        // See the matching comment in Shopify_connector::create_courier_shipment()
+        // — "Salibay Global" orders need shipping_mode to be exactly
+        // "COURIER (NONE)" so they show up under shipments?type=international
+        // &mode=courier&mode_type=none.
+        $is_salibay_global = ($order->salibay_classification ?? null) === 'global';
         $shipment_data = [
-            'shipping_mode' => $location['shipping_category'] === 'international' ? 'AIR (INTERNATIONAL)' : 'Courier',
+            'shipping_mode' => $location['shipping_category'] === 'international'
+                ? ($is_salibay_global ? 'COURIER (NONE)' : 'AIR (INTERNATIONAL)')
+                : 'Courier',
             'shipping_category' => $location['shipping_category'],
             'tracking_id' => $tracking_number,
             'waybill_number' => $tracking_number,
