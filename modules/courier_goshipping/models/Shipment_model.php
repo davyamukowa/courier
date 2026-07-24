@@ -44,7 +44,9 @@ class Shipment_model extends App_Model
         }
 
         if ($staff_id !== null) {
-            $this->db->where('s.staff_id', $staff_id);
+            // Unassigned shipments (staff_id = 0) are branch-general — see
+            // the same rule in get_shipments_details().
+            $this->db->where('(s.staff_id = ' . (int) $staff_id . ' OR s.staff_id = 0)', null, false);
         }
 
         if ($branch_ids !== null) {
