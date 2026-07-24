@@ -549,13 +549,14 @@ class Shopify_connector extends AdminController
         $payload = json_decode($raw_body, true);
         $shopify_order_id = $payload['id'] ?? null;
         
-        // 6. Idempotency check
-        if ($shopify_order_id) {
-            $this->db->where('shopify_order_id', $shopify_order_id);
-            $this->db->where('topic', $topic);
-            $this->db->where('status !=', 'failed');
-            $duplicate = $this->db->get(db_prefix() . 'shopify_webhook_events')->row();
-            
+        // 6. Idempotency check — must key on Shopify's actual unique
+        // per-delivery ID (X-Shopify-Webhook-Id), not (shopify_order_id,
+        // topic): Shopify legitimately fires a new orders/updated webhook
+        // every time anything on that order changes, all sharing the same
+        // order_id+topic, and those are NOT duplicates of each other.
+        if ($event_id) {
+            $duplicate = $this->db->where('webhook_event_id', $event_id)->get(db_prefix() . 'shopify_webhook_events')->row();
+
             if ($duplicate) {
                 $this->write_integration_log('info', 'webhook', 'Duplicate webhook ignored', [
                     'topic' => $topic,
@@ -574,6 +575,7 @@ class Shopify_connector extends AdminController
             'store_id' => $store->id,
             'topic' => $topic,
             'shopify_order_id' => $shopify_order_id,
+            'webhook_event_id' => $event_id ?: null,
             'payload' => $raw_body,
             'status' => 'pending',
             'created_at' => date('Y-m-d H:i:s')
