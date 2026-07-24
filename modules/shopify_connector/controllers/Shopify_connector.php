@@ -874,10 +874,115 @@ class Shopify_connector extends AdminController
         log_activity("Shopify Webhook: Order SHF-{$shopify_order_id} created -> GS Order #{$gs_order_id_log}");
     }
 
+    /**
+     * Tags (e.g. "Salibay Global" + "Route GSC-CN-SZX") are read once at
+     * orders/create time — but a sourcing app/ops person commonly tags the
+     * order a little *after* it's first created, so the initial webhook
+     * fires with no tags yet and the shipment (if auto-created already)
+     * ends up unrouted, sitting under the default/fallback branch. Re-parse
+     * tags on every update so a late tag isn't silently lost: if no
+     * shipment exists yet, create it now that classification is known; if
+     * one already exists but hasn't moved past "Created", re-point it at
+     * the correct branch instead of leaving it stuck on the wrong sender.
+     */
     private function handle_order_updated($payload, $store)
     {
-        $id = $payload['id'] ?? 'unknown';
-        log_activity("Shopify Webhook: received orders/updated for order {$id}");
+        $shopify_order_id = $payload['id'] ?? null;
+        if (!$shopify_order_id) {
+            return;
+        }
+
+        $order = $this->db->where('shopify_order_id', $shopify_order_id)->get(db_prefix() . 'shopify_orders')->row();
+        if (!$order) {
+            log_activity("Shopify Webhook: received orders/updated for unknown order {$shopify_order_id}");
+            return;
+        }
+
+        if ($this->db->field_exists('salibay_classification', db_prefix() . 'shopify_orders')) {
+            $salibay_tags = $this->parse_salibay_tags($payload['tags'] ?? '');
+            $classification_changed = $salibay_tags['classification'] && $salibay_tags['classification'] !== $order->salibay_classification;
+            $route_changed = $salibay_tags['route_tag'] && $salibay_tags['route_tag'] !== $order->salibay_route_tag;
+
+            if ($classification_changed || $route_changed) {
+                $this->db->where('id', $order->id)->update(db_prefix() . 'shopify_orders', [
+                    'salibay_classification' => $salibay_tags['classification'] ?: $order->salibay_classification,
+                    'salibay_route_tag'      => $salibay_tags['route_tag'] ?: $order->salibay_route_tag,
+                    'needs_manual_review'    => $salibay_tags['needs_manual_review'] ? 1 : (int) $order->needs_manual_review,
+                ]);
+                $order = $this->db->where('id', $order->id)->get(db_prefix() . 'shopify_orders')->row();
+
+                if (empty($order->gs_shipment_id)) {
+                    $auto_create = get_option('shopify_auto_create_shipments');
+                    if ($auto_create == '1') {
+                        $shipment_result = $this->create_courier_shipment($order->id);
+                        if (empty($shipment_result['success'])) {
+                            $this->write_integration_log('error', 'shipment', "Courier shipment creation failed for Shopify order SHF-{$shopify_order_id} (tags arrived on update): " . ($shipment_result['error'] ?? 'unknown error'), [
+                                'shopify_db_order_id' => $order->id
+                            ], $store->id);
+                        }
+                    }
+                } elseif ($route_changed) {
+                    $this->reroute_shipment_to_branch($order);
+                }
+            }
+        }
+
+        log_activity("Shopify Webhook: received orders/updated for order {$shopify_order_id}");
+    }
+
+    /**
+     * Re-points an already-created shipment at the branch its (late-arriving)
+     * route tag actually resolves to — only while the shipment is still at
+     * its very first status. Once it's moved past "Created" someone already
+     * has hands on the parcel at the branch it's currently under, so a late
+     * tag shouldn't retroactively relabel the sender.
+     */
+    private function reroute_shipment_to_branch($order)
+    {
+        if (empty($order->gs_shipment_id)) {
+            return;
+        }
+
+        $this->load->helper('courier_goshipping/courier');
+
+        $shipment = $this->db->where('id', $order->gs_shipment_id)->get(db_prefix() . '_shipments')->row();
+        if (!$shipment) {
+            return;
+        }
+
+        $created_status = $this->db->where('status_name', 'created')->get(db_prefix() . '_shipment_statuses')->row();
+        if (!$created_status || (int) $shipment->status_id !== (int) $created_status->id) {
+            return;
+        }
+
+        $new_branch_id = $this->resolve_branch_from_route_tag($order->salibay_route_tag ?? null);
+        if (!$new_branch_id || (int) $new_branch_id === (int) ($shipment->branch_id ?? 0)) {
+            return;
+        }
+
+        $branch_info = courier_get_invoice_info($new_branch_id);
+        $branch_name_parts = explode(' ', trim($branch_info['name'] ?: 'Go Shipping Warehouse'), 2);
+
+        if (!empty($shipment->sender_id)) {
+            $this->db->where('id', $shipment->sender_id)->update(db_prefix() . '_shipment_senders', [
+                'first_name'   => $branch_name_parts[0],
+                'last_name'    => $branch_name_parts[1] ?? '',
+                'phone_number' => $branch_info['phone'] ?: (get_option('company_phonenumber') ?: '000000000'),
+                'email'        => $branch_info['email'] ?: (get_option('smtp_email') ?: 'warehouse@example.com'),
+                'address'      => trim(strip_tags(str_replace(['<br />', '<br/>', '<br>'], ', ', $branch_info['address'] ?: format_organization_info())), ', ') ?: 'Main Warehouse',
+            ]);
+        }
+
+        $update = ['branch_id' => $new_branch_id];
+        if (($order->salibay_classification ?? null) === 'global') {
+            $update['shipping_category'] = 'international';
+            $update['shipping_mode'] = 'COURIER (NONE)';
+        }
+        $this->db->where('id', $shipment->id)->update(db_prefix() . '_shipments', $update);
+
+        if ($this->db->field_exists('branch_id', db_prefix() . 'shopify_orders')) {
+            $this->db->where('id', $order->id)->update(db_prefix() . 'shopify_orders', ['branch_id' => $new_branch_id]);
+        }
     }
 
     private function handle_order_cancelled($payload, $store)
