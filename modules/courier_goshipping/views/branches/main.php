@@ -76,6 +76,62 @@
     </div>
 </div>
 
+<?php if ($can_manage): ?>
+<div class="panel_s">
+    <div class="panel-body">
+        <div class="row mbot15">
+            <div class="col-md-12">
+                <h4 class="no-margin">Staff &harr; Branch Assignments</h4>
+                <p class="text-muted mtop5">Which branch(es) each staff member belongs to. Staff without "View All Branches" only see shipments for their assigned branch(es) — unassigned (general) shipments are visible to everyone in the matching branch.</p>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th style="width:220px;">Staff Member</th>
+                        <th>Branches</th>
+                        <th style="width:100px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (!empty($staff_members)): ?>
+                        <?php foreach ($staff_members as $staff): ?>
+                            <?php
+                                $assigned = $staff_branch_map[$staff->staffid]['branch_ids'] ?? [];
+                                $default_id = $staff_branch_map[$staff->staffid]['default_id'] ?? 0;
+                            ?>
+                            <tr>
+                                <td><?php echo htmlspecialchars(trim($staff->firstname . ' ' . $staff->lastname)); ?></td>
+                                <td>
+                                    <div class="staff-branch-checklist" data-staff-id="<?php echo (int) $staff->staffid; ?>">
+                                        <?php foreach ($branches as $branch): ?>
+                                            <label style="display:inline-block; width:calc(33% - 10px); font-weight:400; margin:2px 8px 2px 0;">
+                                                <input type="checkbox" class="sbc-branch" value="<?php echo (int) $branch->id; ?>" <?php echo in_array((int) $branch->id, $assigned, true) ? 'checked' : ''; ?>>
+                                                <?php echo htmlspecialchars($branch->name); ?>
+                                                <?php if ((int) $branch->id === (int) $default_id): ?><span class="label label-info">default</span><?php endif; ?>
+                                            </label>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </td>
+                                <td>
+                                    <button type="button" class="btn btn-primary btn-xs sbc-save-btn" onclick="saveStaffBranchAssignment(<?php echo (int) $staff->staffid; ?>, this);">
+                                        <i class="fa fa-save"></i> Save
+                                    </button>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <tr><td colspan="3" class="text-center text-muted">No active staff found.</td></tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <div class="modal fade" id="branchModal" tabindex="-1" role="dialog">
     <div class="modal-dialog" role="document">
         <form id="branchForm" method="post">
