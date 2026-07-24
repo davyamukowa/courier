@@ -59,7 +59,7 @@
                                         <span class="text-muted">Not created</span>
                                     <?php endif; ?>
                                 </td>
-                                <td><?php echo htmlspecialchars($order->sender_display); ?></td>
+                                <td><?php echo htmlspecialchars($order->sender_column_display); ?></td>
                                 <td><?php echo htmlspecialchars($order->assigned_display); ?></td>
                                 <td><?php echo htmlspecialchars($order->total_display); ?></td>
                                 <td><?php echo _dt($order->order_created_at); ?></td>
