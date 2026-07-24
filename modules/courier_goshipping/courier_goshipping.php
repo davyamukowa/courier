@@ -1142,6 +1142,78 @@ class Courier_Logistic_System {
     }
 
     /**
+     * v30: seed a USA branch (needed for the "Route GSC-US-ORD" mapping —
+     * no US branch existed from the earlier country-branch rollout, which
+     * only covered Dubai/China/Hong Kong/Thailand/UK/UAE/Europe) and the
+     * route-tag → branch mappings for Dubai/USA/UK/China, so a fresh
+     * production deploy doesn't need someone to re-enter these by hand at
+     * Salibay Fulfilment > Settings > Route Mapping.
+     */
+    public function run_db_upgrades_v30() {
+        if (get_option('courier_schema_v30_done')) return;
+        $CI = &get_instance();
+
+        if (!$CI->db->table_exists(db_prefix() . '_courier_branches')) {
+            return;
+        }
+
+        $usa_branch = $CI->db->where('name', 'USA Branch')->get(db_prefix() . '_courier_branches')->row();
+        if (!$usa_branch) {
+            $country = $CI->db->where('short_name', 'United States')->get(db_prefix() . 'countries')->row();
+            $CI->db->insert(db_prefix() . '_courier_branches', [
+                'name'        => 'USA Branch',
+                'code'        => 'USA-BRANCH/B/2026/52',
+                'branch_type' => 'international',
+                'country_id'  => $country ? (int) $country->country_id : null,
+                'city'        => 'Chicago',
+                'is_active'   => 1,
+                'is_default'  => 0,
+            ]);
+            $usa_branch_id = $CI->db->insert_id();
+        } else {
+            $usa_branch_id = (int) $usa_branch->id;
+        }
+
+        if (!$CI->db->table_exists(db_prefix() . 'courier_route_branch_map')) {
+            $CI->db->query('CREATE TABLE `' . db_prefix() . 'courier_route_branch_map` (
+                `id` INT AUTO_INCREMENT PRIMARY KEY,
+                `route_tag` VARCHAR(100) NOT NULL UNIQUE,
+                `branch_id` INT NOT NULL,
+                `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=' . $CI->db->char_set . ';');
+        }
+
+        $branch_ids_by_name = [];
+        foreach ($CI->db->get(db_prefix() . '_courier_branches')->result() as $row) {
+            $branch_ids_by_name[$row->name] = (int) $row->id;
+        }
+
+        $route_map = [
+            'GSC-AE-DXB' => $branch_ids_by_name['Dubai Branch'] ?? null,
+            'GSC-US-ORD' => $usa_branch_id,
+            'GSC-GB-LHR' => $branch_ids_by_name['UK Branch'] ?? null,
+            'GSC-CN-SZX' => $branch_ids_by_name['China Branch'] ?? null,
+        ];
+
+        foreach ($route_map as $route_tag => $branch_id) {
+            if (!$branch_id) {
+                continue;
+            }
+            $existing = $CI->db->where('route_tag', $route_tag)->get(db_prefix() . 'courier_route_branch_map')->row();
+            if ($existing) {
+                $CI->db->where('id', $existing->id)->update(db_prefix() . 'courier_route_branch_map', ['branch_id' => $branch_id]);
+            } else {
+                $CI->db->insert(db_prefix() . 'courier_route_branch_map', [
+                    'route_tag' => $route_tag,
+                    'branch_id' => $branch_id,
+                ]);
+            }
+        }
+
+        update_option('courier_schema_v30_done', '1');
+    }
+
+    /**
      * v19: add kra_pin to shipment senders and companies tables.
      */
     public function run_db_upgrades_v19() {
