@@ -153,6 +153,18 @@
                     <div class="checkbox" id="branch_active_wrap" style="display:none;">
                         <label><input type="checkbox" name="is_active" id="branch_is_active" value="1" checked> Active</label>
                     </div>
+
+                    <div class="form-group" id="branch_staff_section" style="display:none; border-top:1px solid #eee; padding-top:12px; margin-top:8px;">
+                        <label>Assigned Staff</label>
+                        <div style="display:flex; gap:8px;">
+                            <select id="branch_add_staff_select" class="form-control"></select>
+                            <button type="button" class="btn btn-default" id="branch_add_staff_btn" style="white-space:nowrap;">
+                                <i class="fa fa-plus"></i> Add
+                            </button>
+                        </div>
+                        <div id="branch_staff_chips" style="margin-top:10px;"></div>
+                    </div>
+                    <p class="text-muted mtop5" id="branch_staff_hint">Save this branch first, then reopen it to assign staff.</p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
