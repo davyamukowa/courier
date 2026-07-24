@@ -959,6 +959,58 @@ class Courier_Logistic_System {
     }
 
     /**
+     * v28: seed international freight-forwarding branches/offices requested
+     * for the global (Envato) rollout — China, Hong Kong, Thailand, UK, UAE,
+     * plus a catch-all "Europe" branch covering all European countries.
+     * Dubai Branch already exists (id 2, country UAE) from an earlier seed,
+     * so it's left untouched here; skipped by name+country if already present.
+     */
+    public function run_db_upgrades_v28() {
+        if (get_option('courier_schema_v28_done')) return;
+        $CI = &get_instance();
+
+        if (!$CI->db->table_exists(db_prefix() . '_courier_branches')) {
+            return;
+        }
+
+        $lookup_country = function ($short_name) use ($CI) {
+            $row = $CI->db->where('short_name', $short_name)->get(db_prefix() . 'countries')->row();
+            return $row ? (int) $row->country_id : null;
+        };
+
+        $branches = [
+            ['name' => 'China Branch',       'code' => 'CHINA01',   'country' => 'China'],
+            ['name' => 'Hong Kong Branch',   'code' => 'HK01',      'country' => 'Hong Kong'],
+            ['name' => 'Thailand Branch',    'code' => 'THAI01',    'country' => 'Thailand'],
+            ['name' => 'UK Branch',          'code' => 'UK01',      'country' => 'United Kingdom'],
+            ['name' => 'UAE Branch',         'code' => 'UAE01',     'country' => 'United Arab Emirates'],
+            ['name' => 'Europe Branch',      'code' => 'EUROPE01',  'country' => null],
+        ];
+
+        foreach ($branches as $branch) {
+            $exists = $CI->db->where('name', $branch['name'])
+                ->get(db_prefix() . '_courier_branches')
+                ->row();
+            if ($exists) {
+                continue;
+            }
+
+            $country_id = $branch['country'] ? $lookup_country($branch['country']) : null;
+
+            $CI->db->insert(db_prefix() . '_courier_branches', [
+                'name'        => $branch['name'],
+                'code'        => $branch['code'],
+                'branch_type' => 'international',
+                'country_id'  => $country_id,
+                'is_active'   => 1,
+                'is_default'  => 0,
+            ]);
+        }
+
+        update_option('courier_schema_v28_done', '1');
+    }
+
+    /**
      * v19: add kra_pin to shipment senders and companies tables.
      */
     public function run_db_upgrades_v19() {
