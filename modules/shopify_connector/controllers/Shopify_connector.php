@@ -1230,8 +1230,19 @@ class Shopify_connector extends AdminController
         $status_id = $status_row ? $status_row->id : 1;
 
         // 9. Build Main Shipment Data
+        //
+        // A "Salibay Global" order needs to land in the "International
+        // Courier" shipments list (shipments?type=international&mode=courier
+        // &mode_type=none), not the generic "Air (International)" bucket —
+        // Shipment_model::get_shipments_details() filters on the literal
+        // shipping_mode string built from mode+mode_type
+        // (strtoupper("{$mode} ({$mode_type})")), so this has to match
+        // "COURIER (NONE)" exactly for that filtered view to find it.
+        $is_salibay_global = ($order->salibay_classification ?? null) === 'global';
         $shipment_data = [
-            'shipping_mode' => $location['shipping_category'] === 'international' ? 'AIR (INTERNATIONAL)' : 'Courier',
+            'shipping_mode' => $location['shipping_category'] === 'international'
+                ? ($is_salibay_global ? 'COURIER (NONE)' : 'AIR (INTERNATIONAL)')
+                : 'Courier',
             'shipping_category' => $location['shipping_category'],
             'tracking_id' => $tracking_number,
             'waybill_number' => $tracking_number,
