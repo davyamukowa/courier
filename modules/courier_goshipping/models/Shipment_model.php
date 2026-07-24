@@ -164,7 +164,12 @@ class Shipment_model extends App_Model
         $this->db->order_by('s.created_at', 'DESC');
 
         if (!empty($staff_id)) {
-            $this->db->where('s.staff_id', $staff_id);
+            // Unassigned shipments (staff_id = 0 — the norm now for
+            // auto-created Shopify/Salibay orders, which are branch-general
+            // until someone actually assigns/acts on them) must still be
+            // visible to any staff restricted to "my shipments only" — not
+            // just ones explicitly assigned to them.
+            $this->db->where('(s.staff_id = ' . (int) $staff_id . ' OR s.staff_id = 0)', null, false);
         }
 
         if ($branch_ids !== null) {
