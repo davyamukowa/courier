@@ -1104,15 +1104,20 @@ class Courier_Logistic_System {
             $country_ids[$row->short_name] = (int) $row->country_id;
         }
 
+        // Keyed by trimmed name: the pre-existing "Dubai Branch" row was seeded
+        // with a trailing space, which would otherwise dodge an exact-match
+        // lookup and create a duplicate.
+        $existing_by_name = [];
+        foreach ($CI->db->get(db_prefix() . '_courier_branches')->result() as $row) {
+            $existing_by_name[trim((string) $row->name)] = $row;
+        }
+
         foreach ($entries as $name => $info) {
             [$country_name, $city] = $info;
             $country_id = $country_ids[$country_name] ?? null;
             $code = $make_code($name);
 
-            // Trim: the pre-existing "Dubai Branch" row was seeded with a
-            // trailing space in its name, which would otherwise dodge this
-            // exact-match lookup and create a duplicate.
-            $existing = $CI->db->where('TRIM(name)', $name)->get(db_prefix() . '_courier_branches')->row();
+            $existing = $existing_by_name[$name] ?? null;
             if ($existing) {
                 $CI->db->where('id', $existing->id)->update(db_prefix() . '_courier_branches', [
                     'code'       => $code,
