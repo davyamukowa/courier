@@ -387,8 +387,12 @@ class Shopify_connector_model extends App_Model
                     ],
                     'tracking_info' => [
                         'number'  => $tracking_number,
-                        'url'     => site_url('courier_goshipping/track'),
-                        'company' => 'Go Shipping',
+                        // ?track= auto-fills and auto-submits the tracking
+                        // form (see tracking.php's auto-track JS) — so
+                        // clicking this link in Shopify lands straight on
+                        // the result, no manual copy-paste of the waybill.
+                        'url'     => site_url('courier_goshipping/track') . '?track=' . urlencode($tracking_number),
+                        'company' => 'Go Shipping Cargo',
                     ],
                     'notify_customer' => true,
                 ],
