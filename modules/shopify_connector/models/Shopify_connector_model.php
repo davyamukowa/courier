@@ -308,7 +308,7 @@ class Shopify_connector_model extends App_Model
             'shopify_order_id' => $shopify_db_order_id,
             'status'           => $status,
             'tracking_number'  => $tracking_number,
-            'tracking_url'     => site_url('courier_goshipping/track'),
+            'tracking_url'     => $tracking_number ? (site_url('courier_goshipping/track') . '?track=' . urlencode($tracking_number)) : site_url('courier_goshipping/track'),
             'shopify_response' => json_encode($response),
             'success'          => $success ? 1 : 0,
         ]);
