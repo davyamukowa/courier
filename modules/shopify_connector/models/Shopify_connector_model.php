@@ -408,8 +408,17 @@ class Shopify_connector_model extends App_Model
 
     /**
      * Pushes a tracking milestone or cancellation onto the Shopify order's
-     * fulfillment once it exists — self-heals by creating the fulfillment
-     * first if create_shopify_fulfillment() hadn't run yet for some reason.
+     * fulfillment.
+     *
+     * The Shopify fulfillment is deliberately NOT created on the earlier
+     * milestones (in_transit / out_for_delivery) — creating it is what flips
+     * the order's badge to "Fulfilled" in Shopify, and merchants don't want
+     * that to happen while the goods are still on the road. It's created
+     * on-demand here only once status_id reaches 8 (delivered), at which
+     * point Shopify shows "Fulfilled" and "Delivered" together, matching
+     * what actually happened. Earlier milestones are simply skipped if no
+     * fulfillment exists yet — there's nothing in Shopify to attach an
+     * "in transit" event to before that.
      */
     public function push_shopify_fulfillment_status($shipment_id, $status_id)
     {
@@ -421,8 +430,9 @@ class Shopify_connector_model extends App_Model
         }
 
         if (empty($order->shopify_fulfillment_id)) {
-            if ((int) $status_id === 9) {
-                // Nothing was ever fulfilled — there's nothing to cancel.
+            if ((int) $status_id !== 8) {
+                // Nothing was ever fulfilled — nothing to cancel, and no
+                // fulfillment worth creating yet for an in-transit milestone.
                 return false;
             }
             $this->create_shopify_fulfillment($shipment_id);
