@@ -179,6 +179,11 @@
 var _branchCitiesUrl = '<?php echo admin_url('courier_goshipping/branches/cities_by_country'); ?>';
 var _branchCodeYear = '<?php echo date('Y'); ?>';
 var _branchNextSequence = '<?php echo str_pad((string) $next_branch_sequence, 2, '0', STR_PAD_LEFT); ?>';
+var _allStaff = <?php echo json_encode(array_map(static function ($s) {
+    return ['id' => (int) $s->staffid, 'name' => trim($s->firstname . ' ' . $s->lastname)];
+}, $all_staff)); ?>;
+var _currentBranchId = null;
+var _currentBranchStaff = []; // [{staff_id, name}] for the branch open in the modal right now
 
 function buildBranchCodePreview(branchName) {
     var cleaned = (branchName || '')
