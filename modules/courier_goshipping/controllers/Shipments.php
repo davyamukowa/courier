@@ -2956,6 +2956,8 @@ class Shipments extends AdminController
             // Commit the transaction if everything is successful
             $this->db->trans_commit();
 
+            log_activity('Shipment Status Updated [ID: ' . $id . ', Status ID: ' . $new_status_id . ']');
+
             // Send email notification to recipient on dispatch or delivery (outside transaction)
             $this->_send_shipment_notification((int)$id, $new_status_id);
 
