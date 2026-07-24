@@ -154,7 +154,8 @@ $route['admin/courier_goshipping/branches/main'] = 'courier_goshipping/branches/
 $route['admin/courier_goshipping/branches/store'] = 'courier_goshipping/branches/store';
 $route['admin/courier_goshipping/branches/update/(:num)'] = 'courier_goshipping/branches/update/$1';
 $route['admin/courier_goshipping/branches/delete/(:num)'] = 'courier_goshipping/branches/delete/$1';
-$route['admin/courier_goshipping/branches/save_staff_branch_assignment'] = 'courier_goshipping/branches/save_staff_branch_assignment';
+$route['admin/courier_goshipping/branches/add_staff_to_branch'] = 'courier_goshipping/branches/add_staff_to_branch';
+$route['admin/courier_goshipping/branches/remove_staff_from_branch'] = 'courier_goshipping/branches/remove_staff_from_branch';
 
 /*
  * Courier Companies Routes
