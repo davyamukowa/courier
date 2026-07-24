@@ -415,15 +415,23 @@ class Shopify_connector_model extends App_Model
      * Pushes a tracking milestone or cancellation onto the Shopify order's
      * fulfillment.
      *
-     * The Shopify fulfillment is deliberately NOT created on the earlier
-     * milestones (in_transit / out_for_delivery) — creating it is what flips
-     * the order's badge to "Fulfilled" in Shopify, and merchants don't want
-     * that to happen while the goods are still on the road. It's created
-     * on-demand here only once status_id reaches 8 (delivered), at which
-     * point Shopify shows "Fulfilled" and "Delivered" together, matching
-     * what actually happened. Earlier milestones are simply skipped if no
-     * fulfillment exists yet — there's nothing in Shopify to attach an
-     * "in transit" event to before that.
+     * The normal path is for the fulfillment to already exist by the time
+     * this runs: Shipments::assign_agent() calls create_shopify_fulfillment()
+     * the moment a rider is assigned, on the theory that Go Shipping only
+     * assigns a rider once it physically has the product — so the waybill
+     * is already live on Shopify well before the rider taps "Start Delivery".
+     * The block below is just a safety net for shipments that somehow reach
+     * "delivered" without ever going through that assignment step: it
+     * self-heals by creating the fulfillment on demand rather than losing
+     * the tracking push entirely. Earlier milestones (in_transit /
+     * out_for_delivery) are skipped if no fulfillment exists yet — there's
+     * nothing in Shopify to attach the event to before that.
+     *
+     * (A "mark fulfillment order as in progress" push was tried too, via
+     * fulfillmentOrderReportProgress, but Shopify rejects it: "Field
+     * 'fulfillmentOrderReportProgress' doesn't exist on type 'Mutation'" —
+     * it only exists in Shopify's unstable/preview API, not any released
+     * stable version, so it isn't usable here.)
      */
     public function push_shopify_fulfillment_status($shipment_id, $status_id)
     {
@@ -437,15 +445,9 @@ class Shopify_connector_model extends App_Model
         if (empty($order->shopify_fulfillment_id)) {
             if ((int) $status_id !== 8) {
                 // Nothing was ever fulfilled — nothing to cancel, and no
-                // fulfillment worth creating yet for an in-transit milestone.
-                //
-                // A "mark fulfillment order as in progress" push was tried
-                // here too (fulfillmentOrderReportProgress), but Shopify
-                // rejects it: "Field 'fulfillmentOrderReportProgress' doesn't
-                // exist on type 'Mutation'" — that mutation only exists in
-                // Shopify's unstable/preview API, not any released stable
-                // version, so it isn't usable here. Order just stays
-                // "Unfulfilled" in Shopify until actually delivered.
+                // fulfillment worth creating yet for an in-transit milestone
+                // (this shipment was never assigned a rider through the
+                // normal flow, so there's no waybill Shopify would show yet).
                 return false;
             }
             $this->create_shopify_fulfillment($shipment_id);
