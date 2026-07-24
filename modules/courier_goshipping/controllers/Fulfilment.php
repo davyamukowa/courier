@@ -2287,6 +2287,13 @@ class Fulfilment extends AdminController
         ];
 
         $location = $this->resolve_shipping_location($delivery_address, $branch_id);
+        // A confident Salibay classification tag overrides the geography
+        // guess — see the same override in Shopify_connector::create_courier_shipment().
+        if (($order->salibay_classification ?? null) === 'local') {
+            $location['shipping_category'] = 'domestic';
+        } elseif (($order->salibay_classification ?? null) === 'global') {
+            $location['shipping_category'] = 'international';
+        }
         $name_parts = explode(' ', $delivery_address['name'] ?? $order->customer_name ?? 'Customer', 2);
         $recipient_data = [
             'first_name' => $name_parts[0],
