@@ -85,10 +85,20 @@ class Salibay_delivery extends App_Controller
         }
 
         $this->db->where('id', $shipment_id)->update(db_prefix() . '_shipments', ['status_id' => $new_status_id]);
+        // No login on this token-based link — the assigned staff/agent (set
+        // via Assign Agent/Staff) is the best identity available for "who
+        // did this" on the shipment's timeline.
+        $assigned = $this->db->select('firstname, lastname')
+            ->from(db_prefix() . '_shipments s')
+            ->join(db_prefix() . 'staff st', 'st.staffid = s.staff_id', 'left')
+            ->where('s.id', $shipment_id)
+            ->get()
+            ->row();
         $this->db->insert(db_prefix() . '_shipment_status_history', [
-            'shipment_id' => $shipment_id,
-            'status_id'   => $new_status_id,
-            'changed_at'  => date('Y-m-d H:i:s'),
+            'shipment_id'         => $shipment_id,
+            'status_id'           => $new_status_id,
+            'changed_at'          => date('Y-m-d H:i:s'),
+            'changed_by_label'    => $assigned && $assigned->firstname ? trim($assigned->firstname . ' ' . $assigned->lastname) . ' (Rider link)' : 'Rider link',
         ]);
     }
 
