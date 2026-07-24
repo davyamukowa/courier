@@ -438,6 +438,32 @@
                         ?>
                     </div>
                 </div>
+
+                <!-- History card: who did what, when -->
+                <?php if (!empty($status_history)): ?>
+                <div class="courier-sidebar" style="margin-top:12px;">
+                    <div class="courier-sidebar-header" style="font-size:13px; padding:10px 14px;">
+                        <i class="fa fa-history"></i> History
+                    </div>
+                    <div style="padding:10px 14px; font-size:12px; line-height:1.6; color:#444; max-height:260px; overflow-y:auto;">
+                        <?php foreach ($status_history as $h): ?>
+                            <?php
+                                $actor = trim((string) ($h->staff_firstname ?? '') . ' ' . (string) ($h->staff_lastname ?? ''));
+                                if ($actor === '') {
+                                    $actor = $h->changed_by_label ?: 'System';
+                                }
+                            ?>
+                            <div style="padding:6px 0; border-bottom:1px solid #eee;">
+                                <strong><?php echo htmlspecialchars($h->status_description ?: $h->status_name); ?></strong><br>
+                                <span style="color:#777;"><?php echo date('d M Y, g:i A', strtotime($h->changed_at)); ?> &middot; <?php echo htmlspecialchars($actor); ?></span>
+                                <?php if (!empty($h->notes)): ?>
+                                    <br><span style="color:#999;"><?php echo htmlspecialchars($h->notes); ?></span>
+                                <?php endif; ?>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+                <?php endif; ?>
             </div>
             <!-- ── End left sidebar ────────────────────────────────── -->
 
