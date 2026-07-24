@@ -2875,10 +2875,14 @@ class Shipments extends AdminController
             $this->Shipment_model->update($id, $shipment_data);
 
             // Record the status change in the shipment_status_histories table
+            $acting_staff_id = get_staff_user_id();
+            $acting_staff = $this->db->select('firstname, lastname')->where('staffid', $acting_staff_id)->get(db_prefix() . 'staff')->row();
             $this->db->insert(db_prefix() . '_shipment_status_history', [
-                'shipment_id' => $id,
-                'status_id'   => $new_status_id,
-                'changed_at'  => date('Y-m-d H:i:s'),
+                'shipment_id'         => $id,
+                'status_id'           => $new_status_id,
+                'changed_at'          => date('Y-m-d H:i:s'),
+                'changed_by_staff_id' => $acting_staff_id,
+                'changed_by_label'    => $acting_staff ? trim($acting_staff->firstname . ' ' . $acting_staff->lastname) : null,
             ]);
 
             $departure_points = $this->input->post('departure_points');
