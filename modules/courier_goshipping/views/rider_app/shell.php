@@ -556,6 +556,30 @@
                 document.getElementById('kpi_pickups').textContent = res.data.pickups.length;
             }
         });
+        get(API.stats, { token: token }).then(function (res) {
+            if (!res.data.success || !res.data.linked) { return; }
+            document.getElementById('kpi_today').textContent = res.data.completed_today;
+            document.getElementById('kpi_week').textContent = res.data.completed_week;
+            document.getElementById('kpi_total').textContent = res.data.completed_total;
+            document.getElementById('kpi_cancelled').textContent = res.data.cancelled_total;
+        });
+    }
+
+    // ── Quick-action helpers (call / WhatsApp / navigate) ───────────────────
+    function callHref(phone) { return 'tel:' + String(phone || '').replace(/[^0-9+]/g, ''); }
+    function whatsappHref(phone) { return 'https://wa.me/' + String(phone || '').replace(/[^0-9]/g, ''); }
+    function navigateHref(address) { return 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(address || ''); }
+    function quickActionsHtml(phone, address) {
+        var html = '<div class="quick-actions">';
+        if (phone) {
+            html += '<a class="icon-btn call" href="' + callHref(phone) + '">📞 Call</a>';
+            html += '<a class="icon-btn whatsapp" href="' + whatsappHref(phone) + '" target="_blank" rel="noopener">💬 WhatsApp</a>';
+        }
+        if (address) {
+            html += '<a class="icon-btn" href="' + navigateHref(address) + '" target="_blank" rel="noopener">🧭 Navigate</a>';
+        }
+        html += '</div>';
+        return html;
     }
 
     // ── Deliveries ───────────────────────────────────────────────────────────
