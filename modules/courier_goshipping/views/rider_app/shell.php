@@ -820,4 +820,16 @@
         get(API.me, { token: token }).then(function (res) {
             if (res.data.success) {
                 currentRider = res.data.rider;
-                enterApp
+                enterApp();
+            } else {
+                localStorage.removeItem(TOKEN_KEY);
+                token = null;
+                showScreen('login');
+            }
+        }).catch(function () {
+            showScreen('login');
+        });
+    }
+</script>
+</body>
+</html>
