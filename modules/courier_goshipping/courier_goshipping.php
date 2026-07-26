@@ -1241,6 +1241,75 @@ class Courier_Logistic_System {
     }
 
     /**
+     * v32: real contact details for the international branches (Dubai, UK,
+     * Netherlands, USA, China), and splits "China Branch" into two distinct
+     * offices — "China by Air" (renaming the existing branch, so the
+     * existing GSC-CN-SZX route mapping keeps working unchanged) and a new
+     * "China by Sea" for the Foshan warehouse — matching how the sourcing
+     * team actually operates two separate China hubs by shipping mode.
+     */
+    public function run_db_upgrades_v32() {
+        if (get_option('courier_schema_v32_done')) return;
+        $CI = &get_instance();
+
+        if (!$CI->db->table_exists(db_prefix() . '_courier_branches')) {
+            return;
+        }
+
+        $contact_updates = [
+            'Dubai Branch' => [
+                'phone'   => '+971 42 859988',
+                'address' => 'The Late Bin Ali Bin Haider Building, Second Floor, Suite 204, near Sabkha Bus Station, opposite Emirates Hotel, Dubai, UAE.',
+            ],
+            'UK Branch' => [
+                'phone'   => '+44 7448 269108',
+                'address' => 'Marafa Foods Ltd, 58-59 Cromwell Industrial Estate, Argall Avenue, Leyton, London E10 7QZ, United Kingdom. Attn: Faarax.',
+            ],
+            'Netherlands Branch' => [
+                'phone'   => '+31 85 060 7670',
+                'address' => 'GeedLaal Logistics Office, GeedLaal V.O.F, Kempenbaan 27h, 5121 DM Rijen, The Netherlands. Chamber of Commerce: 65329872, VAT NR: 856068202, Bank NR: NL35 INGB 0007 2473 27.',
+            ],
+            'USA Branch' => [
+                'phone'   => '+1 872 8992810',
+                'address' => '2454 W Peterson Avenue, Chicago, Illinois 60659-411, United States. (WhatsApp available)',
+            ],
+        ];
+
+        foreach ($contact_updates as $name => $info) {
+            $CI->db->where('name', $name)->update(db_prefix() . '_courier_branches', $info);
+        }
+
+        // Rename the existing China branch into "China by Air" in place
+        // (same id, so GSC-CN-SZX's mapping keeps pointing at it).
+        $china_air = $CI->db->where('name', 'China Branch')->get(db_prefix() . '_courier_branches')->row();
+        if ($china_air) {
+            $CI->db->where('id', $china_air->id)->update(db_prefix() . '_courier_branches', [
+                'name'    => 'China by Air',
+                'city'    => 'Guangzhou',
+                'phone'   => '+86 130 6882 0114',
+                'address' => 'Xiaobei Office / Air Cargo Office, Room 405, No. 23 Lujing Road, Yuexiu District, Guangzhou, China.',
+            ]);
+        }
+
+        if (!$CI->db->where('name', 'China by Sea')->get(db_prefix() . '_courier_branches')->row()) {
+            $china_country = $CI->db->where('short_name', 'China')->get(db_prefix() . 'countries')->row();
+            $CI->db->insert(db_prefix() . '_courier_branches', [
+                'name'        => 'China by Sea',
+                'code'        => 'CHINA-BY-SEA-BRANCH/B/2026/53',
+                'branch_type' => 'international',
+                'country_id'  => $china_country ? (int) $china_country->country_id : null,
+                'city'        => 'Foshan',
+                'phone'       => '+86 134 5076 2618',
+                'address'     => 'Foshan Sea Warehouse (Warehouse No.: ELGUAPO251119MATADI). Warehouse No. 6, 280 metres southeast of the intersection of Sanle West Road and Dashiqiao Road, Shunde District, Foshan, China. Navigation: Qianye Furniture Co., Ltd. - East Gate. Alternative navigation: Foshan Baidun Special Steel Co., Ltd. Warehouse contact: Ms. Lin, +86 134 5076 2618. Complaint hotline: Ms. Lin, +86 134 5076 2618.',
+                'is_active'   => 1,
+                'is_default'  => 0,
+            ]);
+        }
+
+        update_option('courier_schema_v32_done', '1');
+    }
+
+    /**
      * v19: add kra_pin to shipment senders and companies tables.
      */
     public function run_db_upgrades_v19() {
