@@ -71,6 +71,7 @@ class Courier_Logistic_System {
         hooks()->add_action('admin_init', [$this, 'run_db_upgrades_v29']);
         hooks()->add_action('admin_init', [$this, 'run_db_upgrades_v30']);
         hooks()->add_action('admin_init', [$this, 'run_db_upgrades_v31']);
+        hooks()->add_action('admin_init', [$this, 'run_db_upgrades_v32']);
         // Register email templates (idempotent — skips if slug already exists)
         hooks()->add_action('admin_init', [$this, 'register_email_templates']);
 
