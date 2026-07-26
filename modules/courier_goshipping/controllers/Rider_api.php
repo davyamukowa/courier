@@ -32,6 +32,9 @@ class Rider_api extends App_Controller
         if ($this->db->table_exists(db_prefix() . '_shipment_status_history') && !$this->db->field_exists('changed_by_label', db_prefix() . '_shipment_status_history')) {
             $this->db->query('ALTER TABLE `' . db_prefix() . '_shipment_status_history` ADD COLUMN `changed_by_label` VARCHAR(150) NULL DEFAULT NULL');
         }
+        if ($this->db->table_exists(db_prefix() . '_deliveries') && !$this->db->field_exists('photo_url', db_prefix() . '_deliveries')) {
+            $this->db->query('ALTER TABLE `' . db_prefix() . '_deliveries` ADD COLUMN `photo_url` TEXT NULL DEFAULT NULL');
+        }
 
         // Self-heal: this module's install.php migration only actually runs
         // when the module is (re)activated via Setup > Modules — a plain
@@ -284,6 +287,7 @@ class Rider_api extends App_Controller
                 'recipient_address' => $row->recipient_address,
                 'completed_at'      => $history ? $history->changed_at : null,
                 'signature_url'     => $delivery ? site_url($delivery->signature_url) : null,
+                'photo_url'         => ($delivery && !empty($delivery->photo_url)) ? site_url($delivery->photo_url) : null,
                 'cancel_reason'     => $row->cancel_reason,
             ];
         }
