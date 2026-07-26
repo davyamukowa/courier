@@ -900,19 +900,27 @@
         }
         var btn = document.getElementById('confirm_cancel_btn');
         btn.disabled = true; btn.textContent = 'Cancelling...';
-        post(API.deliveryStart + activeDeliveryId + '/cancel', { token: token, reason: reason }).then(function (res) {
+        var payload = { token: token, reason: reason };
+        if (!navigator.onLine) {
+            queueOfflineAction(API.deliveryStart + activeDeliveryId + '/cancel', payload, 'Cancellation for delivery ' + activeDeliveryId);
+            btn.disabled = false; btn.textContent = 'Confirm Cancellation';
+            closeModal('cancel_modal');
+            return;
+        }
+        post(API.deliveryStart + activeDeliveryId + '/cancel', payload).then(function (res) {
             btn.disabled = false; btn.textContent = 'Confirm Cancellation';
             if (!res.data.success) {
                 errBox.textContent = res.data.message || 'Could not cancel the delivery.';
                 errBox.style.display = 'block';
                 return;
             }
+            toast('Delivery cancelled.', 'success');
             closeModal('cancel_modal');
             loadDeliveries();
         }).catch(function () {
             btn.disabled = false; btn.textContent = 'Confirm Cancellation';
-            errBox.textContent = 'Network error — please check your connection and try again.';
-            errBox.style.display = 'block';
+            queueOfflineAction(API.deliveryStart + activeDeliveryId + '/cancel', payload, 'Cancellation for delivery ' + activeDeliveryId);
+            closeModal('cancel_modal');
         });
     }
 
