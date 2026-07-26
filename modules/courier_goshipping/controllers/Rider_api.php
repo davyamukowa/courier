@@ -233,6 +233,106 @@ class Rider_api extends App_Controller
         $this->respond(['success' => true, 'linked' => true, 'deliveries' => $deliveries, 'trips' => $trips]);
     }
 
+    // ── History (delivered/cancelled shipments) ─────────────────────────────
+    public function deliveries_history()
+    {
+        if (!$this->require_rider()) {
+            return;
+        }
+
+        if (empty($this->rider->staff_id)) {
+            $this->respond(['success' => true, 'linked' => false, 'deliveries' => []]);
+            return;
+        }
+
+        $staff_id = (int) $this->rider->staff_id;
+
+        $rows = $this->db->select('s.id, s.waybill_number, s.tracking_id, s.status_id, ss.status_name, ' .
+                ($this->db->field_exists('status_description', db_prefix() . '_shipment_statuses') ? 'ss.status_description' : 'ss.description') . ' AS status_description, ' .
+                's.cancel_reason, ' .
+                'r.first_name AS recipient_first_name, r.last_name AS recipient_last_name, r.phone_number AS recipient_phone, r.address AS recipient_address')
+            ->from(db_prefix() . '_shipments s')
+            ->join(db_prefix() . '_shipment_statuses ss', 'ss.id = s.status_id', 'left')
+            ->join(db_prefix() . '_shipment_recipients r', 'r.id = s.recipient_id', 'left')
+            ->where('s.staff_id', $staff_id)
+            ->where_in('s.status_id', [8, 9])
+            ->order_by('s.id', 'desc')
+            ->limit(100)
+            ->get()
+            ->result();
+
+        $deliveries = [];
+        foreach ($rows as $row) {
+            $delivery = $this->db->where('shipment_id', $row->id)->order_by('id', 'desc')->limit(1)
+                ->get(db_prefix() . '_deliveries')->row();
+            $history = $this->db->where('shipment_id', $row->id)->where('status_id', $row->status_id)
+                ->order_by('id', 'desc')->limit(1)
+                ->get(db_prefix() . '_shipment_status_history')->row();
+
+            $order = $this->db->table_exists(db_prefix() . 'shopify_orders')
+                ? $this->db->where('gs_shipment_id', $row->id)->get(db_prefix() . 'shopify_orders')->row()
+                : null;
+
+            $deliveries[] = [
+                'id'                => (int) $row->id,
+                'waybill_number'    => $row->waybill_number ?: $row->tracking_id,
+                'status_id'         => (int) $row->status_id,
+                'status_text'       => $row->status_description ?: $row->status_name,
+                'is_salibay'        => (bool) $order,
+                'recipient_name'    => trim((string) $row->recipient_first_name . ' ' . (string) $row->recipient_last_name),
+                'recipient_phone'   => $row->recipient_phone,
+                'recipient_address' => $row->recipient_address,
+                'completed_at'      => $history ? $history->changed_at : null,
+                'signature_url'     => $delivery ? site_url($delivery->signature_url) : null,
+                'cancel_reason'     => $row->cancel_reason,
+            ];
+        }
+
+        $this->respond(['success' => true, 'linked' => true, 'deliveries' => $deliveries]);
+    }
+
+    // ── Stats (dashboard KPI cards) ──────────────────────────────────────────
+    public function stats()
+    {
+        if (!$this->require_rider()) {
+            return;
+        }
+
+        if (empty($this->rider->staff_id)) {
+            $this->respond(['success' => true, 'linked' => false]);
+            return;
+        }
+
+        $staff_id = (int) $this->rider->staff_id;
+        $table    = db_prefix() . '_shipments';
+
+        $completed_today = $this->db->where('staff_id', $staff_id)->where('status_id', 8)
+            ->where('DATE(created_at) >=', date('Y-m-d', strtotime('-1 day')))
+            ->where_in('id', $this->db->select('shipment_id')->from(db_prefix() . '_shipment_status_history')
+                ->where('status_id', 8)->where('DATE(changed_at)', date('Y-m-d'))->get()->result_array() ? array_column($this->db->select('shipment_id')->from(db_prefix() . '_shipment_status_history')->where('status_id', 8)->where('DATE(changed_at)', date('Y-m-d'))->get()->result_array(), 'shipment_id') : [0])
+            ->count_all_results($table);
+
+        $week_start = date('Y-m-d', strtotime('monday this week'));
+        $completed_week_ids = array_column(
+            $this->db->select('shipment_id')->from(db_prefix() . '_shipment_status_history')
+                ->where('status_id', 8)->where('DATE(changed_at) >=', $week_start)->get()->result_array(),
+            'shipment_id'
+        );
+        $completed_week = empty($completed_week_ids) ? 0 : $this->db->where('staff_id', $staff_id)
+            ->where_in('id', $completed_week_ids)->count_all_results($table);
+
+        $completed_total = (int) $this->db->where('staff_id', $staff_id)->where('status_id', 8)->count_all_results($table);
+        $cancelled_total  = (int) $this->db->where('staff_id', $staff_id)->where('status_id', 9)->count_all_results($table);
+
+        $this->respond([
+            'success' => true, 'linked' => true,
+            'completed_today' => (int) $completed_today,
+            'completed_week'  => (int) $completed_week,
+            'completed_total' => $completed_total,
+            'cancelled_total' => $cancelled_total,
+        ]);
+    }
+
     private function owned_shipment($shipment_id)
     {
         $shipment = $this->db->where('id', (int) $shipment_id)->get(db_prefix() . '_shipments')->row();
