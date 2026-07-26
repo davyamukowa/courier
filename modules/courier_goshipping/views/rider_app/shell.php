@@ -942,6 +942,7 @@
                     '<div class="row1"><span class="waybill">Pickup #' + p.id + '</span><span class="badge">' + p.status + '</span></div>' +
                     '<div>' + (p.contact_name || '') + (p.contact_phone ? ' · ' + p.contact_phone : '') + '</div>' +
                     '<div class="muted">' + (p.address || '') + '</div>' +
+                    quickActionsHtml(p.contact_phone, p.address) +
                     '<div class="actions"><button class="btn-primary" onclick="openPickupModal(' + p.id + ', \'' + nextStatus + '\', \'' + nextLabel + '\')">' + nextLabel + '</button></div>';
                 box.appendChild(card);
             });
