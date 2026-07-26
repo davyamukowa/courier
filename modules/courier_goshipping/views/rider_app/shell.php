@@ -351,9 +351,11 @@
         logout: <?php echo json_encode(site_url('courier_goshipping/rider-api/logout')); ?>,
         me: <?php echo json_encode(site_url('courier_goshipping/rider-api/me')); ?>,
         deliveries: <?php echo json_encode(site_url('courier_goshipping/rider-api/deliveries')); ?>,
+        deliveriesHistory: <?php echo json_encode(site_url('courier_goshipping/rider-api/deliveries/history')); ?>,
         deliveryStart: <?php echo json_encode(site_url('courier_goshipping/rider-api/deliveries/')); ?>,
         pickups: <?php echo json_encode(site_url('courier_goshipping/rider-api/pickups')); ?>,
-        pickupUpdate: <?php echo json_encode(site_url('courier_goshipping/rider-api/pickups/')); ?>
+        pickupUpdate: <?php echo json_encode(site_url('courier_goshipping/rider-api/pickups/')); ?>,
+        stats: <?php echo json_encode(site_url('courier_goshipping/rider-api/stats')); ?>
     };
     var SW_URL = <?php echo json_encode(site_url('courier_goshipping/rider/sw')); ?>;
 
