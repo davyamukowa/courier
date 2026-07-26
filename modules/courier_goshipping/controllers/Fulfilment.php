@@ -2323,7 +2323,8 @@ class Fulfilment extends AdminController
         // — "Salibay Global" orders need shipping_mode to be exactly
         // "COURIER (NONE)" so they show up under shipments?type=international
         // &mode=courier&mode_type=none.
-        $is_salibay_global = ($order->salibay_classification ?? null) === 'global';
+        $is_salibay_global = ($order->salibay_classification ?? null) === 'global'
+            || ($fulfilling_branch && $fulfilling_branch->branch_type === 'international');
         $shipment_data = [
             'shipping_mode' => $location['shipping_category'] === 'international'
                 ? ($is_salibay_global ? 'COURIER (NONE)' : 'AIR (INTERNATIONAL)')
