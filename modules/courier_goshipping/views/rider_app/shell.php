@@ -445,7 +445,7 @@
             b.classList.toggle('active', b.getAttribute('data-nav') === name);
         });
         if (name === 'dashboard') { loadDashboard(); }
-        if (name === 'deliveries') { loadDeliveries(); }
+        if (name === 'deliveries') { refreshDeliveriesTab(); }
         if (name === 'pickups') { loadPickups(); }
     }
 
