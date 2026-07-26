@@ -175,6 +175,8 @@
         <span>📲 Install this app for faster access to your deliveries.</span>
         <button onclick="installApp()">Install</button>
     </div>
+    <div id="offline_banner" class="offline-banner">📡 You're offline — actions will sync automatically once you're back online.</div>
+    <div id="toast_stack" class="toast-stack"></div>
 
     <!-- ── Login ────────────────────────────────────────────────────────────── -->
     <div class="screen active" id="screen_login">
