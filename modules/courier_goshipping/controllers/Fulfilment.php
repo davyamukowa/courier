@@ -2298,6 +2298,13 @@ class Fulfilment extends AdminController
         } elseif (($order->salibay_classification ?? null) === 'global') {
             $location['shipping_category'] = 'international';
         }
+        // Final authority: the actual fulfilling branch wins over the tag —
+        // a shipment sent from an international-type branch can never be
+        // genuinely "Domestic", even if the classification tag was missing.
+        $fulfilling_branch = $this->db->where('id', $branch_id)->get(db_prefix() . '_courier_branches')->row();
+        if ($fulfilling_branch && $fulfilling_branch->branch_type === 'international') {
+            $location['shipping_category'] = 'international';
+        }
         $name_parts = explode(' ', $delivery_address['name'] ?? $order->customer_name ?? 'Customer', 2);
         $recipient_data = [
             'first_name' => $name_parts[0],

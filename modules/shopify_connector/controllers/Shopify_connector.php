@@ -1001,7 +1001,8 @@ class Shopify_connector extends AdminController
         }
 
         $update = ['branch_id' => $new_branch_id];
-        if (($order->salibay_classification ?? null) === 'global') {
+        $new_branch_row = $this->db->where('id', $new_branch_id)->get(db_prefix() . '_courier_branches')->row();
+        if (($order->salibay_classification ?? null) === 'global' || ($new_branch_row && $new_branch_row->branch_type === 'international')) {
             $update['shipping_category'] = 'international';
             $update['shipping_mode'] = 'COURIER (NONE)';
         }
@@ -1343,6 +1344,16 @@ class Shopify_connector extends AdminController
             $location['shipping_category'] = 'international';
         }
 
+        // Final authority: whichever branch the shipment actually ships
+        // from wins over the tag interpretation — a shipment sent from an
+        // international-type branch (e.g. China by Air, Dubai Branch) can
+        // never be genuinely "Domestic" on the waybill, even if the
+        // classification tag was missing/mis-tagged when this ran.
+        $fulfilling_branch = $this->db->where('id', $branch_id)->get(db_prefix() . '_courier_branches')->row();
+        if ($fulfilling_branch && $fulfilling_branch->branch_type === 'international') {
+            $location['shipping_category'] = 'international';
+        }
+
         // 7. Build Recipients Data
         $name_parts = explode(' ', $delivery_address['name'] ?? $order->customer_name ?? 'Customer', 2);
         $recipient_data = [
@@ -1370,7 +1381,8 @@ class Shopify_connector extends AdminController
         // shipping_mode string built from mode+mode_type
         // (strtoupper("{$mode} ({$mode_type})")), so this has to match
         // "COURIER (NONE)" exactly for that filtered view to find it.
-        $is_salibay_global = ($order->salibay_classification ?? null) === 'global';
+        $is_salibay_global = ($order->salibay_classification ?? null) === 'global'
+            || ($fulfilling_branch && $fulfilling_branch->branch_type === 'international');
         $shipment_data = [
             'shipping_mode' => $location['shipping_category'] === 'international'
                 ? ($is_salibay_global ? 'COURIER (NONE)' : 'AIR (INTERNATIONAL)')
