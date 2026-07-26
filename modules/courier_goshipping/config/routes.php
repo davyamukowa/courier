@@ -83,12 +83,14 @@ $route['courier_goshipping/rider-api/login'] = 'rider_api/login';
 $route['courier_goshipping/rider-api/logout'] = 'rider_api/logout';
 $route['courier_goshipping/rider-api/me'] = 'rider_api/me';
 $route['courier_goshipping/rider-api/deliveries'] = 'rider_api/deliveries';
+$route['courier_goshipping/rider-api/deliveries/history'] = 'rider_api/deliveries_history';
 $route['courier_goshipping/rider-api/deliveries/(:num)/start'] = 'rider_api/delivery_start/$1';
 $route['courier_goshipping/rider-api/deliveries/(:num)/deliver'] = 'rider_api/delivery_deliver/$1';
 $route['courier_goshipping/rider-api/deliveries/(:num)/cancel'] = 'rider_api/delivery_cancel/$1';
 $route['courier_goshipping/rider-api/deliveries/(:num)/location'] = 'rider_api/location_ping/$1';
 $route['courier_goshipping/rider-api/pickups'] = 'rider_api/pickups';
 $route['courier_goshipping/rider-api/pickups/(:num)/update'] = 'rider_api/pickup_update/$1';
+$route['courier_goshipping/rider-api/stats'] = 'rider_api/stats';
 
 $route['courier_goshipping/tracking'] = 'tracker/tracking';
 $route['courier_goshipping/tracking/shipment_info'] = 'tracker/shipment_info';
