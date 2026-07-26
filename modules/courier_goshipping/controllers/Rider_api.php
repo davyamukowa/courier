@@ -468,13 +468,28 @@ class Rider_api extends App_Controller
             return;
         }
 
-        courier_load_model('Delivery_model');
-        $this->Delivery_model->add([
+        $delivery_row = [
             'shipment_id'   => $shipment->id,
             'first_name'    => $first_name,
             'last_name'     => $last_name,
             'signature_url' => 'assets/deliveries/signatures/' . $file_name,
-        ]);
+        ];
+
+        // Optional proof-of-delivery photo (parcel/doorstep) — not required,
+        // since not every rider's phone camera works reliably in the field.
+        $photo = $this->input->post('photo');
+        if (!empty($photo) && $this->db->field_exists('photo_url', db_prefix() . '_deliveries')) {
+            $photo_data = base64_decode(str_replace(' ', '+', str_replace('data:image/jpeg;base64,', '', str_replace('data:image/png;base64,', '', $photo))));
+            if ($photo_data !== false) {
+                $photo_name = uniqid('rider_photo_') . '.jpg';
+                if (file_put_contents($signatures_dir . $photo_name, $photo_data)) {
+                    $delivery_row['photo_url'] = 'assets/deliveries/signatures/' . $photo_name;
+                }
+            }
+        }
+
+        courier_load_model('Delivery_model');
+        $this->Delivery_model->add($delivery_row);
 
         $this->advance_shipment_status($shipment->id, 8); // delivered
         $this->mirror_salibay_order_status($shipment->id, 'delivered');
