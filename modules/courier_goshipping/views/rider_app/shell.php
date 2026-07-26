@@ -88,6 +88,45 @@
         .kpi { background: #132339; border-radius: 10px; padding: 16px; text-align: center; }
         .kpi .n { font-size: 26px; font-weight: 800; color: #fff; }
         .kpi .l { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: .04em; margin-top: 4px; }
+        .kpi.kpi-sm .n { font-size: 20px; }
+
+        .section-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: .06em; font-weight: 700; margin: 4px 0 8px; }
+
+        .segmented { display: flex; background: #16283f; border-radius: 10px; padding: 3px; margin: 0 0 14px; }
+        .segmented button { flex: 1; margin: 0; padding: 9px 6px; border-radius: 8px; font-size: 12.5px; font-weight: 700; background: none; color: #94a3b8; }
+        .segmented button.active { background: linear-gradient(135deg,#1565c0,#0d47a1); color: #fff; }
+
+        .search-box { position: relative; margin-bottom: 12px; }
+        .search-box input { padding-left: 34px; }
+        .search-box .ic { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); font-size: 14px; color: #64748b; }
+
+        .icon-btn {
+            width: auto; display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+            padding: 9px 10px; font-size: 12px; background: #16283f; color: #cbd5e1; margin: 0;
+        }
+        .icon-btn.call { background: #14532d; color: #86efac; }
+        .icon-btn.whatsapp { background: #0f3d24; color: #4ade80; }
+        .quick-actions { display: flex; gap: 6px; margin-top: 8px; }
+
+        .topbar-actions { display: flex; align-items: center; gap: 8px; }
+        .refresh-btn {
+            width: auto; margin: 0; padding: 8px 10px; font-size: 15px; background: #16283f; color: #8ecae6; border-radius: 8px;
+        }
+
+        .pod-thumb { width: 100%; max-width: 220px; border-radius: 8px; margin-top: 8px; display: block; }
+
+        .toast-stack { position: fixed; left: 0; right: 0; bottom: calc(78px + env(safe-area-inset-bottom)); z-index: 60; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; }
+        .toast { background: #16283f; color: #fff; padding: 11px 18px; border-radius: 30px; font-size: 13px; font-weight: 600; box-shadow: 0 4px 14px rgba(0,0,0,.3); max-width: 90%; text-align: center; }
+        .toast.success { background: #16532d; color: #bbf7d0; }
+        .toast.error { background: #7f1d1d; color: #fecaca; }
+
+        .offline-banner {
+            display: none; position: fixed; left: 0; right: 0; top: 0; z-index: 45;
+            background: #92400e; color: #fff; padding: 8px 16px; font-size: 12px; text-align: center; font-weight: 600;
+        }
+        .offline-banner.active { display: block; }
+
+        .photo-preview { width: 100%; max-height: 160px; object-fit: cover; border-radius: 8px; margin-top: 8px; display: none; }
 
         #signature_pad_canvas { width: 100%; height: 150px; background: #fff; border-radius: 8px; touch-action: none; display: block; margin-top: 4px; }
 
