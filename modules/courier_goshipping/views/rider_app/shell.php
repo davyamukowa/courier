@@ -103,6 +103,7 @@
         .icon-btn {
             width: auto; display: inline-flex; align-items: center; justify-content: center; gap: 5px;
             padding: 9px 10px; font-size: 12px; background: #16283f; color: #cbd5e1; margin: 0;
+            text-decoration: none; border: none; border-radius: 10px; font-weight: 700; cursor: pointer;
         }
         .icon-btn.call { background: #14532d; color: #86efac; }
         .icon-btn.whatsapp { background: #0f3d24; color: #4ade80; }
