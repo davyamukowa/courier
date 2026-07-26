@@ -973,21 +973,27 @@
         }
         var btn = document.getElementById('confirm_pickup_btn');
         btn.disabled = true; btn.textContent = 'Saving...';
-        post(API.pickupUpdate + activePickupId + '/update', {
-            token: token, status: activePickupStatus, signature: pickupSigPad.toDataURL('image/png')
-        }).then(function (res) {
+        var payload = { token: token, status: activePickupStatus, signature: pickupSigPad.toDataURL('image/png') };
+        if (!navigator.onLine) {
+            queueOfflineAction(API.pickupUpdate + activePickupId + '/update', payload, 'Pickup update for #' + activePickupId);
+            btn.disabled = false; btn.textContent = 'Confirm';
+            closeModal('pickup_modal');
+            return;
+        }
+        post(API.pickupUpdate + activePickupId + '/update', payload).then(function (res) {
             btn.disabled = false; btn.textContent = 'Confirm';
             if (!res.data.success) {
                 errBox.textContent = res.data.message || 'Could not update the pickup.';
                 errBox.style.display = 'block';
                 return;
             }
+            toast('Pickup updated.', 'success');
             closeModal('pickup_modal');
             loadPickups();
         }).catch(function () {
             btn.disabled = false; btn.textContent = 'Confirm';
-            errBox.textContent = 'Network error — please check your connection and try again.';
-            errBox.style.display = 'block';
+            queueOfflineAction(API.pickupUpdate + activePickupId + '/update', payload, 'Pickup update for #' + activePickupId);
+            closeModal('pickup_modal');
         });
     }
 
@@ -1014,6 +1020,7 @@
 
     // ── Boot ─────────────────────────────────────────────────────────────────
     if (token) {
+        if (navigator.onLine) { flushOfflineQueue(); }
         get(API.me, { token: token }).then(function (res) {
             if (res.data.success) {
                 currentRider = res.data.rider;
