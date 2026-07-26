@@ -584,46 +584,126 @@
     }
 
     // ── Deliveries ───────────────────────────────────────────────────────────
+    var deliveriesTab = 'active';
+    var activeDeliveriesCache = [];
+    var historyDeliveriesCache = [];
+
+    function switchDeliveriesTab(tab) {
+        deliveriesTab = tab;
+        document.getElementById('deliveries_tab_active').classList.toggle('active', tab === 'active');
+        document.getElementById('deliveries_tab_history').classList.toggle('active', tab === 'history');
+        document.getElementById('deliveries_search').placeholder = tab === 'active'
+            ? 'Search by waybill or recipient...' : 'Search delivery history...';
+        if (tab === 'active') { loadDeliveries(); } else { loadDeliveriesHistory(); }
+    }
+
+    function refreshDeliveriesTab() {
+        if (deliveriesTab === 'active') { loadDeliveries(); } else { loadDeliveriesHistory(); }
+    }
+
     function loadDeliveries() {
         var box = document.getElementById('deliveries_list');
         box.innerHTML = '<div class="empty-state">Loading...</div>';
         get(API.deliveries, { token: token }).then(function (res) {
             if (!res.data.success) { box.innerHTML = '<div class="empty-state">Could not load deliveries.</div>'; return; }
-            if (!res.data.deliveries.length) { box.innerHTML = '<div class="empty-state">No active deliveries right now.</div>'; return; }
+            activeDeliveriesCache = res.data.deliveries;
+            renderDeliveriesList();
+        }).catch(function () {
+            box.innerHTML = '<div class="empty-state">Could not load deliveries — check your connection.</div>';
+        });
+    }
 
+    function loadDeliveriesHistory() {
+        var box = document.getElementById('deliveries_list');
+        box.innerHTML = '<div class="empty-state">Loading...</div>';
+        get(API.deliveriesHistory, { token: token }).then(function (res) {
+            if (!res.data.success) { box.innerHTML = '<div class="empty-state">Could not load history.</div>'; return; }
+            historyDeliveriesCache = res.data.deliveries;
+            renderDeliveriesList();
+        }).catch(function () {
+            box.innerHTML = '<div class="empty-state">Could not load history — check your connection.</div>';
+        });
+    }
+
+    function matchesSearch(d, term) {
+        if (!term) { return true; }
+        term = term.toLowerCase();
+        return (d.waybill_number || '').toLowerCase().indexOf(term) !== -1 ||
+            (d.recipient_name || '').toLowerCase().indexOf(term) !== -1;
+    }
+
+    function renderDeliveriesList() {
+        var box = document.getElementById('deliveries_list');
+        var term = (document.getElementById('deliveries_search').value || '').trim();
+
+        if (deliveriesTab === 'history') {
+            var history = historyDeliveriesCache.filter(function (d) { return matchesSearch(d, term); });
+            if (!history.length) { box.innerHTML = '<div class="empty-state">' + (term ? 'No matching deliveries.' : 'No completed deliveries yet.') + '</div>'; return; }
             box.innerHTML = '';
-            res.data.deliveries.forEach(function (d) {
+            history.forEach(function (d) {
                 var card = document.createElement('div');
                 card.className = 'card' + (d.is_salibay ? ' is-salibay' : '');
-                var started = d.status_id >= 5;
-                if (started) { beginLocationSharing(d.id); }
-                var destAddress = d.recipient_address || '';
+                var isCancelled = d.status_id === 9;
                 card.innerHTML =
                     '<div class="row1"><span class="waybill">' + d.waybill_number + '</span><span class="badge">' + (d.status_text || '') + '</span></div>' +
-                    '<div class="muted">' + (d.items_summary || '-') + '</div>' +
-                    '<div style="margin-top:6px;">' + (d.recipient_name || '') + (d.recipient_phone ? ' · ' + d.recipient_phone : '') + '</div>' +
-                    '<div class="muted">' + destAddress + '</div>' +
-                    (started ? '<div style="margin-top:6px;font-size:11.5px;color:#22c55e;">📍 Sharing your location</div>' : '') +
-                    '<div class="actions">' +
-                    (started
-                        ? '<button class="btn-primary" onclick="openMapModal(' + d.id + ', ' + JSON.stringify(destAddress) + ')">Map</button><button class="btn-success" onclick="openDeliverModal(' + d.id + ')">Delivered</button><button class="btn-danger" onclick="openCancelModal(' + d.id + ')">Cancel</button>'
-                        : '<button class="btn-primary" onclick="startDelivery(' + d.id + ', this)">Start Delivery</button>') +
-                    '</div>';
+                    '<div>' + (d.recipient_name || '') + (d.recipient_phone ? ' · ' + d.recipient_phone : '') + '</div>' +
+                    '<div class="muted">' + (d.recipient_address || '') + '</div>' +
+                    (d.completed_at ? '<div class="muted" style="margin-top:4px;">' + (isCancelled ? 'Cancelled' : 'Delivered') + ' ' + formatDateTime(d.completed_at) + '</div>' : '') +
+                    (isCancelled && d.cancel_reason ? '<div class="muted" style="margin-top:4px;color:#fca5a5;">Reason: ' + d.cancel_reason + '</div>' : '') +
+                    (d.signature_url ? '<img class="pod-thumb" src="' + d.signature_url + '" alt="Signature" style="background:#fff;">' : '') +
+                    (d.photo_url ? '<img class="pod-thumb" src="' + d.photo_url + '" alt="Delivery photo">' : '');
                 box.appendChild(card);
             });
+            return;
+        }
+
+        var active = activeDeliveriesCache.filter(function (d) { return matchesSearch(d, term); });
+        if (!active.length) { box.innerHTML = '<div class="empty-state">' + (term ? 'No matching deliveries.' : 'No active deliveries right now.') + '</div>'; return; }
+
+        box.innerHTML = '';
+        active.forEach(function (d) {
+            var card = document.createElement('div');
+            card.className = 'card' + (d.is_salibay ? ' is-salibay' : '');
+            var started = d.status_id >= 5;
+            if (started) { beginLocationSharing(d.id); }
+            var destAddress = d.recipient_address || '';
+            card.innerHTML =
+                '<div class="row1"><span class="waybill">' + d.waybill_number + '</span><span class="badge">' + (d.status_text || '') + '</span></div>' +
+                '<div class="muted">' + (d.items_summary || '-') + '</div>' +
+                '<div style="margin-top:6px;">' + (d.recipient_name || '') + (d.recipient_phone ? ' · ' + d.recipient_phone : '') + '</div>' +
+                '<div class="muted">' + destAddress + '</div>' +
+                (started ? '<div style="margin-top:6px;font-size:11.5px;color:#22c55e;">📍 Sharing your location</div>' : '') +
+                quickActionsHtml(d.recipient_phone, destAddress) +
+                '<div class="actions">' +
+                (started
+                    ? '<button class="btn-primary" onclick="openMapModal(' + d.id + ', ' + JSON.stringify(destAddress) + ')">Map</button><button class="btn-success" onclick="openDeliverModal(' + d.id + ')">Delivered</button><button class="btn-danger" onclick="openCancelModal(' + d.id + ')">Cancel</button>'
+                    : '<button class="btn-primary" onclick="startDelivery(' + d.id + ', this)">Start Delivery</button>') +
+                '</div>';
+            box.appendChild(card);
         });
+    }
+
+    function formatDateTime(value) {
+        try {
+            var d = new Date(value.replace(' ', 'T'));
+            return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        } catch (e) { return value; }
     }
 
     function startDelivery(id, btn) {
         btn.disabled = true; btn.textContent = 'Starting...';
         post(API.deliveryStart + id + '/start', { token: token }).then(function (res) {
             if (!res.data.success) {
-                alert(res.data.message || 'Could not start the delivery.');
+                toast(res.data.message || 'Could not start the delivery.', 'error');
                 btn.disabled = false; btn.textContent = 'Start Delivery';
                 return;
             }
             beginLocationSharing(id);
+            toast('Delivery started.', 'success');
             loadDeliveries();
+        }).catch(function () {
+            btn.disabled = false; btn.textContent = 'Start Delivery';
+            toast('Network error — please check your connection and try again.', 'error');
         });
     }
 
