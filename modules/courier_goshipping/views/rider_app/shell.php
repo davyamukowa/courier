@@ -380,6 +380,59 @@
         return fetch(url + '?' + qs).then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); });
     }
 
+    // ── Toasts ───────────────────────────────────────────────────────────────
+    function toast(message, type) {
+        var stack = document.getElementById('toast_stack');
+        var el = document.createElement('div');
+        el.className = 'toast' + (type ? ' ' + type : '');
+        el.textContent = message;
+        stack.appendChild(el);
+        setTimeout(function () { el.remove(); }, 3200);
+    }
+
+    // ── Offline action queue — a rider's connection routinely drops mid-route,
+    // so an action that fails purely due to network is queued and auto-retried
+    // instead of silently lost or blocking the rider from moving on ──────────
+    var OFFLINE_QUEUE_KEY = 'gs_rider_offline_queue';
+    function getOfflineQueue() {
+        try { return JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY)) || []; } catch (e) { return []; }
+    }
+    function saveOfflineQueue(queue) {
+        localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
+    }
+    function queueOfflineAction(url, payload, label) {
+        var queue = getOfflineQueue();
+        queue.push({ url: url, payload: payload, label: label, queued_at: Date.now() });
+        saveOfflineQueue(queue);
+        toast('You are offline — "' + label + '" will be sent once your connection returns.', 'error');
+    }
+    function flushOfflineQueue() {
+        var queue = getOfflineQueue();
+        if (!queue.length) { return; }
+        saveOfflineQueue([]);
+        var remaining = [];
+        var sent = 0;
+        queue.reduce(function (chain, item) {
+            return chain.then(function () {
+                return post(item.url, item.payload).then(function (res) {
+                    if (res.data && res.data.success) { sent++; } else { remaining.push(item); }
+                }).catch(function () { remaining.push(item); });
+            });
+        }, Promise.resolve()).then(function () {
+            if (remaining.length) { saveOfflineQueue(remaining); }
+            if (sent) {
+                toast(sent + ' queued action' + (sent > 1 ? 's' : '') + ' synced.', 'success');
+                loadDeliveries(); loadPickups();
+            }
+        });
+    }
+    function updateOfflineBanner() {
+        document.getElementById('offline_banner').classList.toggle('active', !navigator.onLine);
+    }
+    window.addEventListener('online', function () { updateOfflineBanner(); flushOfflineQueue(); });
+    window.addEventListener('offline', updateOfflineBanner);
+    updateOfflineBanner();
+
     function showScreen(name) {
         document.querySelectorAll('.screen').forEach(function (el) { el.classList.remove('active'); });
         document.getElementById('screen_' + name).classList.add('active');
