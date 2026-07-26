@@ -464,6 +464,31 @@
                     </div>
                 </div>
                 <?php endif; ?>
+
+                <!-- Proof of delivery: captured customer signature (and photo, if any) -->
+                <?php if (!empty($shipment_details['delivery_details']) && !empty($shipment_details['delivery_details']->signature_url)): ?>
+                <?php $pod = $shipment_details['delivery_details']; ?>
+                <div class="courier-sidebar" style="margin-top:12px;">
+                    <div class="courier-sidebar-header" style="font-size:13px; padding:10px 14px;">
+                        <i class="fa fa-pencil-square-o"></i> Proof of Delivery
+                    </div>
+                    <div style="padding:10px 14px; font-size:12px; line-height:1.6; color:#444;">
+                        <strong>Received by:</strong> <?php echo htmlspecialchars(trim($pod->first_name . ' ' . $pod->last_name)); ?>
+                        <div style="margin-top:8px;">
+                            <div style="color:#777; margin-bottom:4px;">Signature</div>
+                            <img src="<?php echo base_url('modules/courier_goshipping/' . $pod->signature_url); ?>"
+                                 alt="Customer signature" style="max-width:100%; background:#fff; border:1px solid #eee; border-radius:4px;">
+                        </div>
+                        <?php if (!empty($pod->photo_url)): ?>
+                        <div style="margin-top:10px;">
+                            <div style="color:#777; margin-bottom:4px;">Delivery Photo</div>
+                            <img src="<?php echo base_url('modules/courier_goshipping/' . $pod->photo_url); ?>"
+                                 alt="Delivery photo" style="max-width:100%; border-radius:4px;">
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?php endif; ?>
             </div>
             <!-- ── End left sidebar ────────────────────────────────── -->
 
