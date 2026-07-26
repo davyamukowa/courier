@@ -286,8 +286,8 @@ class Rider_api extends App_Controller
                 'recipient_phone'   => $row->recipient_phone,
                 'recipient_address' => $row->recipient_address,
                 'completed_at'      => $history ? $history->changed_at : null,
-                'signature_url'     => $delivery ? site_url($delivery->signature_url) : null,
-                'photo_url'         => ($delivery && !empty($delivery->photo_url)) ? site_url($delivery->photo_url) : null,
+                'signature_url'     => $delivery ? base_url('modules/courier_goshipping/' . $delivery->signature_url) : null,
+                'photo_url'         => ($delivery && !empty($delivery->photo_url)) ? base_url('modules/courier_goshipping/' . $delivery->photo_url) : null,
                 'cancel_reason'     => $row->cancel_reason,
             ];
         }
