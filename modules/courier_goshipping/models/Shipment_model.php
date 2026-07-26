@@ -449,9 +449,14 @@ class Shipment_model extends App_Model
         $recipient = $recipient_query->row();
 
         // Fetch the delivery details
-        $this->db->select('d.first_name,d.last_name,d.signature_url');
+        $delivery_select = 'd.first_name,d.last_name,d.signature_url';
+        if ($this->db->field_exists('photo_url', db_prefix() . '_deliveries')) {
+            $delivery_select .= ',d.photo_url';
+        }
+        $this->db->select($delivery_select);
         $this->db->from(db_prefix() . '_deliveries d');
         $this->db->where('d.shipment_id', $shipment->id);
+        $this->db->order_by('d.id', 'desc');
         $delivery_query = $this->db->get();
         $delivery_details = $delivery_query->row();
 
