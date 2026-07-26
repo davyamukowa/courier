@@ -805,11 +805,15 @@
         });
     }
 
+    var deliverPhotoDataUrl = null;
     function openDeliverModal(id) {
         activeDeliveryId = id;
         document.getElementById('deliver_first_name').value = '';
         document.getElementById('deliver_last_name').value = '';
         document.getElementById('deliver_error').style.display = 'none';
+        document.getElementById('deliver_photo_input').value = '';
+        document.getElementById('deliver_photo_preview').style.display = 'none';
+        deliverPhotoDataUrl = null;
         openModal('deliver_modal');
         if (!sigPad) {
             sigPad = new SignaturePad(document.getElementById('signature_pad_canvas'));
@@ -818,6 +822,19 @@
         }
     }
     function clearSignature() { if (sigPad) { sigPad.clear(); } }
+
+    function onDeliverPhotoSelected(event) {
+        var file = event.target.files && event.target.files[0];
+        if (!file) { return; }
+        var reader = new FileReader();
+        reader.onload = function (e) {
+            deliverPhotoDataUrl = e.target.result;
+            var preview = document.getElementById('deliver_photo_preview');
+            preview.src = deliverPhotoDataUrl;
+            preview.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    }
 
     function submitDeliver() {
         var errBox = document.getElementById('deliver_error');
@@ -836,21 +853,32 @@
         }
         var btn = document.getElementById('confirm_deliver_btn');
         btn.disabled = true; btn.textContent = 'Saving...';
-        post(API.deliveryStart + activeDeliveryId + '/deliver', {
+        var payload = {
             token: token, first_name: firstName, last_name: lastName, signature: sigPad.toDataURL('image/png')
-        }).then(function (res) {
+        };
+        if (deliverPhotoDataUrl) { payload.photo = deliverPhotoDataUrl; }
+
+        if (!navigator.onLine) {
+            queueOfflineAction(API.deliveryStart + activeDeliveryId + '/deliver', payload, 'Delivery confirmation for ' + activeDeliveryId);
+            btn.disabled = false; btn.textContent = 'Confirm Delivery';
+            closeModal('deliver_modal');
+            return;
+        }
+
+        post(API.deliveryStart + activeDeliveryId + '/deliver', payload).then(function (res) {
             btn.disabled = false; btn.textContent = 'Confirm Delivery';
             if (!res.data.success) {
                 errBox.textContent = res.data.message || 'Could not save the delivery.';
                 errBox.style.display = 'block';
                 return;
             }
+            toast('Delivery confirmed.', 'success');
             closeModal('deliver_modal');
             loadDeliveries();
         }).catch(function () {
             btn.disabled = false; btn.textContent = 'Confirm Delivery';
-            errBox.textContent = 'Network error — please check your connection and try again.';
-            errBox.style.display = 'block';
+            queueOfflineAction(API.deliveryStart + activeDeliveryId + '/deliver', payload, 'Delivery confirmation for ' + activeDeliveryId);
+            closeModal('deliver_modal');
         });
     }
 
