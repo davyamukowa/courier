@@ -219,6 +219,7 @@
                 <h2>Dashboard</h2>
                 <div class="hi" id="dash_hi"></div>
             </div>
+            <div class="topbar-actions"><button class="refresh-btn" onclick="loadDashboard()">⟳</button></div>
         </div>
         <div style="padding:0 20px;">
             <div id="unlinked_notice" class="info-box" style="background:#3b2f0a; color:#fde68a; display:none;">
@@ -228,19 +229,42 @@
                 <div class="kpi"><div class="n" id="kpi_deliveries">0</div><div class="l">Active Deliveries</div></div>
                 <div class="kpi"><div class="n" id="kpi_pickups">0</div><div class="l">Active Pickups</div></div>
             </div>
+            <div class="section-label">Performance</div>
+            <div class="kpi-grid">
+                <div class="kpi kpi-sm"><div class="n" id="kpi_today">0</div><div class="l">Delivered Today</div></div>
+                <div class="kpi kpi-sm"><div class="n" id="kpi_week">0</div><div class="l">Delivered This Week</div></div>
+                <div class="kpi kpi-sm"><div class="n" id="kpi_total">0</div><div class="l">Total Delivered</div></div>
+                <div class="kpi kpi-sm"><div class="n" id="kpi_cancelled">0</div><div class="l">Cancelled</div></div>
+            </div>
             <div id="dash_trips"></div>
         </div>
     </div>
 
     <!-- ── Deliveries ───────────────────────────────────────────────────────── -->
     <div class="screen" id="screen_deliveries">
-        <div class="topbar"><h2>My Deliveries</h2></div>
-        <div style="padding:0 20px;" id="deliveries_list"></div>
+        <div class="topbar">
+            <h2>My Deliveries</h2>
+            <div class="topbar-actions"><button class="refresh-btn" onclick="refreshDeliveriesTab()">⟳</button></div>
+        </div>
+        <div style="padding:0 20px;">
+            <div class="segmented">
+                <button id="deliveries_tab_active" class="active" onclick="switchDeliveriesTab('active')">Active</button>
+                <button id="deliveries_tab_history" onclick="switchDeliveriesTab('history')">History</button>
+            </div>
+            <div class="search-box">
+                <span class="ic">🔎</span>
+                <input type="text" id="deliveries_search" placeholder="Search by waybill or recipient..." oninput="renderDeliveriesList()">
+            </div>
+            <div id="deliveries_list"></div>
+        </div>
     </div>
 
     <!-- ── Pickups ──────────────────────────────────────────────────────────── -->
     <div class="screen" id="screen_pickups">
-        <div class="topbar"><h2>My Pickups</h2></div>
+        <div class="topbar">
+            <h2>My Pickups</h2>
+            <div class="topbar-actions"><button class="refresh-btn" onclick="loadPickups()">⟳</button></div>
+        </div>
         <div style="padding:0 20px;" id="pickups_list"></div>
     </div>
 
@@ -277,6 +301,9 @@
             <label>Customer signature</label>
             <canvas id="signature_pad_canvas"></canvas>
             <button class="btn-ghost" onclick="clearSignature()">Clear Signature</button>
+            <label>Proof-of-delivery photo (optional)</label>
+            <input type="file" id="deliver_photo_input" accept="image/*" capture="environment" onchange="onDeliverPhotoSelected(event)">
+            <img id="deliver_photo_preview" class="photo-preview">
             <button class="btn-success" onclick="submitDeliver()" id="confirm_deliver_btn">Confirm Delivery</button>
             <button class="btn-ghost" onclick="closeModal('deliver_modal')">Cancel</button>
             <div class="error-box" id="deliver_error"></div>
@@ -793,16 +820,4 @@
         get(API.me, { token: token }).then(function (res) {
             if (res.data.success) {
                 currentRider = res.data.rider;
-                enterApp();
-            } else {
-                localStorage.removeItem(TOKEN_KEY);
-                token = null;
-                showScreen('login');
-            }
-        }).catch(function () {
-            showScreen('login');
-        });
-    }
-</script>
-</body>
-</html>
+                enterApp
