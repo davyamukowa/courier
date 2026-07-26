@@ -305,21 +305,24 @@ class Rider_api extends App_Controller
 
         $staff_id = (int) $this->rider->staff_id;
         $table    = db_prefix() . '_shipments';
+        $history  = db_prefix() . '_shipment_status_history';
 
-        $completed_today = $this->db->where('staff_id', $staff_id)->where('status_id', 8)
-            ->where('DATE(created_at) >=', date('Y-m-d', strtotime('-1 day')))
-            ->where_in('id', $this->db->select('shipment_id')->from(db_prefix() . '_shipment_status_history')
-                ->where('status_id', 8)->where('DATE(changed_at)', date('Y-m-d'))->get()->result_array() ? array_column($this->db->select('shipment_id')->from(db_prefix() . '_shipment_status_history')->where('status_id', 8)->where('DATE(changed_at)', date('Y-m-d'))->get()->result_array(), 'shipment_id') : [0])
-            ->count_all_results($table);
+        $shipment_ids_completed_since = function ($since) use ($history) {
+            $rows = $this->db->select('shipment_id')->from($history)
+                ->where('status_id', 8)
+                ->where('DATE(changed_at) >=', $since)
+                ->group_by('shipment_id')
+                ->get()->result_array();
+            return array_column($rows, 'shipment_id');
+        };
 
-        $week_start = date('Y-m-d', strtotime('monday this week'));
-        $completed_week_ids = array_column(
-            $this->db->select('shipment_id')->from(db_prefix() . '_shipment_status_history')
-                ->where('status_id', 8)->where('DATE(changed_at) >=', $week_start)->get()->result_array(),
-            'shipment_id'
-        );
-        $completed_week = empty($completed_week_ids) ? 0 : $this->db->where('staff_id', $staff_id)
-            ->where_in('id', $completed_week_ids)->count_all_results($table);
+        $today_ids = $shipment_ids_completed_since(date('Y-m-d'));
+        $completed_today = empty($today_ids) ? 0 : $this->db->where('staff_id', $staff_id)
+            ->where_in('id', $today_ids)->count_all_results($table);
+
+        $week_ids = $shipment_ids_completed_since(date('Y-m-d', strtotime('monday this week')));
+        $completed_week = empty($week_ids) ? 0 : $this->db->where('staff_id', $staff_id)
+            ->where_in('id', $week_ids)->count_all_results($table);
 
         $completed_total = (int) $this->db->where('staff_id', $staff_id)->where('status_id', 8)->count_all_results($table);
         $cancelled_total  = (int) $this->db->where('staff_id', $staff_id)->where('status_id', 9)->count_all_results($table);
