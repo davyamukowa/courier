@@ -285,7 +285,7 @@ if (!$CI->db->field_exists('payslip_type' ,db_prefix() . 'acc_account_history'))
     ADD COLUMN `payslip_type` VARCHAR(45) NULL;');
 }
 
-if (!acc_account_exists('acc_opening_balance_equity')) {
+if ($CI->db->field_exists('key_name', db_prefix() . 'acc_accounts') && !acc_account_exists('acc_opening_balance_equity')) {
   $CI->db->query("INSERT INTO `". db_prefix() ."acc_accounts` (`name`, `key_name`, `account_type_id`, `account_detail_type_id`, `default_account`, `active`) VALUES ('', 'acc_opening_balance_equity', '10', '71', '1', '1');");
 }
 
