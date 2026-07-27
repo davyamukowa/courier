@@ -1555,28 +1555,11 @@ function accounting_permissions() {
 }
 
 function accounting_preactivate($module_name){
-    if ($module_name['system_name'] == ACCOUNTING_MODULE_NAME) {             
-        require_once 'libraries/gtsslib.php';
-        $accounting_api = new AccountingLic();
-        $accounting_gtssres = $accounting_api->verify_license();          
-        if(!$accounting_gtssres || ($accounting_gtssres && isset($accounting_gtssres['status']) && !$accounting_gtssres['status'])){
-             $CI = & get_instance();
-            $data['submit_url'] = $module_name['system_name'].'/gtsverify/activate'; 
-            $data['original_url'] = admin_url('modules/activate/'.ACCOUNTING_MODULE_NAME); 
-            $data['module_name'] = ACCOUNTING_MODULE_NAME; 
-            $data['title'] = "Module License Activation"; 
-            echo $CI->load->view($module_name['system_name'].'/activate', $data, true);
-            exit();
-        }        
-    }
+    return true;
 }
 
 function accounting_predeactivate($module_name){
-    if ($module_name['system_name'] == ACCOUNTING_MODULE_NAME) {
-        require_once 'libraries/gtsslib.php';
-        $accounting_api = new AccountingLic();
-        $accounting_api->deactivate_license();
-    }
+    return true;
 }
 
 function acc_automatic_invoice_conversion($data) {
@@ -2729,4 +2712,3 @@ function acc_before_expense_save_filter($data) {
     }
     return $data;
 }
-
