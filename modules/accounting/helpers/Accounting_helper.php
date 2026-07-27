@@ -29,6 +29,21 @@ function acc_account_exists($key_name){
 
 	$CI->load->model('accounting/accounting_model');
 
+    if ($CI->db->table_exists(db_prefix() . 'acc_accounts')) {
+        if (!$CI->db->field_exists('key_name', db_prefix() . 'acc_accounts')) {
+            $CI->db->query('ALTER TABLE `' . db_prefix() . 'acc_accounts` ADD COLUMN `key_name` VARCHAR(255) NULL AFTER `name`;');
+        }
+
+        if (!$CI->db->field_exists('default_account', db_prefix() . 'acc_accounts')) {
+            $CI->db->query('ALTER TABLE `' . db_prefix() . 'acc_accounts`
+                ADD COLUMN `default_account` INT(11) NOT NULL DEFAULT 0,
+                ADD COLUMN `active` INT(11) NOT NULL DEFAULT 1;');
+        } elseif (!$CI->db->field_exists('active', db_prefix() . 'acc_accounts')) {
+            $CI->db->query('ALTER TABLE `' . db_prefix() . 'acc_accounts`
+                ADD COLUMN `active` INT(11) NOT NULL DEFAULT 1;');
+        }
+    }
+
 	if(get_option('acc_add_default_account') == 0){
         $CI->accounting_model->add_default_account();
     }
