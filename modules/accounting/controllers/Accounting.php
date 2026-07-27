@@ -20,13 +20,18 @@ class Accounting extends AdminController
             opcache_invalidate(FCPATH . 'modules/accounting/controllers/Accounting.php', true);
         }
         $this->load->model('accounting_model');
-        hooks()->do_action('accounting_init'); 
-        if(get_option('acc_add_default_account') == 0){
-            $this->accounting_model->add_default_account();
-        }
+        hooks()->do_action('accounting_init');
+        // This install's acc_accounts table uses a newer chart-of-accounts
+        // schema without the legacy key_name column, so the old key_name-based
+        // default-account seeding no longer applies here.
+        if ($this->db->field_exists('key_name', db_prefix() . 'acc_accounts')) {
+            if(get_option('acc_add_default_account') == 0){
+                $this->accounting_model->add_default_account();
+            }
 
-        if(get_option('acc_add_default_account_new') == 0){
-            $this->accounting_model->add_default_account_new();
+            if(get_option('acc_add_default_account_new') == 0){
+                $this->accounting_model->add_default_account_new();
+            }
         }
     }
 
