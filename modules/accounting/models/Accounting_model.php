@@ -147,6 +147,7 @@ class Acc_DB_Proxy {
     }
 }
 
+#[\AllowDynamicProperties]
 class Accounting_model extends App_Model
 {
     public function __construct()
