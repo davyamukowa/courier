@@ -149,6 +149,14 @@ class Acc_DB_Proxy {
 
 class Accounting_model extends App_Model
 {
+    /**
+     * Explicitly declare db so PHP 8.2 doesn't treat the proxy assignment
+     * as a deprecated dynamic property.
+     *
+     * @var Acc_DB_Proxy|CI_DB_query_builder
+     */
+    public $db;
+
     public function __construct()
     {
         parent::__construct();
@@ -1800,11 +1808,15 @@ class Accounting_model extends App_Model
      * add default account new
      */
     public function add_default_account_new(){
+        if (!$this->db->field_exists('key_name', db_prefix().'acc_accounts')) {
+            return false;
+        }
+
         $this->db->where('key_name != ""');
         $affectedRows = $this->db->update(db_prefix().'acc_accounts',  ['default_account' => 1]);
 
         if ($affectedRows > 0) {
-            $this->db->where('name', 'add_default_account_new');
+            $this->db->where('name', 'acc_add_default_account_new');
             $this->db->update(db_prefix() . 'options', [
                     'value' => 1,
                 ]);
@@ -37911,6 +37923,5 @@ class Accounting_model extends App_Model
         return true;
     }
 }
-
 
 
