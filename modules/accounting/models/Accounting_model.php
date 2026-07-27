@@ -149,8 +149,6 @@ class Acc_DB_Proxy {
 
 class Accounting_model extends App_Model
 {
-    public $db;
-
     public function __construct()
     {
         parent::__construct();
