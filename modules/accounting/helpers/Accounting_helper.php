@@ -27,6 +27,13 @@ if(!function_exists('acc_get_status_modules')){
 function acc_account_exists($key_name){
 	$CI             = &get_instance();
 
+	// This install's acc_accounts table doesn't have the legacy key_name
+	// column (a newer chart-of-accounts schema is in use instead), so the
+	// old key_name-based default-account seeding no longer applies here.
+	if (!$CI->db->field_exists('key_name', db_prefix() . 'acc_accounts')) {
+		return false;
+	}
+
 	$CI->load->model('accounting/accounting_model');
 
 	if(get_option('acc_add_default_account') == 0){
