@@ -83,6 +83,7 @@ function convert(invoker){
         if(response.credit != 0){
             $('select[name="payment_account"]').val(response.credit).change();
         }
+        init_selectpicker();
     });
 
   $('#convert-modal').modal('show');

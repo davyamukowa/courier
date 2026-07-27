@@ -16,6 +16,12 @@ var bankId;
     $('input[name="fliter_from_date"], input[name="fliter_to_date"], select[name="status"]').on('change', function() {
         init_banking_table();
     });
+
+    $('input[name="bulk_action_type"]').on('change', function() {
+        var val = $(this).val();
+        $('.bulk_action_fields').hide();
+        $('#bulk_' + val + '_fields').show();
+    });
     
     bankId = $('select[name=bank_account]').val();
 
@@ -67,7 +73,7 @@ function init_banking_table() {
   if ($.fn.DataTable.isDataTable('.table-banking')) {
    $('.table-banking').DataTable().destroy();
  }
- initDataTable('.table-banking', admin_url + 'accounting/posted_bank_transactions_table', [], [], fnServerParams, [0, 'desc']);
+ initDataTable('.table-banking', admin_url + 'accounting/posted_bank_transactions_table', [0], [0], fnServerParams, [1, 'desc']);
 }
 
 
@@ -460,4 +466,88 @@ function delete_transation(id) {
       });
     }
     return false;
+}
+
+function banking_feeds_bulk_action_click() {
+    "use strict";
+    var ids = [];
+    var rows = $('.table-banking').find('tbody tr');
+    $.each(rows, function() {
+        var checkbox = $($(this).find('td').eq(0)).find('input');
+        if (checkbox.prop('checked') === true) {
+            ids.push(checkbox.val());
+        }
+    });
+    
+    if (ids.length === 0) {
+        alert_float('warning', lang_no_transactions_selected);
+        return;
+    }
+    
+    // Default action is match, ensure correct div displays
+    $('input[name="bulk_action_type"][value="match"]').prop('checked', true).trigger('change');
+    
+    $('#banking_feeds_bulk_actions').modal('show');
+}
+
+function banking_feeds_bulk_action_submit() {
+    "use strict";
+    var ids = [];
+    var rows = $('.table-banking').find('tbody tr');
+    $.each(rows, function() {
+        var checkbox = $($(this).find('td').eq(0)).find('input');
+        if (checkbox.prop('checked') === true) {
+            ids.push(checkbox.val());
+        }
+    });
+
+    if (ids.length === 0) {
+        alert_float('warning', lang_no_transactions_selected);
+        return;
+    }
+
+    var action = $('input[name="bulk_action_type"]:checked').val();
+    var data = {
+        bulk_action: action,
+        ids: ids
+    };
+
+    // Prompt custom confirmation message based on action
+    var confirmMsg = 'Are you sure?';
+    if (action === 'delete') {
+        confirmMsg = lang_confirm_bulk_delete;
+    } else if (action === 'ignore') {
+        confirmMsg = lang_confirm_bulk_ignore;
+    } else if (action === 'match') {
+        confirmMsg = lang_confirm_bulk_match;
+    } else if (action === 'export_edit') {
+        confirmMsg = "Are you sure you want to export the selected transactions for editing?";
+    }
+
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+
+    // Show full-page loading state
+    $('body').append('<div class="dt-loader"></div>');
+
+    $.post(admin_url + 'accounting/bulk_transaction_action', data, function(response) {
+        $('.dt-loader').remove();
+        response = JSON.parse(response);
+        if (response.success) {
+            if (response.export_url) {
+                window.location.href = response.export_url;
+                $('#banking_feeds_bulk_actions').modal('hide');
+            } else {
+                alert_float('success', response.message);
+                $('#banking_feeds_bulk_actions').modal('hide');
+                init_banking_table();
+            }
+        } else {
+            alert_float('danger', response.message || 'An error occurred.');
+        }
+    }).fail(function() {
+        $('.dt-loader').remove();
+        alert_float('danger', 'Request failed.');
+    });
 }

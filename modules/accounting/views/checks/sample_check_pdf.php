@@ -297,27 +297,27 @@ $i++;?>
                   <td width="100%" colspan="10" style="font-size:18px; font-family: monospace,Arial,serif;">
                      <?php if($current_check_no_icon_a != ''){ ?>
                         <img width="13" class="exam-icon exam-icon-a" data-value="a" src="<?php echo site_url('modules/accounting/assets/images/icon_'.$current_check_no_icon_a.'.svg'); ?>" alt="img">
-                     <? } ?>
+                     <?php } ?>
                      <span>XXXX</span>   
                      <?php if($current_check_no_icon_b != '' && $current_check_no_icon_b != 'e'){ ?>
                         <img width="13" class="exam-icon exam-icon-b" data-value="d" src="<?php echo site_url('modules/accounting/assets/images/icon_'.$current_check_no_icon_b.'.svg'); ?>" alt="img">
-                     <? } ?>
+                     <?php } ?>
                      <span>&nbsp;&nbsp;</span>
                      <?php if($routing_number_icon_a != '' && $routing_number_icon_a != 'e'){ ?>
                         <img width="13" class="exam-icon exam-icon-a" data-value="a" src="<?php echo site_url('modules/accounting/assets/images/icon_'.$routing_number_icon_a.'.svg'); ?>" alt="img">
-                     <? } ?>
+                     <?php } ?>
                      <span>XXXXXXXXX</span>
                      <?php if($routing_number_icon_b != '' && $routing_number_icon_b != 'e'){ ?>
                         <img width="13" class="exam-icon exam-icon-b" data-value="d" src="<?php echo site_url('modules/accounting/assets/images/icon_'.$routing_number_icon_b.'.svg'); ?>" alt="img">
-                     <? } ?>
+                     <?php } ?>
                      <span>&nbsp;&nbsp;</span>
                      <?php if($bank_account_icon_a != '' && $bank_account_icon_a != 'e'){ ?>
                      <img width="13" class="exam-icon exam-icon-a" data-value="b" src="<?php echo site_url('modules/accounting/assets/images/icon_'.$bank_account_icon_a.'.svg'); ?>" alt="img">
-                     <? } ?>
+                     <?php } ?>
                      <span>XXXXXXXXXX</span>
                      <?php if($bank_account_icon_b != '' && $bank_account_icon_b != 'e'){ ?>
                      <img width="13" class="exam-icon exam-icon-b" data-value="d" src="<?php echo site_url('modules/accounting/assets/images/icon_'.$bank_account_icon_b.'.svg'); ?>" alt="img">
-                     <? } ?>
+                     <?php } ?>
 
                   </td>
                </tr>

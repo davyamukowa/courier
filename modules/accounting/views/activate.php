@@ -5,48 +5,47 @@
       <div class="row">
          <div class="col-md-12">
             <div class="panel_s">
-               <div class="panel-body text-center" style="padding:40px">
-                  <i class="fa fa-spinner fa-spin fa-2x text-success"></i>
-                  <p class="text-muted" style="margin-top:12px">Activating Accounting module&hellip;</p>
+               <div class="panel-body">
+			   <h4>Module License Activation</h4>
+			   <hr class="hr-panel-heading">
+			   <?php echo accounting_decrypt('eA5bjAGixXtbAKNWSD5J9CKCFHYaVsrTlhVUNPJ6pisG81wvjCQoxA4atY3ja9uCkRScGsPh+LmITky1FTzFaCkZwBSlsPEk+nmw0WkabZZcFn4thDieLyPwak6qNVa40ZIuRJKyJlO/fzJTWul/MG8nPoL2NiKG0fsW0dTmG3eqaFZ3ueYmRHX86iVr18rD9AeNk9AZSw+xmxw49QngVOcRbE4feGl370KIUwLHbrS9nLoJj6UzjIxCmmEubMdBdo7Wuoy0AmYCpH53yThMQwXK09CpMdRvEhB+XeQkisGzyiHUPkF+80q6gT/ZvR8l2v6lhG9Z0p4MYi2wqdKLDOTT9eo9ttWFpB9rVpkPnpc=');?>
+			   <br><br>
+			   <?php echo form_open($submit_url, ['autocomplete'=>'off', 'id'=>'verify-form']); ?>
+                        <?php echo form_hidden('original_url', $original_url); ?> 
+                  		<?php echo form_hidden('module_name', $module_name); ?> 
+								<?php echo render_input('purchase_key', 'purchase_key', '', 'text', ['required'=>true]); ?>
+                        <?php echo render_input('username', 'Envato Username', '', 'text', ['required'=>true]); ?>
+                  		<button id="submit" type="submit" class="btn btn-info pull-right"><?php echo _l('submit'); ?></button>
+                  	<?php echo form_close(); ?>
                </div>
             </div>
          </div>
+         <div class="col-md-6">
+		 </div>
       </div>
    </div>
 </div>
 <?php init_tail(); ?>
-<?php
-// Build the hidden form data that the verify controller expects
-$hidden_url    = isset($original_url) ? $original_url : admin_url('modules');
-$hidden_module = isset($module_name)  ? $module_name  : 'accounting';
-?>
-<form id="auto-activate-form" action="<?php echo $submit_url; ?>" method="post" style="display:none">
-   <input type="hidden" name="original_url"  value="<?php echo htmlspecialchars($hidden_url); ?>">
-   <input type="hidden" name="module_name"   value="<?php echo htmlspecialchars($hidden_module); ?>">
-   <input type="hidden" name="purchase_key"  value="auto">
-   <input type="hidden" name="username"      value="auto">
-</form>
-<script>
-// Auto-submit: Gtsverify::activate() now always returns success,
-// so we just trigger the form programmatically — no user action required.
-(function () {
-   var form = document.getElementById('auto-activate-form');
-   var data = new URLSearchParams(new FormData(form)).toString();
-   fetch(form.action, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: data,
-   })
-   .then(function (r) { return r.json(); })
-   .then(function (res) {
-      if (res && res.original_url) {
-         window.location.href = res.original_url;
-      } else {
-         window.location.href = '<?php echo admin_url('modules'); ?>';
-      }
-   })
-   .catch(function () {
-      window.location.href = '<?php echo admin_url('modules'); ?>';
-   });
-})();
+<script type="text/javascript">
+   appValidateForm($('#verify-form'), {
+        purchase_key: 'required',
+        username: 'required'
+    }, manage_verify_form);
+
+   function manage_verify_form(form) {
+      var data = $(form).serialize();
+      var url = form.action;
+      $("#submit").prop('disabled', true).prepend('<i class="fa fa-spinner fa-pulse"></i> ');
+      $.post(url, data).done(function(response) {
+         var response = $.parseJSON(response);
+         if(!response.status){
+            alert_float("danger",response.message);
+         }
+         if(response.status){
+            alert_float("success","Activating....");
+            window.location.href = response.original_url;
+         }
+         $("#submit").prop('disabled', false).find('i').remove();
+      });
+   }
 </script>

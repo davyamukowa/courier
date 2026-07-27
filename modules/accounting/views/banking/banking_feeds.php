@@ -32,6 +32,9 @@
                     <a href="<?php echo admin_url('accounting/import_xlsx_posted_bank_transactions?bank_id='.$_GET['id']) ?>"  class="top-timers acc-text-success"><i class="fa fa-download"></i> <?php echo _l('import_transactions'); ?></a>
                 </li>
                 <li>
+                    <a href="#" class="top-timers acc-text-warning" data-toggle="modal" data-target="#import-edited-transactions-modal"><i class="fa fa-upload"></i> <?php echo _l('acc_import_edited_transactions'); ?></a>
+                </li>
+                <li>
                     <a href="#"  id="linkButton"><i class="fa fa-refresh"></i> <?php echo _l('re_verify_bank_account'); ?></a>
                 </li>
                 <li>
@@ -47,6 +50,9 @@
                 <ul class="dropdown-menu dropdown-menu-right width-250">
                     <li>
                         <a href="<?php echo admin_url('accounting/import_xlsx_posted_bank_transactions?bank_id='.$_GET['id']) ?>"  class="top-timers acc-text-success"><i class="fa fa-download"></i> <?php echo _l('import_transactions'); ?></a>
+                    </li>
+                    <li>
+                        <a href="#" class="top-timers acc-text-warning" data-toggle="modal" data-target="#import-edited-transactions-modal"><i class="fa fa-upload"></i> <?php echo _l('acc_import_edited_transactions'); ?></a>
                     </li>
                     <li>
                         <a href="#"  id="linkButton"><i class="fa fa-refresh"></i> <?php echo _l('verify_bank_account'); ?></a>
@@ -110,8 +116,10 @@
           ?>
     </div>
 </div>     
+<a href="#" onclick="banking_feeds_bulk_action_click(); return false;" class="hide bulk-actions-btn table-btn" data-table=".table-banking"><?php echo _l('bulk_actions'); ?></a>
 <table class="table table-banking">
   <thead>
+    <th><span class="hide"> - </span><div class="checkbox mass_select_all_wrap"><input type="checkbox" id="mass_select_all" data-to-table="banking"><label></label></div></th>
     <th><?php echo _l('invoice_payments_table_date_heading'); ?></th>
   <!-- <th><?php echo _l('check_#'); ?></th> -->
   <th><?php echo _l('payee'); ?></th>
@@ -143,6 +151,31 @@
                 <button type="button" class="btn btn-default" data-dismiss="modal"><?php echo _l('close'); ?></button>
                 <a href="#" class="btn btn-info" onclick="submitForm(); return false;"><?php echo _l('download'); ?></a>
             </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="import-edited-transactions-modal" tabindex="-1" role="dialog">
+   <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title"><?php echo _l('acc_import_edited_transactions'); ?></h4>
+            </div>
+            <?php echo form_open_multipart(admin_url('accounting/import_edited_banking_feeds'),array('id'=>'import-edited-transactions-form'));?>
+            <?php echo form_hidden('bank_id', $_GET['id'] ?? ''); ?>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="file_xlsx" class="control-label"><?php echo _l('choose_excel_file'); ?></label>
+                    <input type="file" extension=".xlsx" accept=".xlsx" name="file_xlsx" class="form-control" required>
+                </div>
+                <h5 class="heading"><?php echo _l('acc_import_edited_transactions_note'); ?></h5>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal"><?php echo _l('close'); ?></button>
+                <button type="submit" class="btn btn-info"><?php echo _l('import'); ?></button>
+            </div>
+            <?php echo form_close(); ?>
         </div>
     </div>
 </div>
@@ -265,5 +298,83 @@
 <!-- box loading -->
 
 <div id="box-loading"></div>
+
+<!-- Multi-functional Bulk Actions Modal -->
+<div class="modal fade bulk_actions" id="banking_feeds_bulk_actions" tabindex="-1" role="dialog" data-table=".table-banking">
+   <div class="modal-dialog modal-lg" role="document">
+      <div class="modal-content">
+         <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h4 class="modal-title"><?php echo _l('bulk_actions'); ?></h4>
+         </div>
+         <div class="modal-body">
+            <div class="row">
+               <div class="col-md-12">
+                  <div class="radio radio-inline radio-primary">
+                     <input type="radio" name="bulk_action_type" id="bulk_action_match" value="match" checked>
+                     <label for="bulk_action_match"><?php echo _l('match_transaction'); ?></label>
+                  </div>
+                  <div class="radio radio-inline radio-primary">
+                     <input type="radio" name="bulk_action_type" id="bulk_action_export_edit" value="export_edit">
+                     <label for="bulk_action_export_edit"><?php echo _l('acc_export_to_excel_edit'); ?></label>
+                  </div>
+                  <div class="radio radio-inline radio-primary">
+                     <input type="radio" name="bulk_action_type" id="bulk_action_ignore" value="ignore">
+                     <label for="bulk_action_ignore"><?php echo _l('ignore'); ?></label>
+                  </div>
+                  <div class="radio radio-inline radio-danger">
+                     <input type="radio" name="bulk_action_type" id="bulk_action_delete" value="delete">
+                     <label for="bulk_action_delete"><?php echo _l('delete'); ?></label>
+                  </div>
+               </div>
+            </div>
+            <hr />
+
+            <!-- Container for Bulk Match Info -->
+            <div id="bulk_match_fields" class="bulk_action_fields" style="display:none;">
+               <div class="alert alert-info">
+                  <h4><i class="fa fa-magic"></i> <?php echo _l('acc_auto_match_system_transactions'); ?></h4>
+                  <p><?php echo _l('acc_auto_match_note'); ?></p>
+                  <ul style="margin-top: 10px;">
+                     <li><strong><?php echo _l('acc_same_bank_account'); ?></strong></li>
+                     <li><strong><?php echo _l('acc_100_percent_amount'); ?></strong></li>
+                     <li><strong><?php echo _l('acc_closest_date_window'); ?></strong></li>
+                  </ul>
+                  <p style="margin-top: 10px;"><?php echo _l('acc_auto_match_desc'); ?></p>
+               </div>
+            </div>
+
+            <!-- Message for Export Edit -->
+            <div id="bulk_export_edit_fields" class="bulk_action_fields" style="display:none;">
+               <div class="alert alert-info">
+                  <h4><i class="fa fa-file-excel-o"></i> <?php echo _l('acc_export_to_excel_edit'); ?></h4>
+                  <p><?php echo _l('acc_export_to_excel_edit_note'); ?></p>
+               </div>
+            </div>
+
+            <!-- Message for Ignore/Delete -->
+            <div id="bulk_ignore_fields" class="bulk_action_fields" style="display:none;">
+               <div class="alert alert-warning"><?php echo _l('acc_confirm_ignore_selected'); ?></div>
+            </div>
+            <div id="bulk_delete_fields" class="bulk_action_fields" style="display:none;">
+               <div class="alert alert-danger"><?php echo _l('acc_confirm_delete_selected'); ?></div>
+            </div>
+
+         </div>
+         <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal"><?php echo _l('close'); ?></button>
+            <button type="button" class="btn btn-info" onclick="banking_feeds_bulk_action_submit(); return false;"><?php echo _l('confirm'); ?></button>
+         </div>
+      </div>
+   </div>
+</div>
+
+<script>
+   var lang_confirm_bulk_match = "<?php echo _l('acc_confirm_bulk_match'); ?>";
+   var lang_confirm_bulk_delete = "<?php echo _l('acc_confirm_delete_selected'); ?>";
+   var lang_confirm_bulk_ignore = "<?php echo _l('acc_confirm_ignore_selected'); ?>";
+   var lang_no_transactions_selected = "<?php echo _l('acc_no_transactions_selected'); ?>";
+   var lang_please_select_account = "<?php echo _l('acc_please_select_account'); ?>";
+</script>
 
 

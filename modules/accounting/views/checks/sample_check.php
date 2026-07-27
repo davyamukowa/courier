@@ -288,30 +288,30 @@ if($acc_check_type != ''){
 																	<div class="px-10">
 																		<?php if($current_check_no_icon_a != ''){ ?>
 																			<img width="17" class="exam-icon exam-icon-a" data-value="a" src="<?php echo site_url('modules/accounting/assets/images/icon_'.$current_check_no_icon_a.'.svg'); ?>" alt="img">
-																		<? } ?>
+																		<?php } ?>
 																		<span style="">XXXX</span>   
 																		<?php if($current_check_no_icon_b != ''){ ?>
 																			<img width="17" class="exam-icon exam-icon-b" data-value="d" src="<?php echo site_url('modules/accounting/assets/images/icon_'.$current_check_no_icon_b.'.svg'); ?>" alt="img">
-																		<? } ?>
+																		<?php } ?>
 																	</div>
 
 																	<div class="px-10">
 																		<?php if($routing_number_icon_a != ''){ ?>
 																			<img width="17" class="exam-icon exam-icon-a" data-value="a" src="<?php echo site_url('modules/accounting/assets/images/icon_'.$routing_number_icon_a.'.svg'); ?>" alt="img">
-																		<? } ?>
+																		<?php } ?>
 																		<span style="">XXXXXXXXX</span>
 																		<?php if($routing_number_icon_b != ''){ ?>
 																			<img width="17" class="exam-icon exam-icon-b" data-value="d" src="<?php echo site_url('modules/accounting/assets/images/icon_'.$routing_number_icon_b.'.svg'); ?>" alt="img">
-																		<? } ?>
+																		<?php } ?>
 																	</div>
 																	<div class="px-10">
 																		<?php if($bank_account_icon_a != ''){ ?>
 																			<img width="17" class="exam-icon exam-icon-a" data-value="b" src="<?php echo site_url('modules/accounting/assets/images/icon_'.$bank_account_icon_a.'.svg'); ?>" alt="img">
-																		<? } ?>
+																		<?php } ?>
 																		<span style="">XXXXXXXXXX</span>
 																		<?php if($bank_account_icon_b != ''){ ?>
 																			<img width="17" class="exam-icon exam-icon-b" data-value="d" src="<?php echo site_url('modules/accounting/assets/images/icon_'.$bank_account_icon_b.'.svg'); ?>" alt="img">
-																		<? } ?>
+																		<?php } ?>
 																	</div>
 																</h4>
 															</div>

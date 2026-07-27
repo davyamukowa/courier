@@ -21,12 +21,17 @@ var fnServerParams;
       
       },convert_form_handler);
 
-	init_sales_table();
+  init_sales_table();
+  init_credit_notes_table();
+  init_credit_notes_apply_table();
+	init_credit_notes_refund_table();
   init_sales_invoice_table();
   init_omni_sales_table();
 
   $('select[name="invoice"]').on('change', function() {
     init_sales_table();
+    init_credit_notes_table();
+    init_credit_notes_apply_table();
   });
   $('select[name="payment_mode"]').on('change', function() {
     init_sales_table();
@@ -34,18 +39,27 @@ var fnServerParams;
   $('select[name="status"]').on('change', function() {
     init_sales_invoice_table();
     init_sales_table();
-  init_omni_sales_table();
+    init_omni_sales_table();
+    init_credit_notes_table();
+    init_credit_notes_apply_table();
+    init_credit_notes_refund_table();
   });
 	$('input[name="from_date"]').on('change', function() {
 		init_sales_table();
     init_sales_invoice_table();
-  init_omni_sales_table();
+    init_omni_sales_table();
+    init_credit_notes_table();
+    init_credit_notes_apply_table();
+    init_credit_notes_refund_table();
 	});
 
 	$('input[name="to_date"]').on('change', function() {
 		init_sales_table();
     init_sales_invoice_table();
-  init_omni_sales_table();
+    init_omni_sales_table();
+    init_credit_notes_table();
+    init_credit_notes_apply_table();
+    init_credit_notes_refund_table();
 	});
 
 	$("input[data-type='currency']").on({
@@ -110,6 +124,7 @@ function convert(invoker){
             $('select[name="payment_account"]').val(response.credit).change();
           }
         }
+        init_selectpicker();
     });
 
   $('#convert-modal').modal('show');
@@ -127,6 +142,9 @@ function delete_convert(id,type) {
             init_sales_table();
             init_sales_invoice_table();
             init_omni_sales_table();
+            init_credit_notes_table();
+            init_credit_notes_apply_table();
+            init_credit_notes_refund_table();
           }else{
             alert_float('danger', response.message); 
           }
@@ -157,6 +175,9 @@ function convert_form_handler(form) {
             init_sales_table();
             init_sales_invoice_table();
             init_omni_sales_table();
+            init_credit_notes_table();
+            init_credit_notes_apply_table();
+            init_credit_notes_refund_table();
         }else{
           alert_float('danger', response.message);
         }
@@ -189,13 +210,14 @@ function init_sales_invoice_table() {
 
 function formatNumber(n) {
   "use strict";
-  // format number 1000000 to 1,234,567
-  return n.replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+  // format number 1000000 to 1,234,567 (with dynamic separator)
+  var thousand_sep = (typeof(acc_thousand_separator) !== 'undefined') ? acc_thousand_separator : ((typeof(app) !== 'undefined' && app.options && app.options.thousand_separator) ? app.options.thousand_separator : ',');
+  return n.replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, thousand_sep);
 }
 function formatCurrency(input, blur) {
   "use strict";
-  // appends $ to value, validates decimal side
-  // and puts cursor back in right position.
+  var decimal_sep = (typeof(acc_decimal_separator) !== 'undefined') ? acc_decimal_separator : ((typeof(app) !== 'undefined' && app.options && app.options.decimal_separator) ? app.options.decimal_separator : '.');
+  var thousand_sep = (typeof(acc_thousand_separator) !== 'undefined') ? acc_thousand_separator : ((typeof(app) !== 'undefined' && app.options && app.options.thousand_separator) ? app.options.thousand_separator : ',');
 
   // get input value
   var input_val = input.val();
@@ -210,35 +232,38 @@ function formatCurrency(input, blur) {
   var caret_pos = input.prop("selectionStart");
 
   // check for decimal
-  if (input_val.indexOf(".") >= 0) {
+  if (input_val.indexOf(decimal_sep) >= 0) {
 
     // get position of first decimal
-    // this prevents multiple decimals from
-    // being entered
-    var decimal_pos = input_val.indexOf(".");
+    var decimal_pos = input_val.indexOf(decimal_sep);
+    var minus = input_val.substring(0, 1);
+    if(minus != '-'){
+      minus = '';
+    }
 
     // split number by decimal point
     var left_side = input_val.substring(0, decimal_pos);
-    var right_side = input_val.substring(decimal_pos);
+    var right_side = input_val.substring(decimal_pos + 1);
 
-    // add commas to left side of number
     left_side = formatNumber(left_side);
 
-    // validate right side
-    right_side = formatNumber(right_side);
+    // validate right side (only digits)
+    right_side = right_side.replace(/\D/g, "");
 
     // Limit decimal to only 2 digits
     right_side = right_side.substring(0, 2);
 
-    // join number by .
-    input_val = left_side + "." + right_side;
+    // join number by decimal separator
+    input_val = minus + left_side + decimal_sep + right_side;
 
   } else {
     // no decimal entered
-    // add commas to number
-    // remove all non-digits
+    var minus = input_val.substring(0, 1);
+    if(minus != '-'){
+      minus = '';
+    }
     input_val = formatNumber(input_val);
-    input_val = input_val;
+    input_val = minus + input_val;
 
   }
 
@@ -247,8 +272,7 @@ function formatCurrency(input, blur) {
 
   // put caret back in the right position
   var updated_len = input_val.length;
-  caret_pos = updated_len - original_len + caret_pos;
-  input[0].setSelectionRange(caret_pos, caret_pos);
+  caret_pos = updated_len - original_len + caret_pos;  
 }
 
 
@@ -272,6 +296,12 @@ function bulk_action(event) {
           var rows = $($('#omni_sales_return_order_bulk_actions').attr('data-table')).find('tbody tr');
         }else if($('input[name="bulk_actions_type"]').val() == 'omni_sales_refund'){
           var rows = $($('#omni_sales_refund_bulk_actions').attr('data-table')).find('tbody tr');
+        }else if($('input[name="bulk_actions_type"]').val() == 'credit_note'){
+          var rows = $($('#credit_notes_bulk_actions').attr('data-table')).find('tbody tr');
+        }else if($('input[name="bulk_actions_type"]').val() == 'credit_note_apply'){
+          var rows = $($('#credit_notes_apply_bulk_actions').attr('data-table')).find('tbody tr');
+        }else if($('input[name="bulk_actions_type"]').val() == 'credit_note_refund'){
+          var rows = $($('#credit_notes_refund_bulk_actions').attr('data-table')).find('tbody tr');
         }
 
         $.each(rows, function() {
@@ -317,4 +347,32 @@ function init_omni_sales_table() {
     $('.table-omni-sales-refund').DataTable().destroy();
   }
   initDataTable('.table-omni-sales-refund', admin_url + 'accounting/omni_sales_refund_table', [0], [0], fnServerParams, [1, 'desc']);
+}
+
+
+function init_credit_notes_table() {
+  "use strict";
+
+  if ($.fn.DataTable.isDataTable('.table-credit-notes')) {
+     $('.table-credit-notes').DataTable().destroy();
+  }
+  initDataTable('.table-credit-notes', admin_url + 'accounting/credit_notes_table?bulk_actions=true', [0], [0], fnServerParams, [1, 'desc']);
+}
+
+function init_credit_notes_apply_table() {
+  "use strict";
+
+  if ($.fn.DataTable.isDataTable('.table-credit-notes-apply')) {
+     $('.table-credit-notes-apply').DataTable().destroy();
+  }
+  initDataTable('.table-credit-notes-apply', admin_url + 'accounting/credit_notes_apply_table?bulk_actions=true', [0], [0], fnServerParams, [1, 'desc']);
+}
+
+function init_credit_notes_refund_table() {
+  "use strict";
+
+  if ($.fn.DataTable.isDataTable('.table-credit-notes-refund')) {
+     $('.table-credit-notes-refund').DataTable().destroy();
+  }
+  initDataTable('.table-credit-notes-refund', admin_url + 'accounting/credit_notes_refund_table?bulk_actions=true', [0], [0], fnServerParams, [1, 'desc']);
 }

@@ -2,11 +2,159 @@
 
 defined('BASEPATH') or exit('No direct script access allowed');
 
+class Acc_DB_Proxy {
+    private $db;
+    public function __construct($db) {
+        $this->db = $db;
+    }
+    public function __call($name, $arguments) {
+        if ($name == 'get') {
+            $table = isset($arguments[0]) ? $arguments[0] : '';
+            if (empty($table) && !empty($this->db->qb_from)) {
+                $table = $this->db->qb_from[0];
+            }
+            if (strpos($table, 'acc_account_history') !== false) {
+                $CI = &get_instance();
+                $data_filter = $CI->input->post();
+                if (isset($data_filter['class_filter']) && $data_filter['class_filter'] != '') {
+                    $this->db->where(db_prefix() . 'acc_account_history.class', $data_filter['class_filter']);
+                }
+            }
+        }
+        return call_user_func_array([$this->db, $name], $arguments);
+    }
+    public function __get($name) {
+        return $this->db->$name;
+    }
+    public function __set($name, $value) {
+        $this->db->$name = $value;
+    }
+
+    public function insert($table = '', $set = NULL, $escape = NULL) {
+        if ($table == db_prefix() . 'acc_account_history' && is_array($set)) {
+            $set = $this->inject_class_to_row($set);
+        }
+        return $this->db->insert($table, $set, $escape);
+    }
+
+    public function insert_batch($table = '', $set = NULL, $escape = NULL, $batch_size = 100) {
+        if ($table == db_prefix() . 'acc_account_history' && is_array($set)) {
+            foreach ($set as $key => $row) {
+                $set[$key] = $this->inject_class_to_row($row);
+            }
+        }
+        return $this->db->insert_batch($table, $set, $escape, $batch_size);
+    }
+
+    private function inject_class_to_row($row) {
+        if (!isset($row['class']) || $row['class'] == 0) {
+            if (isset($row['rel_id']) && isset($row['rel_type'])) {
+                $rel_id = $row['rel_id'];
+                $rel_type = $row['rel_type'];
+                $class_id = 0;
+                
+                $CI = &get_instance();
+                if ($rel_type == 'invoice') {
+                    $invoice = $CI->db->select('acc_class')->where('id', $rel_id)->get(db_prefix() . 'invoices')->row();
+                    if ($invoice) { $class_id = $invoice->acc_class; }
+                } elseif ($rel_type == 'expense') {
+                    $expense = $CI->db->select('acc_class')->where('id', $rel_id)->get(db_prefix() . 'expenses')->row();
+                    if ($expense) { $class_id = $expense->acc_class; }
+                } elseif ($rel_type == 'payment') {
+                    $payment = $CI->db->select('invoiceid')->where('id', $rel_id)->get(db_prefix() . 'invoicepaymentrecords')->row();
+                    if ($payment) {
+                        $invoice = $CI->db->select('acc_class')->where('id', $payment->invoiceid)->get(db_prefix() . 'invoices')->row();
+                        if ($invoice) { $class_id = $invoice->acc_class; }
+                    }
+                } elseif ($rel_type == 'credit_note' || $rel_type == 'credit_note_refund') {
+                    if ($rel_type == 'credit_note_refund') {
+                        $refund = $CI->db->select('credit_note_id')->where('id', $rel_id)->get(db_prefix() . 'creditnote_refunds')->row();
+                        if ($refund) {
+                            $credit_note = $CI->db->select('acc_class')->where('id', $refund->credit_note_id)->get(db_prefix() . 'creditnotes')->row();
+                            if ($credit_note) { $class_id = $credit_note->acc_class; }
+                        }
+                    } elseif ($rel_type == 'credit_note' && get_option('acc_credit_note_mapping_mode')  == 'on_apply') {
+                        $credit = $CI->db->select('credit_id')->where('id', $rel_id)->get(db_prefix() . 'credits')->row();
+                        if ($credit) {
+                            $credit_note = $CI->db->select('acc_class')->where('id', $credit->credit_id)->get(db_prefix() . 'creditnotes')->row();
+                            if ($credit_note) { $class_id = $credit_note->acc_class; }
+                        }
+                    } else {
+                        $credit_note = $CI->db->select('acc_class')->where('id', $rel_id)->get(db_prefix() . 'creditnotes')->row();
+                        if ($credit_note) { $class_id = $credit_note->acc_class; }
+                    }
+                } elseif ($rel_type == 'stock_import') {
+                    $goods_receipt = $CI->db->select('acc_class')->where('id', $rel_id)->get(db_prefix() . 'goods_receipt')->row();
+                    if ($goods_receipt) { $class_id = $goods_receipt->acc_class; }
+                } elseif ($rel_type == 'stock_export') {
+                    $goods_delivery = $CI->db->select('acc_class')->where('id', $rel_id)->get(db_prefix() . 'goods_delivery')->row();
+                    if ($goods_delivery) { $class_id = $goods_delivery->acc_class; }
+                } elseif ($rel_type == 'loss_adjustment') {
+                    $loss_adjustment = $CI->db->select('acc_class')->where('id', $rel_id)->get(db_prefix() . 'wh_loss_adjustment')->row();
+                    if ($loss_adjustment) { $class_id = $loss_adjustment->acc_class; }
+                } elseif ($rel_type == 'payslip') {
+                    $payslip = $CI->db->select('acc_class')->where('id', $rel_id)->get(db_prefix() . 'hrp_payslips')->row();
+                    if ($payslip) { $class_id = $payslip->acc_class; }
+                } elseif ($rel_type == 'purchase_order') {
+                    $pur_order = $CI->db->select('acc_class')->where('id', $rel_id)->get(db_prefix() . 'pur_orders')->row();
+                    if ($pur_order) { $class_id = $pur_order->acc_class; }
+                } elseif ($rel_type == 'purchase_invoice') {
+                    $pur_invoice = $CI->db->select('acc_class')->where('id', $rel_id)->get(db_prefix() . 'pur_invoices')->row();
+                    if ($pur_invoice) { $class_id = $pur_invoice->acc_class; }
+                } elseif ($rel_type == 'purchase_payment') {
+                    $pur_payment = $CI->db->select('pur_invoice')->where('id', $rel_id)->get(db_prefix() . 'pur_invoice_payment')->row();
+                    if ($pur_payment) {
+                        $pur_invoice = $CI->db->select('acc_class')->where('id', $pur_payment->pur_invoice)->get(db_prefix() . 'pur_invoices')->row();
+                        if ($pur_invoice) { $class_id = $pur_invoice->acc_class; }
+                    }
+                } elseif ($rel_type == 'order_return' || $rel_type == 'pur_order_return' || $rel_type == 'purchase_order_return') {
+                    $order_return = $CI->db->select('acc_class')->where('id', $rel_id)->get(db_prefix() . 'wh_order_returns')->row();
+                    if ($order_return) { $class_id = $order_return->acc_class; }
+                } elseif ($rel_type == 'debit_note' || $rel_type == 'debit_note_refund') {
+                    if ($rel_type == 'debit_note_refund') {
+                        $refund = $CI->db->select('debit_note_id')->where('id', $rel_id)->get(db_prefix() . 'pur_debits_refunds')->row();
+                        if ($refund) {
+                            $debit_note = $CI->db->select('acc_class')->where('id', $refund->debit_note_id)->get(db_prefix() . 'pur_debit_notes')->row();
+                            if ($debit_note) { $class_id = $debit_note->acc_class; }
+                        }
+                    } elseif ($rel_type == 'debit_note' && get_option('acc_debit_note_mapping_mode')  == 'on_apply') {
+                        $credit = $CI->db->select('debit_id')->where('id', $rel_id)->get(db_prefix() . 'pur_debits')->row();
+                        if ($credit) {
+                            $debit_note = $CI->db->select('acc_class')->where('id', $credit->debit_id)->get(db_prefix() . 'pur_debit_notes')->row();
+                            if ($debit_note) { $class_id = $debit_note->acc_class; }
+                        }
+                    } else {
+                        $debit_note = $CI->db->select('acc_class')->where('id', $rel_id)->get(db_prefix() . 'pur_debit_notes')->row();
+                        if ($debit_note) { $class_id = $debit_note->acc_class; }
+                    }
+                }elseif ($rel_type == 'sales_return_order') {
+                    $sales_return_order = $CI->db->select('acc_class')->where('id', $rel_id)->get(db_prefix() . 'cart')->row();
+                    if ($sales_return_order) { $class_id = $sales_return_order->acc_class; }
+                }elseif ($rel_type == 'sales_refund') {
+                    $sales_refund = $CI->db->select('order_id')->where('id', $rel_id)->get(db_prefix() . 'omni_refunds')->row();
+                    if ($sales_refund) {
+                        $sales_return_order = $CI->db->select('acc_class')->where('id', $sales_refund->order_id)->get(db_prefix() . 'cart')->row();
+                        if ($sales_return_order) { $class_id = $sales_return_order->acc_class; }
+                    }
+                }
+                
+                if ($class_id > 0) {
+                    $row['class'] = $class_id;
+                }
+            }
+        }
+        return $row;
+    }
+}
+
 class Accounting_model extends App_Model
 {
     public function __construct()
     {
         parent::__construct();
+
+        // Apply our DB proxy for class filtering in reports
+        $this->db = new Acc_DB_Proxy($this->db);
     }
 
     /**
@@ -1694,6 +1842,28 @@ class Accounting_model extends App_Model
             $data['acc_enable_all_time_filter'] = 0;
         }
 
+        if(!isset($data['acc_enable_class_tracking'])){
+            $data['acc_enable_class_tracking'] = 0;
+        }
+
+        if(!isset($data['acc_hide_zero_value_rows'])){
+            $data['acc_hide_zero_value_rows'] = 0;
+        }
+
+        if(!isset($data['acc_enforce_purchase_order'])){
+            $data['acc_enforce_purchase_order'] = 0;
+        }
+        if(!isset($data['acc_enforce_expense'])){
+            $data['acc_enforce_expense'] = 0;
+        }
+        if(!isset($data['acc_enforce_imprest'])){
+            $data['acc_enforce_imprest'] = 0;
+        }
+        if(!isset($data['acc_enforce_claim'])){
+            $data['acc_enforce_claim'] = 0;
+        }
+
+
         foreach ($data as $key => $value) {
             $this->db->where('name', $key);
             $this->db->update(db_prefix() . 'options', [
@@ -1844,7 +2014,7 @@ class Accounting_model extends App_Model
             unset($data['update_balance']);
         }
 
-        $data['balance'] = str_replace(',', '', $data['balance']);
+        $data['balance'] = acc_unformat_number($data['balance']);
         $this->db->insert(db_prefix() . 'acc_accounts', $data);
 
         $insert_id = $this->db->insert_id();
@@ -2055,7 +2225,7 @@ class Accounting_model extends App_Model
             unset($data['update_balance']);
         }
 
-        $data['balance'] = str_replace(',', '', $data['balance']);
+        $data['balance'] = acc_unformat_number($data['balance']);
         $this->db->where('id', $id);
         $this->db->update(db_prefix() . 'acc_accounts', $data);
 
@@ -2238,7 +2408,7 @@ class Accounting_model extends App_Model
         $this->db->where('rel_type', $data['type']);
         $this->db->delete(db_prefix().'acc_account_history');
 
-        $data['amount'] = str_replace(',', '', $data['amount']);
+        $data['amount'] = acc_unformat_number($data['amount']);
 
         $data_insert = [];
         if($data['type'] == 'invoice'){
@@ -2596,6 +2766,10 @@ class Accounting_model extends App_Model
 
             $item_amount = $data['item_amount'];
             $profit_item_amount = $data['profit_item_amount'];
+            $currency_rate = 1;
+            if($goods_delivery->currency != 0 && $goods_delivery->currency != $currency->id && (float)($goods_delivery->currency_exchange_rate) != 0){
+                $currency_rate = $goods_delivery->currency_exchange_rate;
+            }
 
             foreach ($goods_delivery_detail as $value) {
                 $item_id = $value['commodity_code'];
@@ -2747,6 +2921,7 @@ class Accounting_model extends App_Model
                     $tax_deposit_to = get_option('acc_tax_deposit_to');
 
                     $total_tax = $value['total_money'] - $item_total;
+                    $total_tax = round($total_tax * $currency_rate, 2);
 
                     $tax_mapping = $this->get_tax_mapping($value['tax_id']);
 
@@ -2835,7 +3010,7 @@ class Accounting_model extends App_Model
             $item_amount = $data['item_amount'];
             $currency_rate = 1;
             if($goods_receipt->pr_order_id != 0 && $goods_receipt->currency != 0 && $goods_receipt->currency != $currency->id && (float)($goods_receipt->currency_exchange_rate) != 0){
-                $currency_rate = $goods_receipt->currency_exchange_rate;
+                $currency_rate = round(1/$goods_receipt->currency_exchange_rate, 6);
             }
 
             foreach ($goods_receipt_detail as $value) {
@@ -2910,7 +3085,7 @@ class Accounting_model extends App_Model
                         $tax_payment_account = get_option('acc_expense_tax_payment_account');
                         $tax_deposit_to = get_option('acc_expense_tax_deposit_to');
 
-                        $total_tax = $value['tax_money'] / $currency_rate;
+                        $total_tax = $value['tax_money'] * $currency_rate;
 
                         $tax_mapping = $this->get_tax_mapping($value['tax']);
 
@@ -2996,7 +3171,7 @@ class Accounting_model extends App_Model
 
             $currency_converter = 0;
             $currency_rate = 0;
-            if($base_currency->name != $currency->name){
+            if($base_currency->name != $currency->name  && $purchase_order->currency_rate != 0){
                 $currency_converter = 1;
                 $currency_rate = 1/$purchase_order->currency_rate;
             }
@@ -3039,6 +3214,7 @@ class Accounting_model extends App_Model
                     $node['datecreated'] = date('Y-m-d H:i:s');
                     $node['addedfrom'] = get_staff_user_id();
                     $node['currency_rate'] = $currency_rate;
+                    $node['vendor'] = $purchase_order->vendor;
                     $data_insert[] = $node;
 
                     $node = [];
@@ -3055,6 +3231,7 @@ class Accounting_model extends App_Model
                     $node['datecreated'] = date('Y-m-d H:i:s');
                     $node['addedfrom'] = get_staff_user_id();
                     $node['currency_rate'] = $currency_rate;
+                    $node['vendor'] = $purchase_order->vendor;
                     $data_insert[] = $node;
                 }else{
                     $node = [];
@@ -3071,6 +3248,7 @@ class Accounting_model extends App_Model
                     $node['datecreated'] = date('Y-m-d H:i:s');
                     $node['addedfrom'] = get_staff_user_id();
                     $node['currency_rate'] = $currency_rate;
+                    $node['vendor'] = $purchase_order->vendor;
                     $data_insert[] = $node;
 
                     $node = [];
@@ -3087,6 +3265,7 @@ class Accounting_model extends App_Model
                     $node['datecreated'] = date('Y-m-d H:i:s');
                     $node['addedfrom'] = get_staff_user_id();
                     $node['currency_rate'] = $currency_rate;
+                    $node['vendor'] = $purchase_order->vendor;
                     $data_insert[] = $node;
                 }
                 if(get_option('acc_tax_automatic_conversion') == 1 && $value['tax'] != ''){
@@ -3152,6 +3331,7 @@ class Accounting_model extends App_Model
                             $node['datecreated'] = date('Y-m-d H:i:s');
                             $node['addedfrom'] = get_staff_user_id();
                             $node['currency_rate'] = $currency_rate;
+                            $node['vendor'] = $purchase_order->vendor;
                             $data_insert[] = $node;
 
                             $node = [];
@@ -3168,6 +3348,7 @@ class Accounting_model extends App_Model
                             $node['datecreated'] = date('Y-m-d H:i:s');
                             $node['addedfrom'] = get_staff_user_id();
                             $node['currency_rate'] = $currency_rate;
+                            $node['vendor'] = $purchase_order->vendor;
                             $data_insert[] = $node;
                         }else{
                             $node = [];
@@ -3184,6 +3365,7 @@ class Accounting_model extends App_Model
                             $node['datecreated'] = date('Y-m-d H:i:s');
                             $node['addedfrom'] = get_staff_user_id();
                             $node['currency_rate'] = $currency_rate;
+                            $node['vendor'] = $purchase_order->vendor;
                             $data_insert[] = $node;
 
                             $node = [];
@@ -3200,6 +3382,7 @@ class Accounting_model extends App_Model
                             $node['datecreated'] = date('Y-m-d H:i:s');
                             $node['addedfrom'] = get_staff_user_id();
                             $node['currency_rate'] = $currency_rate;
+                            $node['vendor'] = $purchase_order->vendor;
                             $data_insert[] = $node;
                         }
                     }
@@ -3228,6 +3411,7 @@ class Accounting_model extends App_Model
                     $node['datecreated'] = date('Y-m-d H:i:s');
                     $node['addedfrom'] = get_staff_user_id();
                     $node['currency_rate'] = $currency_rate;
+                    $node['vendor'] = $purchase_order->vendor;
                     $data_insert[] = $node;
 
                     $node = [];
@@ -3244,6 +3428,7 @@ class Accounting_model extends App_Model
                     $node['datecreated'] = date('Y-m-d H:i:s');
                     $node['addedfrom'] = get_staff_user_id();
                     $node['currency_rate'] = $currency_rate;
+                    $node['vendor'] = $purchase_order->vendor;
                     $data_insert[] = $node;
                 }
             }
@@ -3271,6 +3456,7 @@ class Accounting_model extends App_Model
                 $node['datecreated'] = date('Y-m-d H:i:s');
                 $node['addedfrom'] = get_staff_user_id();
                 $node['currency_rate'] = $currency_rate;
+                $node['vendor'] = $purchase_order->vendor;
                 $data_insert[] = $node;
 
                 $node = [];
@@ -3287,6 +3473,7 @@ class Accounting_model extends App_Model
                 $node['datecreated'] = date('Y-m-d H:i:s');
                 $node['addedfrom'] = get_staff_user_id();
                 $node['currency_rate'] = $currency_rate;
+                $node['vendor'] = $purchase_order->vendor;
                 $data_insert[] = $node;
             }
 
@@ -3312,6 +3499,7 @@ class Accounting_model extends App_Model
                 $node['datecreated'] = date('Y-m-d H:i:s');
                 $node['addedfrom'] = get_staff_user_id();
                 $node['currency_rate'] = $currency_rate;
+                $node['vendor'] = $purchase_order->vendor;
                 $data_insert[] = $node;
 
                 $node = [];
@@ -3328,6 +3516,7 @@ class Accounting_model extends App_Model
                 $node['datecreated'] = date('Y-m-d H:i:s');
                 $node['addedfrom'] = get_staff_user_id();
                 $node['currency_rate'] = $currency_rate;
+                $node['vendor'] = $purchase_order->vendor;
                 $data_insert[] = $node;
             }
 
@@ -3578,6 +3767,12 @@ class Accounting_model extends App_Model
                 $currency_rate = $purchase_order->currency_rate;
             }
 
+            $order_return_item_discount_total = 0;
+            foreach ($order_return_detail as $value) {
+                $order_return_item_discount_total += (float)$value['discount_total'];
+            }
+            $order_return_header_discount_total = max(0, (float)$order_return->discount_total - $order_return_item_discount_total);
+
             $item_amount = $data['item_amount'];
             foreach ($order_return_detail as $value) {
 
@@ -3599,6 +3794,7 @@ class Accounting_model extends App_Model
                     $node['datecreated'] = date('Y-m-d H:i:s');
                     $node['addedfrom'] = get_staff_user_id();
                     $node['currency_rate'] = $currency_rate;
+                    $node['vendor'] = $order_return->company_id;
                     $data_insert[] = $node;
 
                     $node = [];
@@ -3615,6 +3811,7 @@ class Accounting_model extends App_Model
                     $node['datecreated'] = date('Y-m-d H:i:s');
                     $node['addedfrom'] = get_staff_user_id();
                     $node['currency_rate'] = $currency_rate;
+                    $node['vendor'] = $order_return->company_id;
                     $data_insert[] = $node;
                 }else{
                     $node = [];
@@ -3631,6 +3828,7 @@ class Accounting_model extends App_Model
                     $node['datecreated'] = date('Y-m-d H:i:s');
                     $node['addedfrom'] = get_staff_user_id();
                     $node['currency_rate'] = $currency_rate;
+                    $node['vendor'] = $order_return->company_id;
                     $data_insert[] = $node;
 
                     $node = [];
@@ -3647,6 +3845,7 @@ class Accounting_model extends App_Model
                     $node['datecreated'] = date('Y-m-d H:i:s');
                     $node['addedfrom'] = get_staff_user_id();
                     $node['currency_rate'] = $currency_rate;
+                    $node['vendor'] = $order_return->company_id;
                     $data_insert[] = $node;
                 }
 
@@ -3676,14 +3875,14 @@ class Accounting_model extends App_Model
                         $total_tax = ($tax_rate_arr[$k] * $base_amount) / 100; 
 
                         if($order_return->discount_type == 'before_tax'){
-                            if ($purchase_order->discount_total > 0) {
-                              $t = ($purchase_order->discount_total / $purchase_order->subtotal) * 100;
+                            if ($order_return_header_discount_total > 0 && $order_return->subtotal > 0) {
+                              $t = ($order_return_header_discount_total / $order_return->subtotal) * 100;
                               $total_tax = ($total_tax - ($total_tax * $t) / 100);
                             }
                         }
 
                         if($currency_converter == 1){
-                            $total_tax = round($currency_rate * $total_tax, 4);
+                            $total_tax = round($total_tax / $currency_rate, 4);
                         }
 
                         $tax_mapping = $this->get_tax_mapping($tax_it);
@@ -3703,6 +3902,7 @@ class Accounting_model extends App_Model
                             $node['datecreated'] = date('Y-m-d H:i:s');
                             $node['addedfrom'] = get_staff_user_id();
                             $node['currency_rate'] = $currency_rate;
+                            $node['vendor'] = $order_return->company_id;
                             $data_insert[] = $node;
 
                             $node = [];
@@ -3719,6 +3919,7 @@ class Accounting_model extends App_Model
                             $node['datecreated'] = date('Y-m-d H:i:s');
                             $node['addedfrom'] = get_staff_user_id();
                             $node['currency_rate'] = $currency_rate;
+                            $node['vendor'] = $order_return->company_id;
                             $data_insert[] = $node;
 
                         }else{
@@ -3736,6 +3937,7 @@ class Accounting_model extends App_Model
                             $node['datecreated'] = date('Y-m-d H:i:s');
                             $node['addedfrom'] = get_staff_user_id();
                             $node['currency_rate'] = $currency_rate;
+                            $node['vendor'] = $order_return->company_id;
                             $data_insert[] = $node;
 
                             $node = [];
@@ -3752,6 +3954,7 @@ class Accounting_model extends App_Model
                             $node['datecreated'] = date('Y-m-d H:i:s');
                             $node['addedfrom'] = get_staff_user_id();
                             $node['currency_rate'] = $currency_rate;
+                            $node['vendor'] = $order_return->company_id;
                             $data_insert[] = $node;
                         }
                     }
@@ -3760,7 +3963,7 @@ class Accounting_model extends App_Model
                 if($value['discount_total'] > 0){
                     $discount_total = $value['discount_total'];
                     if($currency_converter == 1){
-                        $discount_total = round($currency_rate * $value['discount_total'], 2);
+                        $discount_total = round($value['discount_total'] / $currency_rate, 2);
                     }
 
                     $node = [];
@@ -3777,6 +3980,7 @@ class Accounting_model extends App_Model
                     $node['datecreated'] = date('Y-m-d H:i:s');
                     $node['addedfrom'] = get_staff_user_id();
                     $node['currency_rate'] = $currency_rate;
+                    $node['vendor'] = $order_return->company_id;
                     $data_insert[] = $node;
 
                     $node = [];
@@ -3793,6 +3997,7 @@ class Accounting_model extends App_Model
                     $node['datecreated'] = date('Y-m-d H:i:s');
                     $node['addedfrom'] = get_staff_user_id();
                     $node['currency_rate'] = $currency_rate;
+                    $node['vendor'] = $order_return->company_id;
                     $data_insert[] = $node;
                 }
             }
@@ -3800,7 +4005,7 @@ class Accounting_model extends App_Model
             if($order_return->fee_return_order > 0){
                 $fee_return_order = $order_return->fee_return_order;
                 if($currency_converter == 1){
-                    $fee_return_order = round($currency_rate * $order_return->fee_return_order, 2);
+                    $fee_return_order = round($order_return->fee_return_order / $currency_rate, 2);
                 }
 
                 $node = [];
@@ -3817,6 +4022,7 @@ class Accounting_model extends App_Model
                 $node['datecreated'] = date('Y-m-d H:i:s');
                 $node['addedfrom'] = get_staff_user_id();
                 $node['currency_rate'] = $currency_rate;
+                $node['vendor'] = $order_return->company_id;
                 $data_insert[] = $node;
 
                 $node = [];
@@ -3833,13 +4039,14 @@ class Accounting_model extends App_Model
                 $node['datecreated'] = date('Y-m-d H:i:s');
                 $node['addedfrom'] = get_staff_user_id();
                 $node['currency_rate'] = $currency_rate;
+                $node['vendor'] = $order_return->company_id;
                 $data_insert[] = $node;
             }
 
-            if($purchase_order->discount_total > 0){
-                $discount_total = $purchase_order->discount_total;
+            $discount_total = $order_return_header_discount_total + (float)(isset($order_return->additional_discount) ? $order_return->additional_discount : 0);
+            if($discount_total > 0){
                 if($currency_converter == 1){
-                    $discount_total = round($currency_rate * $purchase_order->discount_total, 2);
+                    $discount_total = round($discount_total / $currency_rate, 2);
                 }
 
                 $node = [];
@@ -3856,6 +4063,7 @@ class Accounting_model extends App_Model
                 $node['datecreated'] = date('Y-m-d H:i:s');
                 $node['addedfrom'] = get_staff_user_id();
                 $node['currency_rate'] = $currency_rate;
+                $node['vendor'] = $order_return->company_id;
                 $data_insert[] = $node;
 
                 $node = [];
@@ -3872,6 +4080,7 @@ class Accounting_model extends App_Model
                 $node['datecreated'] = date('Y-m-d H:i:s');
                 $node['addedfrom'] = get_staff_user_id();
                 $node['currency_rate'] = $currency_rate;
+                $node['vendor'] = $order_return->company_id;
                 $data_insert[] = $node;
             }
 
@@ -3944,6 +4153,7 @@ class Accounting_model extends App_Model
                     $node['datecreated'] = date('Y-m-d H:i:s');
                     $node['addedfrom'] = get_staff_user_id();
                     $node['currency_rate'] = $currency_rate;
+                    $node['vendor'] = $purchase_invoice->vendor;
                     $data_insert[] = $node;
 
                     $node = [];
@@ -3960,6 +4170,7 @@ class Accounting_model extends App_Model
                     $node['datecreated'] = date('Y-m-d H:i:s');
                     $node['addedfrom'] = get_staff_user_id();
                     $node['currency_rate'] = $currency_rate;
+                    $node['vendor'] = $purchase_invoice->vendor;
                     $data_insert[] = $node;
                 }else{
                     $node = [];
@@ -3976,6 +4187,7 @@ class Accounting_model extends App_Model
                     $node['datecreated'] = date('Y-m-d H:i:s');
                     $node['addedfrom'] = get_staff_user_id();
                     $node['currency_rate'] = $currency_rate;
+                    $node['vendor'] = $purchase_invoice->vendor;
                     $data_insert[] = $node;
 
                     $node = [];
@@ -3992,6 +4204,7 @@ class Accounting_model extends App_Model
                     $node['datecreated'] = date('Y-m-d H:i:s');
                     $node['addedfrom'] = get_staff_user_id();
                     $node['currency_rate'] = $currency_rate;
+                    $node['vendor'] = $purchase_invoice->vendor;
                     $data_insert[] = $node;
                 }
                 if(get_option('acc_tax_automatic_conversion') == 1 && $value['tax'] != ''){
@@ -4049,6 +4262,7 @@ class Accounting_model extends App_Model
                             $node['datecreated'] = date('Y-m-d H:i:s');
                             $node['addedfrom'] = get_staff_user_id();
                             $node['currency_rate'] = $currency_rate;
+                            $node['vendor'] = $purchase_invoice->vendor;
                             $data_insert[] = $node;
 
                             $node = [];
@@ -4065,6 +4279,7 @@ class Accounting_model extends App_Model
                             $node['datecreated'] = date('Y-m-d H:i:s');
                             $node['addedfrom'] = get_staff_user_id();
                             $node['currency_rate'] = $currency_rate;
+                            $node['vendor'] = $purchase_invoice->vendor;
                             $data_insert[] = $node;
                         }else{
                             $node = [];
@@ -4081,6 +4296,7 @@ class Accounting_model extends App_Model
                             $node['datecreated'] = date('Y-m-d H:i:s');
                             $node['addedfrom'] = get_staff_user_id();
                             $node['currency_rate'] = $currency_rate;
+                            $node['vendor'] = $purchase_invoice->vendor;
                             $data_insert[] = $node;
 
                             $node = [];
@@ -4097,6 +4313,7 @@ class Accounting_model extends App_Model
                             $node['datecreated'] = date('Y-m-d H:i:s');
                             $node['addedfrom'] = get_staff_user_id();
                             $node['currency_rate'] = $currency_rate;
+                            $node['vendor'] = $purchase_invoice->vendor;
                             $data_insert[] = $node;
                         }
                     }
@@ -4122,6 +4339,7 @@ class Accounting_model extends App_Model
                     $node['datecreated'] = date('Y-m-d H:i:s');
                     $node['addedfrom'] = get_staff_user_id();
                     $node['currency_rate'] = $currency_rate;
+                    $node['vendor'] = $purchase_invoice->vendor;
                     $data_insert[] = $node;
 
                     $node = [];
@@ -4138,6 +4356,7 @@ class Accounting_model extends App_Model
                     $node['datecreated'] = date('Y-m-d H:i:s');
                     $node['addedfrom'] = get_staff_user_id();
                     $node['currency_rate'] = $currency_rate;
+                    $node['vendor'] = $purchase_invoice->vendor;
                     $data_insert[] = $node;
                 }
             }
@@ -4162,6 +4381,7 @@ class Accounting_model extends App_Model
                 $node['datecreated'] = date('Y-m-d H:i:s');
                 $node['addedfrom'] = get_staff_user_id();
                 $node['currency_rate'] = $currency_rate;
+                $node['vendor'] = $purchase_invoice->vendor;
                 $data_insert[] = $node;
 
                 $node = [];
@@ -4178,6 +4398,7 @@ class Accounting_model extends App_Model
                 $node['datecreated'] = date('Y-m-d H:i:s');
                 $node['addedfrom'] = get_staff_user_id();
                 $node['currency_rate'] = $currency_rate;
+                $node['vendor'] = $purchase_invoice->vendor;
                 $data_insert[] = $node;
             }
 
@@ -4201,6 +4422,7 @@ class Accounting_model extends App_Model
                 $node['datecreated'] = date('Y-m-d H:i:s');
                 $node['addedfrom'] = get_staff_user_id();
                 $node['currency_rate'] = $currency_rate;
+                $node['vendor'] = $purchase_invoice->vendor;
                 $data_insert[] = $node;
 
                 $node = [];
@@ -4217,6 +4439,7 @@ class Accounting_model extends App_Model
                 $node['datecreated'] = date('Y-m-d H:i:s');
                 $node['addedfrom'] = get_staff_user_id();
                 $node['currency_rate'] = $currency_rate;
+                $node['vendor'] = $purchase_invoice->vendor;
                 $data_insert[] = $node;
             }
 
@@ -4252,6 +4475,14 @@ class Accounting_model extends App_Model
             
             $expense_payment_account = get_option('acc_omni_sales_order_return_payment_account');
             $expense_deposit_to = get_option('acc_omni_sales_order_return_deposit_to');
+            $return_fee_payment_account = get_option('acc_omni_sales_order_return_fee_payment_account');
+            $return_fee_deposit_to = get_option('acc_omni_sales_order_return_fee_deposit_to');
+            $return_discount_payment_account = get_option('acc_omni_sales_order_return_discount_payment_account');
+            $return_discount_deposit_to = get_option('acc_omni_sales_order_return_discount_deposit_to');
+            $return_fee_payment_account = $return_fee_payment_account != '' ? $return_fee_payment_account : $expense_payment_account;
+            $return_fee_deposit_to = $return_fee_deposit_to != '' ? $return_fee_deposit_to : $expense_deposit_to;
+            $return_discount_payment_account = $return_discount_payment_account != '' ? $return_discount_payment_account : $expense_deposit_to;
+            $return_discount_deposit_to = $return_discount_deposit_to != '' ? $return_discount_deposit_to : $expense_payment_account;
 
             $item_amount = $data['item_amount'];
             foreach ($return_order_detail as $value) {
@@ -4279,6 +4510,7 @@ class Accounting_model extends App_Model
                     $node['datecreated'] = date('Y-m-d H:i:s');
                     $node['addedfrom'] = get_staff_user_id();
                     $node['currency_rate'] = $currency_rate;
+                    $node['customer'] = $return_order->userid;
                     $data_insert[] = $node;
 
                     $node = [];
@@ -4295,6 +4527,7 @@ class Accounting_model extends App_Model
                     $node['datecreated'] = date('Y-m-d H:i:s');
                     $node['addedfrom'] = get_staff_user_id();
                     $node['currency_rate'] = $currency_rate;
+                    $node['customer'] = $return_order->userid;
                     $data_insert[] = $node;
                 }else{
                     $node = [];
@@ -4311,6 +4544,7 @@ class Accounting_model extends App_Model
                     $node['datecreated'] = date('Y-m-d H:i:s');
                     $node['addedfrom'] = get_staff_user_id();
                     $node['currency_rate'] = $currency_rate;
+                    $node['customer'] = $return_order->userid;
                     $data_insert[] = $node;
 
                     $node = [];
@@ -4327,15 +4561,510 @@ class Accounting_model extends App_Model
                     $node['datecreated'] = date('Y-m-d H:i:s');
                     $node['addedfrom'] = get_staff_user_id();
                     $node['currency_rate'] = $currency_rate;
+                    $node['customer'] = $return_order->userid;
                     $data_insert[] = $node;
                 }
             }
 
+            $return_fee = max((float)(isset($return_order->fee_return_order) ? $return_order->fee_return_order : 0), (float)(isset($return_order->fee_for_return_order) ? $return_order->fee_for_return_order : 0));
+            $return_fee += (float)(isset($return_order->shipping) ? $return_order->shipping : 0);
+            if($return_fee > 0){
+                if(isset($data['exchange_rate'])){
+                    $return_fee = round($return_fee * $data['exchange_rate'], 4);
+                }elseif($currency_converter == 1){
+                    $return_fee = round($currency_rate * $return_fee, 4);
+                }
+
+                $node = [];
+                $node['split'] = $return_fee_payment_account;
+                $node['account'] = $return_fee_deposit_to;
+                $node['date'] = $return_order->datecreator;
+                $node['item'] = 0;
+                $node['tax'] = 0;
+                $node['debit'] = $return_fee;
+                $node['credit'] = 0;
+                $node['description'] = '';
+                $node['rel_id'] = $data['id'];
+                $node['rel_type'] = $data['type'];
+                $node['datecreated'] = date('Y-m-d H:i:s');
+                $node['addedfrom'] = get_staff_user_id();
+                $node['currency_rate'] = $currency_rate;
+                $node['customer'] = $return_order->userid;
+                $data_insert[] = $node;
+
+                $node = [];
+                $node['split'] = $return_fee_deposit_to;
+                $node['account'] = $return_fee_payment_account;
+                $node['date'] = $return_order->datecreator;
+                $node['item'] = 0;
+                $node['tax'] = 0;
+                $node['debit'] = 0;
+                $node['credit'] = $return_fee;
+                $node['description'] = '';
+                $node['rel_id'] = $data['id'];
+                $node['rel_type'] = $data['type'];
+                $node['datecreated'] = date('Y-m-d H:i:s');
+                $node['addedfrom'] = get_staff_user_id();
+                $node['currency_rate'] = $currency_rate;
+                $node['customer'] = $return_order->userid;
+                $data_insert[] = $node;
+            }
+
+            $discount_total = (float)(isset($return_order->discount_total) ? $return_order->discount_total : 0) + (float)(isset($return_order->additional_discount) ? $return_order->additional_discount : 0);
+            if($discount_total > 0){
+                if(isset($data['exchange_rate'])){
+                    $discount_total = round($discount_total * $data['exchange_rate'], 4);
+                }elseif($currency_converter == 1){
+                    $discount_total = round($currency_rate * $discount_total, 4);
+                }
+
+                $node = [];
+                $node['split'] = $return_discount_payment_account;
+                $node['account'] = $return_discount_deposit_to;
+                $node['date'] = $return_order->datecreator;
+                $node['item'] = 0;
+                $node['tax'] = 0;
+                $node['debit'] = $discount_total;
+                $node['credit'] = 0;
+                $node['description'] = '';
+                $node['rel_id'] = $data['id'];
+                $node['rel_type'] = $data['type'];
+                $node['datecreated'] = date('Y-m-d H:i:s');
+                $node['addedfrom'] = get_staff_user_id();
+                $node['currency_rate'] = $currency_rate;
+                $node['customer'] = $return_order->userid;
+                $data_insert[] = $node;
+
+                $node = [];
+                $node['split'] = $return_discount_deposit_to;
+                $node['account'] = $return_discount_payment_account;
+                $node['date'] = $return_order->datecreator;
+                $node['item'] = 0;
+                $node['tax'] = 0;
+                $node['debit'] = 0;
+                $node['credit'] = $discount_total;
+                $node['description'] = '';
+                $node['rel_id'] = $data['id'];
+                $node['rel_type'] = $data['type'];
+                $node['datecreated'] = date('Y-m-d H:i:s');
+                $node['addedfrom'] = get_staff_user_id();
+                $node['currency_rate'] = $currency_rate;
+                $node['customer'] = $return_order->userid;
+                $data_insert[] = $node;
+            }
+
+        }elseif($data['type'] == 'credit_note'){
+            $this->db->where('id', $data['id']);
+            $this->db->update(db_prefix().'creditnotes', ['acc_mapping' => 1]);
+
+            $this->load->model('credit_notes_model');
+            $credit_note = $this->credit_notes_model->get($data['id']);
+
+            $this->load->model('currencies_model');
+            $currency = $this->currencies_model->get_base_currency();
+
+            $currency_converter = 0;
+            $currency_rate = 0;
+            if($credit_note->currency_name != $currency->name){
+                $currency_converter = 1;
+
+                if(isset($data['exchange_rate'])){
+                    $currency_rate = $data['exchange_rate'];
+                }else{
+                    $currency_rate = acc_get_currency_rate($credit_note->currency_name, $currency->name);
+                }
+            }
+
+            $item_total = $credit_note->total;
+            if(isset($data['exchange_rate'])){
+                $item_total = round($credit_note->total * $data['exchange_rate'], 4);
+            }elseif($currency_converter == 1){
+                $item_total = round($currency_rate * $credit_note->total, 4);
+            }
+
+            $payment_account = $data['payment_account'];
+            $deposit_to = $data['deposit_to'];
+
+            $node = [];
+            $node['split'] = $payment_account;
+            $node['account'] = $deposit_to;
+            $node['customer'] = $credit_note->clientid;
+            $node['debit'] = $item_total;
+            $node['date'] = $credit_note->date;
+            $node['item'] = '';
+            $node['tax'] = 0;
+            $node['credit'] = 0;
+            $node['description'] = '';
+            $node['rel_id'] = $data['id'];
+            $node['rel_type'] = $data['type'];
+            $node['datecreated'] = date('Y-m-d H:i:s');
+            $node['addedfrom'] = get_staff_user_id();
+            $node['currency_rate'] = $currency_rate;
+            $data_insert[] = $node;
+
+            $node = [];
+            $node['split'] = $deposit_to;
+            $node['date'] = $credit_note->date;
+            $node['customer'] = $credit_note->clientid;
+            $node['item'] = '';
+            $node['account'] = $payment_account;
+            $node['tax'] = 0;
+            $node['debit'] = 0;
+            $node['credit'] = $item_total;
+            $node['description'] = '';
+            $node['rel_id'] = $data['id'];
+            $node['rel_type'] = $data['type'];
+            $node['datecreated'] = date('Y-m-d H:i:s');
+            $node['addedfrom'] = get_staff_user_id();
+            $node['currency_rate'] = $currency_rate;
+            $data_insert[] = $node;
+
+           
+        }elseif($data['type'] == 'credit_note_applied'){
+            $this->db->where('id', $data['id']);
+            $this->db->update(db_prefix().'credits', ['acc_mapping' => 1]);
+
+            $this->db->where('id', $data['id']);
+            $credit_note_applied = $this->db->get(db_prefix().'credits')->row();
+
+            $this->load->model('credit_notes_model');
+            $credit_note = $this->credit_notes_model->get($credit_note_applied->credit_id);
+
+            $this->load->model('currencies_model');
+            $currency = $this->currencies_model->get_base_currency();
+
+            $currency_converter = 0;
+            $currency_rate = 0;
+            if($credit_note->currency_name != $currency->name){
+                $currency_converter = 1;
+
+                if(isset($data['exchange_rate'])){
+                    $currency_rate = $data['exchange_rate'];
+                }else{
+                    $currency_rate = acc_get_currency_rate($credit_note->currency_name, $currency->name);
+                }
+            }
+
+            $item_total = $credit_note_applied->amount;
+            if(isset($data['exchange_rate'])){
+                $item_total = round($credit_note_applied->amount * $data['exchange_rate'], 4);
+            }elseif($currency_converter == 1){
+                $item_total = round($currency_rate * $credit_note_applied->amount, 4);
+            }
+
+            $payment_account = $data['payment_account'];
+            $deposit_to = $data['deposit_to'];
+
+            $node = [];
+            $node['split'] = $payment_account;
+            $node['account'] = $deposit_to;
+            $node['debit'] = $item_total;
+            $node['date'] = $credit_note_applied->date;
+            $node['item'] = '';
+            $node['tax'] = 0;
+            $node['credit'] = 0;
+            $node['description'] = '';
+            $node['rel_id'] = $data['id'];
+            $node['rel_type'] = 'credit_note';
+            $node['datecreated'] = date('Y-m-d H:i:s');
+            $node['addedfrom'] = get_staff_user_id();
+            $node['currency_rate'] = $currency_rate;
+            $data_insert[] = $node;
+
+            $node = [];
+            $node['split'] = $deposit_to;
+            $node['date'] = $credit_note_applied->date;
+            $node['item'] = '';
+            $node['account'] = $payment_account;
+            $node['tax'] = 0;
+            $node['debit'] = 0;
+            $node['credit'] = $item_total;
+            $node['description'] = '';
+            $node['rel_id'] = $data['id'];
+            $node['rel_type'] = 'credit_note';
+            $node['datecreated'] = date('Y-m-d H:i:s');
+            $node['addedfrom'] = get_staff_user_id();
+            $node['currency_rate'] = $currency_rate;
+            $data_insert[] = $node;
+
+           
+        }elseif($data['type'] == 'credit_note_refund'){
+            $this->db->where('id', $data['id']);
+            $this->db->update(db_prefix().'creditnote_refunds', ['acc_mapping' => 1]);
+
+            $this->db->where('id', $data['id']);
+            $creditnote_refunds = $this->db->get(db_prefix().'creditnote_refunds')->row();
+
+            $this->load->model('credit_notes_model');
+            $credit_note = $this->credit_notes_model->get($creditnote_refunds->credit_note_id);
+
+            $this->load->model('currencies_model');
+            $currency = $this->currencies_model->get_base_currency();
+
+            $currency_converter = 0;
+            $currency_rate = 0;
+            if($credit_note->currency_name != $currency->name){
+                $currency_converter = 1;
+
+                if(isset($data['exchange_rate'])){
+                    $currency_rate = $data['exchange_rate'];
+                }else{
+                    $currency_rate = acc_get_currency_rate($credit_note->currency_name, $currency->name);
+                }
+            }
+
+            $item_total = $creditnote_refunds->amount;
+            if(isset($data['exchange_rate'])){
+                $item_total = round($creditnote_refunds->amount * $data['exchange_rate'], 4);
+            }elseif($currency_converter == 1){
+                $item_total = round($currency_rate * $creditnote_refunds->amount, 4);
+            }
+
+            $payment_account = $data['payment_account'];
+            $deposit_to = $data['deposit_to'];
+
+            $node = [];
+            $node['split'] = $payment_account;
+            $node['account'] = $deposit_to;
+            $node['debit'] = $item_total;
+            $node['date'] = $creditnote_refunds->refunded_on;
+            $node['item'] = '';
+            $node['tax'] = 0;
+            $node['credit'] = 0;
+            $node['description'] = '';
+            $node['rel_id'] = $data['id'];
+            $node['rel_type'] = $data['type'];
+            $node['datecreated'] = date('Y-m-d H:i:s');
+            $node['addedfrom'] = get_staff_user_id();
+            $node['currency_rate'] = $currency_rate;
+            $data_insert[] = $node;
+
+            $node = [];
+            $node['split'] = $deposit_to;
+            $node['date'] = $creditnote_refunds->refunded_on;
+            $node['item'] = '';
+            $node['account'] = $payment_account;
+            $node['tax'] = 0;
+            $node['debit'] = 0;
+            $node['credit'] = $item_total;
+            $node['description'] = '';
+            $node['rel_id'] = $data['id'];
+            $node['rel_type'] = $data['type'];
+            $node['datecreated'] = date('Y-m-d H:i:s');
+            $node['addedfrom'] = get_staff_user_id();
+            $node['currency_rate'] = $currency_rate;
+            $data_insert[] = $node;
+
+           
+        }elseif($data['type'] == 'debit_note'){
+            $this->db->where('id', $data['id']);
+            $this->db->update(db_prefix().'pur_debit_notes', ['acc_mapping' => 1]);
+
+            $this->load->model('purchase/purchase_model');
+            $debit_note = $this->purchase_model->get_debit_note($data['id']);
+
+            $this->load->model('currencies_model');
+            $currency = $this->currencies_model->get_base_currency();
+
+            $currency_converter = 0;
+            $currency_rate = 0;
+            if($debit_note->currency_name != $currency->name){
+                $currency_converter = 1;
+
+                if(isset($data['exchange_rate'])){
+                    $currency_rate = $data['exchange_rate'];
+                }else{
+                    $currency_rate = acc_get_currency_rate($debit_note->currency_name, $currency->name);
+                }
+            }
+
+            $item_total = $debit_note->total;
+            if(isset($data['exchange_rate'])){
+                $item_total = round($debit_note->total * $data['exchange_rate'], 4);
+            }elseif($currency_converter == 1){
+                $item_total = round($currency_rate * $debit_note->total, 4);
+            }
+
+            $payment_account = $data['payment_account'];
+            $deposit_to = $data['deposit_to'];
+
+            $node = [];
+            $node['split'] = $payment_account;
+            $node['account'] = $deposit_to;
+            $node['vendor'] = $debit_note->vendorid;
+            $node['debit'] = $item_total;
+            $node['date'] = $debit_note->date;
+            $node['item'] = '';
+            $node['tax'] = 0;
+            $node['credit'] = 0;
+            $node['description'] = '';
+            $node['rel_id'] = $data['id'];
+            $node['rel_type'] = $data['type'];
+            $node['datecreated'] = date('Y-m-d H:i:s');
+            $node['addedfrom'] = get_staff_user_id();
+            $node['currency_rate'] = $currency_rate;
+            $data_insert[] = $node;
+
+            $node = [];
+            $node['split'] = $deposit_to;
+            $node['date'] = $debit_note->date;
+            $node['vendor'] = $debit_note->vendorid;
+            $node['item'] = '';
+            $node['account'] = $payment_account;
+            $node['tax'] = 0;
+            $node['debit'] = 0;
+            $node['credit'] = $item_total;
+            $node['description'] = '';
+            $node['rel_id'] = $data['id'];
+            $node['rel_type'] = $data['type'];
+            $node['datecreated'] = date('Y-m-d H:i:s');
+            $node['addedfrom'] = get_staff_user_id();
+            $node['currency_rate'] = $currency_rate;
+            $data_insert[] = $node;
+
+           
+        }elseif($data['type'] == 'debit_note_applied'){
+            $this->db->where('id', $data['id']);
+            $this->db->update(db_prefix().'pur_debits', ['acc_mapping' => 1]);
+
+            $this->db->where('id', $data['id']);
+            $debit_note_applied = $this->db->get(db_prefix().'pur_debits')->row();
+
+            $this->load->model('purchase/purchase_model');
+            $debit_note = $this->purchase_model->get_debit_note($debit_note_applied->debit_id);
+
+            $this->load->model('currencies_model');
+            $currency = $this->currencies_model->get_base_currency();
+
+            $currency_converter = 0;
+            $currency_rate = 0;
+            if($debit_note->currency_name != $currency->name){
+                $currency_converter = 1;
+
+                if(isset($data['exchange_rate'])){
+                    $currency_rate = $data['exchange_rate'];
+                }else{
+                    $currency_rate = acc_get_currency_rate($debit_note->currency_name, $currency->name);
+                }
+            }
+
+            $item_total = $debit_note_applied->amount;
+            if(isset($data['exchange_rate'])){
+                $item_total = round($debit_note_applied->amount * $data['exchange_rate'], 4);
+            }elseif($currency_converter == 1){
+                $item_total = round($currency_rate * $debit_note_applied->amount, 4);
+            }
+
+            $payment_account = $data['payment_account'];
+            $deposit_to = $data['deposit_to'];
+
+            $node = [];
+            $node['split'] = $payment_account;
+            $node['account'] = $deposit_to;
+            $node['debit'] = $item_total;
+            $node['date'] = $debit_note_applied->date;
+            $node['item'] = '';
+            $node['tax'] = 0;
+            $node['credit'] = 0;
+            $node['description'] = '';
+            $node['rel_id'] = $data['id'];
+            $node['rel_type'] = 'debit_note';
+            $node['datecreated'] = date('Y-m-d H:i:s');
+            $node['addedfrom'] = get_staff_user_id();
+            $node['currency_rate'] = $currency_rate;
+            $data_insert[] = $node;
+
+            $node = [];
+            $node['split'] = $deposit_to;
+            $node['date'] = $debit_note_applied->date;
+            $node['item'] = '';
+            $node['account'] = $payment_account;
+            $node['tax'] = 0;
+            $node['debit'] = 0;
+            $node['credit'] = $item_total;
+            $node['description'] = '';
+            $node['rel_id'] = $data['id'];
+            $node['rel_type'] = 'debit_note';
+            $node['datecreated'] = date('Y-m-d H:i:s');
+            $node['addedfrom'] = get_staff_user_id();
+            $node['currency_rate'] = $currency_rate;
+            $data_insert[] = $node;
+
+           
+        }elseif($data['type'] == 'debit_note_refund'){
+            $this->db->where('id', $data['id']);
+            $this->db->update(db_prefix().'pur_debits_refunds', ['acc_mapping' => 1]);
+
+            $this->db->where('id', $data['id']);
+            $debits_refunds = $this->db->get(db_prefix().'pur_debits_refunds')->row();
+
+            $this->load->model('purchase/purchase_model');
+            $debit_note = $this->purchase_model->get_debit_note($debits_refunds->debit_note_id);
+
+            $this->load->model('currencies_model');
+            $currency = $this->currencies_model->get_base_currency();
+
+            $currency_converter = 0;
+            $currency_rate = 0;
+            if($debit_note->currency_name != $currency->name){
+                $currency_converter = 1;
+
+                if(isset($data['exchange_rate'])){
+                    $currency_rate = $data['exchange_rate'];
+                }else{
+                    $currency_rate = acc_get_currency_rate($debit_note->currency_name, $currency->name);
+                }
+            }
+
+            $item_total = $debits_refunds->amount;
+            if(isset($data['exchange_rate'])){
+                $item_total = round($debits_refunds->amount * $data['exchange_rate'], 4);
+            }elseif($currency_converter == 1){
+                $item_total = round($currency_rate * $debits_refunds->amount, 4);
+            }
+
+            $payment_account = $data['payment_account'];
+            $deposit_to = $data['deposit_to'];
+
+            $node = [];
+            $node['split'] = $payment_account;
+            $node['account'] = $deposit_to;
+            $node['debit'] = $item_total;
+            $node['date'] = $debits_refunds->refunded_on;
+            $node['item'] = '';
+            $node['tax'] = 0;
+            $node['credit'] = 0;
+            $node['description'] = '';
+            $node['rel_id'] = $data['id'];
+            $node['rel_type'] = $data['type'];
+            $node['datecreated'] = date('Y-m-d H:i:s');
+            $node['addedfrom'] = get_staff_user_id();
+            $node['currency_rate'] = $currency_rate;
+            $data_insert[] = $node;
+
+            $node = [];
+            $node['split'] = $deposit_to;
+            $node['date'] = $debits_refunds->refunded_on;
+            $node['item'] = '';
+            $node['account'] = $payment_account;
+            $node['tax'] = 0;
+            $node['debit'] = 0;
+            $node['credit'] = $item_total;
+            $node['description'] = '';
+            $node['rel_id'] = $data['id'];
+            $node['rel_type'] = $data['type'];
+            $node['datecreated'] = date('Y-m-d H:i:s');
+            $node['addedfrom'] = get_staff_user_id();
+            $node['currency_rate'] = $currency_rate;
+            $data_insert[] = $node;
+
+           
         }else{
             $currency_rate = 0;
             $customer = 0;
             $date = date('Y-m-d');
             $description = '';
+            $vendor = 0;
             
             if($data['type'] == 'payment'){
                 $this->db->where('id', $data['id']);
@@ -4368,6 +5097,7 @@ class Accounting_model extends App_Model
                 $expense = $this->expenses_model->get($data['id']);
                 $date = $expense->date;
                 $customer = $expense->clientid;
+                $vendor = $expense->vendor;
 
                 $this->load->model('currencies_model');
                 $currency = $this->currencies_model->get_base_currency();
@@ -4414,6 +5144,7 @@ class Accounting_model extends App_Model
                             $node['datecreated'] = date('Y-m-d H:i:s');
                             $node['addedfrom'] = get_staff_user_id();
                             $node['currency_rate'] = $currency_rate;
+                            $node['vendor'] = $expense->vendor;
                             $data_insert[] = $node;
 
                             $node = [];
@@ -4430,6 +5161,7 @@ class Accounting_model extends App_Model
                             $node['datecreated'] = date('Y-m-d H:i:s');
                             $node['addedfrom'] = get_staff_user_id();
                             $node['currency_rate'] = $currency_rate;
+                            $node['vendor'] = $expense->vendor;
                             $data_insert[] = $node;
                         }else{
                             $node = [];
@@ -4446,6 +5178,7 @@ class Accounting_model extends App_Model
                             $node['datecreated'] = date('Y-m-d H:i:s');
                             $node['addedfrom'] = get_staff_user_id();
                             $node['currency_rate'] = $currency_rate;
+                            $node['vendor'] = $expense->vendor;
                             $data_insert[] = $node;
 
                             $node = [];
@@ -4462,6 +5195,7 @@ class Accounting_model extends App_Model
                             $node['datecreated'] = date('Y-m-d H:i:s');
                             $node['addedfrom'] = get_staff_user_id();
                             $node['currency_rate'] = $currency_rate;
+                            $node['vendor'] = $expense->vendor;
                             $data_insert[] = $node;
                         }
                     }
@@ -4496,6 +5230,7 @@ class Accounting_model extends App_Model
                             $node['datecreated'] = date('Y-m-d H:i:s');
                             $node['addedfrom'] = get_staff_user_id();
                             $node['currency_rate'] = $currency_rate;
+                            $node['vendor'] = $expense->vendor;
                             $data_insert[] = $node;
 
                             $node = [];
@@ -4512,6 +5247,7 @@ class Accounting_model extends App_Model
                             $node['datecreated'] = date('Y-m-d H:i:s');
                             $node['addedfrom'] = get_staff_user_id();
                             $node['currency_rate'] = $currency_rate;
+                            $node['vendor'] = $expense->vendor;
                             $data_insert[] = $node;
                         }else{
                             $node = [];
@@ -4528,6 +5264,7 @@ class Accounting_model extends App_Model
                             $node['datecreated'] = date('Y-m-d H:i:s');
                             $node['addedfrom'] = get_staff_user_id();
                             $node['currency_rate'] = $currency_rate;
+                            $node['vendor'] = $expense->vendor;
                             $data_insert[] = $node;
 
                             $node = [];
@@ -4544,6 +5281,7 @@ class Accounting_model extends App_Model
                             $node['datecreated'] = date('Y-m-d H:i:s');
                             $node['addedfrom'] = get_staff_user_id();
                             $node['currency_rate'] = $currency_rate;
+                            $node['vendor'] = $expense->vendor;
                             $data_insert[] = $node;
                         }
                     }
@@ -4575,6 +5313,7 @@ class Accounting_model extends App_Model
                     $currency_converter = 1;
                 }
 
+                $vendor = $purchase_invoice->vendor;
                 $data['amount'] = $payment->amount;
                 if(isset($data['exchange_rate'])){
                     $data['amount'] = round(($payment->amount) * $data['exchange_rate'], 4);
@@ -4606,6 +5345,7 @@ class Accounting_model extends App_Model
                     $currency_converter = 1;
                 }
 
+                $vendor = $order_return->company_id;
                 $data['amount'] = $refund->amount;
                 if(isset($data['exchange_rate'])){
                     $data['amount'] = round(($refund->amount) * $data['exchange_rate'], 4);
@@ -4632,6 +5372,7 @@ class Accounting_model extends App_Model
                     $base_currency = $this->currencies_model->get($return_order->currency);
                 }
 
+                $customer = $return_order->userid;
                 $currency_converter = 0;
                 if($base_currency->name != $currency->name){
                     $currency_converter = 1;
@@ -4724,6 +5465,7 @@ class Accounting_model extends App_Model
             $node['datecreated'] = date('Y-m-d H:i:s');
             $node['addedfrom'] = get_staff_user_id();
             $node['currency_rate'] = $currency_rate;
+            $node['vendor'] = $vendor;
             $data_insert[] = $node;
 
             $node = [];
@@ -4740,7 +5482,106 @@ class Accounting_model extends App_Model
             $node['datecreated'] = date('Y-m-d H:i:s');
             $node['addedfrom'] = get_staff_user_id();
             $node['currency_rate'] = $currency_rate;
+            $node['vendor'] = $vendor;
             $data_insert[] = $node;
+        }
+
+        $class_id = 0;
+        if (isset($data['class'])) {
+            $class_id = $data['class'];
+        } elseif (isset($data['acc_class'])) {
+            $class_id = $data['acc_class'];
+        }
+
+        if ($class_id == 0 && isset($data['id']) && isset($data['type'])) {
+            $type = $data['type'];
+            $id = $data['id'];
+            if ($type == 'invoice') {
+                $invoice = $this->db->select('acc_class')->where('id', $id)->get(db_prefix() . 'invoices')->row();
+                if ($invoice) { $class_id = $invoice->acc_class; }
+            } elseif ($type == 'expense') {
+                $expense = $this->db->select('acc_class')->where('id', $id)->get(db_prefix() . 'expenses')->row();
+                if ($expense) { $class_id = $expense->acc_class; }
+            } elseif ($type == 'payment') {
+                $payment = $this->db->select('invoiceid')->where('id', $id)->get(db_prefix() . 'invoicepaymentrecords')->row();
+                if ($payment) {
+                    $invoice = $this->db->select('acc_class')->where('id', $payment->invoiceid)->get(db_prefix() . 'invoices')->row();
+                    if ($invoice) { $class_id = $invoice->acc_class; }
+                }
+            } elseif ($type == 'credit_note' || $type == 'credit_note_refund') {
+                if ($type == 'credit_note_refund') {
+                    $refund = $this->db->select('credit_note_id')->where('id', $id)->get(db_prefix() . 'creditnote_refunds')->row();
+                    if ($refund) {
+                        $credit_note = $this->db->select('acc_class')->where('id', $refund->credit_note_id)->get(db_prefix() . 'creditnotes')->row();
+                        if ($credit_note) { $class_id = $credit_note->acc_class; }
+                    }
+                } else {
+                    $credit_note = $this->db->select('acc_class')->where('id', $id)->get(db_prefix() . 'creditnotes')->row();
+                    if ($credit_note) { $class_id = $credit_note->acc_class; }
+                }
+            } elseif ($type == 'stock_import') {
+                $goods_receipt = $this->db->select('acc_class')->where('id', $id)->get(db_prefix() . 'goods_receipt')->row();
+                if ($goods_receipt) { $class_id = $goods_receipt->acc_class; }
+            } elseif ($type == 'stock_export') {
+                $goods_delivery = $this->db->select('acc_class')->where('id', $id)->get(db_prefix() . 'goods_delivery')->row();
+                if ($goods_delivery) { $class_id = $goods_delivery->acc_class; }
+            } elseif ($type == 'loss_adjustment') {
+                $loss_adjustment = $this->db->select('acc_class')->where('id', $id)->get(db_prefix() . 'wh_loss_adjustment')->row();
+                if ($loss_adjustment) { $class_id = $loss_adjustment->acc_class; }
+            } elseif ($type == 'payslip') {
+                $payslip = $this->db->select('acc_class')->where('id', $id)->get(db_prefix() . 'hrp_payslips')->row();
+                if ($payslip) { $class_id = $payslip->acc_class; }
+            } elseif ($type == 'purchase_order') {
+                $pur_order = $this->db->select('acc_class')->where('id', $id)->get(db_prefix() . 'pur_orders')->row();
+                if ($pur_order) { $class_id = $pur_order->acc_class; }
+            } elseif ($type == 'purchase_invoice') {
+                $pur_invoice = $this->db->select('acc_class')->where('id', $id)->get(db_prefix() . 'pur_invoices')->row();
+                if ($pur_invoice) { $class_id = $pur_invoice->acc_class; }
+            } elseif ($type == 'purchase_payment') {
+                $pur_payment = $this->db->select('pur_invoice_id')->where('id', $id)->get(db_prefix() . 'pur_invoice_payment')->row();
+                if ($pur_payment) {
+                    $pur_invoice = $this->db->select('acc_class')->where('id', $pur_payment->pur_invoice_id)->get(db_prefix() . 'pur_invoices')->row();
+                    if ($pur_invoice) { $class_id = $pur_invoice->acc_class; }
+                }
+            } elseif ($type == 'purchase_order_return') {
+                $pur_order_return = $this->db->select('acc_class')->where('id', $id)->get(db_prefix() . 'wh_order_returns')->row();
+                if ($pur_order_return) { $class_id = $pur_order_return->acc_class; }
+            } elseif ($type == 'purchase_refund') {
+                $pur_refund = $this->db->select('order_return_id')->where('id', $id)->get(db_prefix() . 'wh_order_returns_refunds')->row();
+                if ($pur_refund) {
+                    $pur_order_return = $this->db->select('acc_class')->where('id', $pur_refund->order_return_id)->get(db_prefix() . 'wh_order_returns')->row();
+                    if ($pur_order_return) { $class_id = $pur_order_return->acc_class; }
+                }
+            } elseif ($type == 'sales_return_order') {
+                $sales_return_order = $this->db->select('acc_class')->where('id', $id)->get(db_prefix() . 'cart')->row();
+                if ($sales_return_order) { $class_id = $sales_return_order->acc_class; }
+            } elseif ($type == 'debit_note' || $type == 'debit_note_refund') {
+                if ($type == 'debit_note_refund') {
+                    $refund = $this->db->select('debit_note_id')->where('id', $id)->get(db_prefix() . 'pur_debits_refunds')->row();
+                    if ($refund) {
+                        $dn = $this->db->select('acc_class')->where('id', $refund->debit_note_id)->get(db_prefix() . 'pur_debit_notes')->row();
+                        if ($dn) { $class_id = $dn->acc_class; }
+                    }
+                } else {
+                    $dn = $this->db->select('acc_class')->where('id', $id)->get(db_prefix() . 'pur_debit_notes')->row();
+                    if ($dn) { $class_id = $dn->acc_class; }
+                }
+            } elseif ($type == 'manufacturing_order') {
+                $mo = $this->db->select('acc_class')->where('id', $id)->get(db_prefix() . 'mrp_manufacturing_orders')->row();
+                if ($mo) { $class_id = $mo->acc_class; }
+            } elseif ($type == 'fe_asset' || $type == 'fe_license' || $type == 'fe_component' || $type == 'fe_consumable') {
+                $fe_asset = $this->db->select('acc_class')->where('id', $id)->get(db_prefix() . 'fe_assets')->row();
+                if ($fe_asset) { $class_id = $fe_asset->acc_class; }
+            } elseif ($type == 'fe_maintenance') {
+                $fe_maintenance = $this->db->select('acc_class')->where('id', $id)->get(db_prefix() . 'fe_asset_maintenances')->row();
+                if ($fe_maintenance) { $class_id = $fe_maintenance->acc_class; }
+            }
+        }
+
+        if ($class_id > 0) {
+            foreach ($data_insert as $key => $node) {
+                $data_insert[$key]['class'] = $class_id;
+            }
         }
 
         $affectedRows = $this->db->insert_batch(db_prefix().'acc_account_history', $data_insert);
@@ -4767,7 +5608,7 @@ class Accounting_model extends App_Model
                 return 'close_the_book';
             }
         }
-        $data['transfer_amount'] = str_replace(',', '', $data['transfer_amount']);
+        $data['transfer_amount'] = acc_unformat_number($data['transfer_amount']);
         $data['datecreated'] = date('Y-m-d H:i:s');
         $data['addedfrom'] = get_staff_user_id();
 
@@ -4783,6 +5624,7 @@ class Accounting_model extends App_Model
             $node['credit'] = $data['transfer_amount'];
             $node['rel_id'] = $insert_id;
             $node['rel_type'] = 'transfer';
+            $node['class'] = $data['acc_class'];
             $node['datecreated'] = date('Y-m-d H:i:s');
             $node['addedfrom'] = get_staff_user_id();
 
@@ -4796,6 +5638,7 @@ class Accounting_model extends App_Model
             $node['credit'] = 0;
             $node['rel_id'] = $insert_id;
             $node['rel_type'] = 'transfer';
+            $node['class'] = $data['acc_class'];
             $node['datecreated'] = date('Y-m-d H:i:s');
             $node['addedfrom'] = get_staff_user_id();
 
@@ -4842,6 +5685,9 @@ class Accounting_model extends App_Model
         $credit_amount = $data['credit_amount'];
         unset($data['credit_amount']);
 
+        $class = $data['class'];
+        unset($data['class']);
+
         $description_detail = $data['description_detail'];
         unset($data['description_detail']);
 
@@ -4867,9 +5713,10 @@ class Accounting_model extends App_Model
                 $node['account'] = $value;
                 $node['number'] = $data['number'];
                 $node['date'] = $data['journal_date'];
-                $node['debit'] = str_replace(',', '', $debit_amount[$key]);
-                $node['credit'] = str_replace(',', '', $credit_amount[$key]);
+                $node['debit'] = acc_unformat_number($debit_amount[$key]);
+                $node['credit'] = acc_unformat_number($credit_amount[$key]);
                 $node['description'] = $description_detail[$key];
+                $node['class'] = $class[$key];
                 $node['rel_id'] = $insert_id;
                 $node['rel_type'] = 'journal_entry';
                 $node['datecreated'] = date('Y-m-d H:i:s');
@@ -4976,7 +5823,32 @@ class Accounting_model extends App_Model
                 $data_child_account[$value['parent_account']][] = $value['id'];
             }
 
-            $data_account[$value['id']] = ['account_id' =>  $value['id'], 'account_type_id' => $value['account_type_id'], 'name' => $name, 'from_date' => $from_date, 'to_date' => $to_date, 'amount' => 0, 'child_account' => []];
+            $data_account[$value['id']] = ['account_id' =>  $value['id'], 'account_type_id' => $value['account_type_id'], 'name' => $name, 'from_date' => $from_date, 'to_date' => $to_date, 'amount' => 0, 'beginning_balance' => 0, 'movement' => 0, 'child_account' => []];
+        }
+
+        $this->db->select('account, parent_account, account_type_id, account_detail_type_id, name, '.db_prefix() . 'acc_accounts.number as number, key_name, sum(credit) as credit, sum(debit) as debit');
+        if($accounting_method == 'cash'){
+            $this->db->where('((rel_type = "invoice" and paid = 1) or rel_type != "invoice")');
+        }
+        $this->db->where(db_prefix() . 'acc_accounts.account_type_id IN (1,2,3,4,5,6,7,8,9,10,16) AND active = 1');
+        $this->db->where('(date < "' . $from_date . '")');
+        if($where_items != ''){
+            $this->db->where($where_items);
+        }
+        $this->db->join(db_prefix().'acc_accounts', db_prefix() . 'acc_accounts.id = ' . db_prefix() . 'acc_account_history.account');
+        $this->db->group_by('account');
+        $account_history_beg = $this->db->get(db_prefix().'acc_account_history')->result_array();
+
+        foreach ($account_history_beg as $value) {
+            $credits = $value['credit'] != '' ? $value['credit'] : 0;
+            $debits = $value['debit'] != '' ? $value['debit'] : 0;
+
+            if($value['account_type_id'] == 11 || $value['account_type_id'] == 12 || $value['account_type_id'] == 8 || $value['account_type_id'] == 9 || $value['account_type_id'] == 10 || $value['account_type_id'] == 7 || $value['account_type_id'] == 6){
+                $amount = $credits - $debits;
+            }else{
+                $amount = $debits - $credits;
+            }
+            $data_account[$value['account']]['beginning_balance'] = $amount;
         }
 
         $this->db->select('account, parent_account, account_type_id, account_detail_type_id, name, '.db_prefix() . 'acc_accounts.number as number, key_name, sum(credit) as credit, sum(debit) as debit');
@@ -5005,9 +5877,11 @@ class Accounting_model extends App_Model
                 $amount = $debits - $credits;
             }
 
-            
+            $data_account[$value['account']]['movement'] = $amount;
+        }
 
-            $data_account[$value['account']]['amount'] = $amount;
+        foreach ($data_account as $key => $value) {
+            $data_account[$key]['amount'] = $value['beginning_balance'] + $value['movement'];
         }
 
         $_data = [
@@ -5144,7 +6018,33 @@ class Accounting_model extends App_Model
                 $data_child_account[$value['parent_account']][] = $value['id'];
             }
 
-            $data_account[$value['id']] = ['account_id' =>  $value['id'], 'account_type_id' => $value['account_type_id'], 'name' => $name, 'from_date' => $from_date, 'to_date' => $to_date, 'amount' => 0, 'py_amount' => 0, 'child_account' => []];
+            $data_account[$value['id']] = ['account_id' =>  $value['id'], 'account_type_id' => $value['account_type_id'], 'name' => $name, 'from_date' => $from_date, 'to_date' => $to_date, 'amount' => 0, 'py_amount' => 0, 'beginning_balance' => 0, 'movement' => 0, 'py_beginning_balance' => 0, 'py_movement' => 0, 'child_account' => []];
+        }
+
+        $this->db->select('account, parent_account, account_type_id, account_detail_type_id, name, '.db_prefix() . 'acc_accounts.number as number, key_name, sum(credit) as credit, sum(debit) as debit');
+        if($accounting_method == 'cash'){
+            $this->db->where('((rel_type = "invoice" and paid = 1) or rel_type != "invoice")');
+        }
+        $this->db->where(db_prefix() . 'acc_accounts.account_type_id IN (1,2,3,4,5,6,7,8,9,10,16) AND active = 1');
+        $this->db->where('(date < "' . $from_date . '")');
+        if($where_items != ''){
+            $this->db->where($where_items);
+        }
+        $this->db->join(db_prefix().'acc_accounts', db_prefix() . 'acc_accounts.id = ' . db_prefix() . 'acc_account_history.account');
+        $this->db->group_by('account');
+        $account_history_beg = $this->db->get(db_prefix().'acc_account_history')->result_array();
+
+        foreach ($account_history_beg as $value) {
+            $credits = $value['credit'] != '' ? $value['credit'] : 0;
+            $debits = $value['debit'] != '' ? $value['debit'] : 0;
+
+            if($value['account_type_id'] == 11 || $value['account_type_id'] == 12 || $value['account_type_id'] == 8 || $value['account_type_id'] == 9 || $value['account_type_id'] == 10 || $value['account_type_id'] == 7 || $value['account_type_id'] == 6){
+                $amount = $credits - $debits;
+            }else{
+                $amount = $debits - $credits;
+            }
+
+            $data_account[$value['account']]['beginning_balance'] = $amount;
         }
 
         $this->db->select('account, parent_account, account_type_id, account_detail_type_id, name, '.db_prefix() . 'acc_accounts.number as number, key_name, sum(credit) as credit, sum(debit) as debit');
@@ -5173,17 +6073,43 @@ class Accounting_model extends App_Model
                 $amount = $debits - $credits;
             }
 
-            
-
-            $data_account[$value['account']]['amount'] = $amount;
+            $data_account[$value['account']]['movement'] = $amount;
         }
 
+        // py beginning
         $this->db->select('account, parent_account, account_type_id, account_detail_type_id, name, '.db_prefix() . 'acc_accounts.number as number, key_name, sum(credit) as credit, sum(debit) as debit');
         if($accounting_method == 'cash'){
             $this->db->where('((rel_type = "invoice" and paid = 1) or rel_type != "invoice")');
         }
         $this->db->where(db_prefix() . 'acc_accounts.account_type_id IN (1,2,3,4,5,6,7,8,9,10,16) AND active = 1');
-        $this->db->where('(date_format(datecreated, \'%Y-%m-%d\') >= "' . $last_from_date . '" and date_format(datecreated, \'%Y-%m-%d\') <= "' . $last_to_date . '")');
+        $this->db->where('(date < "' . $last_from_date . '")');
+        if($where_items != ''){
+            $this->db->where($where_items);
+        }
+        $this->db->join(db_prefix().'acc_accounts', db_prefix() . 'acc_accounts.id = ' . db_prefix() . 'acc_account_history.account');
+        $this->db->group_by('account');
+        $account_history_py_beg = $this->db->get(db_prefix().'acc_account_history')->result_array();
+
+        foreach ($account_history_py_beg as $value) {
+            $credits = $value['credit'] != '' ? $value['credit'] : 0;
+            $debits = $value['debit'] != '' ? $value['debit'] : 0;
+
+            if($value['account_type_id'] == 11 || $value['account_type_id'] == 12 || $value['account_type_id'] == 8 || $value['account_type_id'] == 9 || $value['account_type_id'] == 10 || $value['account_type_id'] == 7 || $value['account_type_id'] == 6){
+                $amount = $credits - $debits;
+            }else{
+                $amount = $debits - $credits;
+            }
+
+            $data_account[$value['account']]['py_beginning_balance'] = $amount;
+        }
+
+        // py movement
+        $this->db->select('account, parent_account, account_type_id, account_detail_type_id, name, '.db_prefix() . 'acc_accounts.number as number, key_name, sum(credit) as credit, sum(debit) as debit');
+        if($accounting_method == 'cash'){
+            $this->db->where('((rel_type = "invoice" and paid = 1) or rel_type != "invoice")');
+        }
+        $this->db->where(db_prefix() . 'acc_accounts.account_type_id IN (1,2,3,4,5,6,7,8,9,10,16) AND active = 1');
+        $this->db->where('(date >= "' . $last_from_date . '" and date <= "' . $last_to_date . '")');
         if($where_items != ''){
             $this->db->where($where_items);
         }
@@ -5201,7 +6127,12 @@ class Accounting_model extends App_Model
                 $amount = $debits - $credits;
             }
 
-            $data_account[$value['account']]['py_amount'] = $amount;
+            $data_account[$value['account']]['py_movement'] = $amount;
+        }
+
+        foreach ($data_account as $key => $value) {
+            $data_account[$key]['amount'] = $value['beginning_balance'] + $value['movement'];
+            $data_account[$key]['py_amount'] = $value['py_beginning_balance'] + $value['py_movement'];
         }
 
         $_data = [
@@ -5527,7 +6458,32 @@ class Accounting_model extends App_Model
                 $data_child_account[$value['parent_account']][] = $value['id'];
             }
 
-            $data_account[$value['id']] = ['account_id' =>  $value['id'], 'account_type_id' => $value['account_type_id'], 'name' => $name, 'from_date' => $from_date, 'to_date' => $to_date, 'amount' => 0, 'child_account' => []];
+            $data_account[$value['id']] = ['account_id' =>  $value['id'], 'account_type_id' => $value['account_type_id'], 'name' => $name, 'from_date' => $from_date, 'to_date' => $to_date, 'amount' => 0, 'beginning_balance' => 0, 'movement' => 0, 'child_account' => []];
+        }
+
+        $this->db->select('account, parent_account, account_type_id, account_detail_type_id, name, '.db_prefix() . 'acc_accounts.number as number, key_name, sum(credit) as credit, sum(debit) as debit');
+        if($accounting_method == 'cash'){
+            $this->db->where('((rel_type = "invoice" and paid = 1) or rel_type != "invoice")');
+        }
+        $this->db->where(db_prefix() . 'acc_accounts.account_type_id IN (1,2,3,4,5,6,7,8,9,10,16) and active = 1');
+        $this->db->where('(date < "' . $from_date . '")');
+        if($where_items != ''){
+            $this->db->where($where_items);
+        }
+        $this->db->join(db_prefix().'acc_accounts', db_prefix() . 'acc_accounts.id = ' . db_prefix() . 'acc_account_history.account');
+        $this->db->group_by('account');
+        $account_history_beg = $this->db->get(db_prefix().'acc_account_history')->result_array();
+
+        foreach ($account_history_beg as $value) {
+            $credits = $value['credit'] != '' ? $value['credit'] : 0;
+            $debits = $value['debit'] != '' ? $value['debit'] : 0;
+
+            if($value['account_type_id'] == 11 || $value['account_type_id'] == 12 || $value['account_type_id'] == 8 || $value['account_type_id'] == 9 || $value['account_type_id'] == 10 || $value['account_type_id'] == 7 || $value['account_type_id'] == 6){
+                $amount = $credits - $debits;
+            }else{
+                $amount = $debits - $credits;
+            }
+            $data_account[$value['account']]['beginning_balance'] = $amount;
         }
 
         $this->db->select('account, parent_account, account_type_id, account_detail_type_id, name, '.db_prefix() . 'acc_accounts.number as number, key_name, sum(credit) as credit, sum(debit) as debit');
@@ -5562,8 +6518,13 @@ class Accounting_model extends App_Model
                 $amount = $debits - $credits;
             }
 
-            $data_account[$value['account']]['amount'] = $amount;
+            $data_account[$value['account']]['movement'] = $amount;
         }
+
+        foreach ($data_account as $key => $value) {
+            $data_account[$key]['amount'] = $value['beginning_balance'] + $value['movement'];
+        }
+
 
         $_data = [
 
@@ -7939,6 +8900,7 @@ class Accounting_model extends App_Model
                     "debit" => floatval($value['debit']),
                     "credit" => floatval($value['credit']),
                     "addedfrom" => floatval($value['addedfrom']),
+                    "class" => $value['class'],
                     "description" => $value['description']];
             }
             if(count($data_details) < 10){
@@ -8012,6 +8974,9 @@ class Accounting_model extends App_Model
         $credit_amount = $data['credit_amount'];
         unset($data['credit_amount']);
 
+        $class = $data['class'];
+        unset($data['class']);
+
         $description_detail = $data['description_detail'];
         unset($data['description_detail']);
 
@@ -8035,8 +9000,9 @@ class Accounting_model extends App_Model
             $node['account'] = $value;
             $node['number'] = $data['number'];
             $node['date'] = $data['journal_date'];
-            $node['debit'] = str_replace(',', '', $debit_amount[$key]);
-            $node['credit'] = str_replace(',', '', $credit_amount[$key]);
+            $node['debit'] = acc_unformat_number($debit_amount[$key]);
+            $node['credit'] = acc_unformat_number($credit_amount[$key]);
+            $node['class'] = $class[$key];
             $node['description'] = $description_detail[$key];
             $node['rel_id'] = $id;
             $node['rel_type'] = 'journal_entry';
@@ -8095,7 +9061,7 @@ class Accounting_model extends App_Model
             }
         }
 
-        $data['transfer_amount'] = str_replace(',', '', $data['transfer_amount']);
+        $data['transfer_amount'] = acc_unformat_number($data['transfer_amount']);
 
         $this->db->where('id', $id);
         $this->db->update(db_prefix().'acc_transfers', $data);
@@ -8109,6 +9075,7 @@ class Accounting_model extends App_Model
         $node['debit'] = 0;
         $node['credit'] = $data['transfer_amount'];
         $node['date'] = $data['date'];
+        $node['class'] = $data['acc_class'];
         $node['rel_id'] = $id;
         $node['rel_type'] = 'transfer';
         $node['datecreated'] = date('Y-m-d H:i:s');
@@ -8121,6 +9088,7 @@ class Accounting_model extends App_Model
         $node['debit'] = $data['transfer_amount'];
         $node['credit'] = 0;
         $node['date'] = $data['date'];
+        $node['class'] = $data['acc_class'];
         $node['rel_id'] = $id;
         $node['rel_type'] = 'transfer';
         $node['datecreated'] = date('Y-m-d H:i:s');
@@ -8235,8 +9203,14 @@ class Accounting_model extends App_Model
                     $this->db->update(db_prefix().'wh_order_returns_refunds', ['acc_mapping' => 0]);
                     break;
                 case 'credit_note':
-                    $this->db->where('id', $id);
-                    $this->db->update(db_prefix().'credits', ['acc_mapping' => 0]);
+                    if (get_option('acc_credit_note_mapping_mode') == 'on_create') {
+                        $this->db->where('id', $id);
+                        $this->db->update(db_prefix().'creditnotes', ['acc_mapping' => 0]);
+                    }else{
+                        $this->db->where('id', $id);
+                        $this->db->update(db_prefix().'credits', ['acc_mapping' => 0]);
+                    }
+
                     break;
                 case 'credit_note_refund':
                     $this->db->where('id', $id);
@@ -8310,6 +9284,20 @@ class Accounting_model extends App_Model
                 case 'opening_stock':
                     $this->db->where('id', $id);
                     $this->db->update(db_prefix().'items', ['acc_mapping' => 0]);
+                    break;
+                case 'debit_note':
+                    if (get_option('acc_debit_note_mapping_mode') == 'on_create') {
+                        $this->db->where('id', $id);
+                        $this->db->update(db_prefix().'pur_debit_notes', ['acc_mapping' => 0]);
+                    }else{
+                        $this->db->where('id', $id);
+                        $this->db->update(db_prefix().'pur_debits', ['acc_mapping' => 0]);
+                    }
+
+                    break;
+                case 'debit_note_refund':
+                    $this->db->where('id', $id);
+                    $this->db->update(db_prefix().'pur_debits_refunds', ['acc_mapping' => 0]);
                     break;
 
                 default:
@@ -8397,10 +9385,10 @@ class Accounting_model extends App_Model
             $data['expense_date'] = to_sql_date($data['expense_date']);
         }
 
-        $data['service_charge'] = str_replace(',', '', $data['service_charge']);
-        $data['interest_earned'] = str_replace(',', '', $data['interest_earned']);
-        $data['ending_balance'] = str_replace(',', '', $data['ending_balance']);
-        $data['beginning_balance'] = str_replace(',', '', $data['beginning_balance']);
+        $data['service_charge'] = acc_unformat_number($data['service_charge']);
+        $data['interest_earned'] = acc_unformat_number($data['interest_earned']);
+        $data['ending_balance'] = acc_unformat_number($data['ending_balance']);
+        $data['beginning_balance'] = acc_unformat_number($data['beginning_balance']);
         
         $this->db->insert(db_prefix().'acc_reconciles', $data);
         $insert_id = $this->db->insert_id();
@@ -8497,10 +9485,10 @@ class Accounting_model extends App_Model
             unset($data['account']);
         }
 
-        $data['service_charge'] = str_replace(',', '', $data['service_charge']);
-        $data['interest_earned'] = str_replace(',', '', $data['interest_earned']);
-        $data['ending_balance'] = str_replace(',', '', $data['ending_balance']);
-        $data['beginning_balance'] = str_replace(',', '', $data['beginning_balance']);
+        $data['service_charge'] = acc_unformat_number($data['service_charge']);
+        $data['interest_earned'] = acc_unformat_number($data['interest_earned']);
+        $data['ending_balance'] = acc_unformat_number($data['ending_balance']);
+        $data['beginning_balance'] = acc_unformat_number($data['beginning_balance']);
 
         $this->db->where('id', $id);
         $this->db->update(db_prefix().'acc_reconciles', $data);
@@ -8601,7 +9589,7 @@ class Accounting_model extends App_Model
             }
         }
         if($account){
-            $data['adjustment_amount'] = str_replace(',', '', $data['adjustment_amount']);
+            $data['adjustment_amount'] = acc_unformat_number($data['adjustment_amount']);
 
             $node = [];
 
@@ -8945,6 +9933,11 @@ class Accounting_model extends App_Model
         $this->db->where('currency', $data_currency);
         $this->db->where('acc_mapping != 1');
         $this->db->where('category != 0');
+        $where_purchase = '0';
+        if(acc_get_status_modules('purchase')){
+            $where_purchase = '(select count(*) from ' . db_prefix() . 'pur_orders where ' . db_prefix() . 'pur_orders.expense_convert = ' . db_prefix() . 'expenses.id)';
+        }
+        $this->db->where('('.$where_purchase.' = 0)');
         $expense = $this->db->get(db_prefix().'expenses')->row();
         $expense_total = $expense->amount;
 
@@ -9268,6 +10261,11 @@ class Accounting_model extends App_Model
         }
         $this->db->select('*, acc_mapping as count_account_historys');
         $this->db->where('currency', $data_currency);
+        $where_purchase = '0';
+        if(acc_get_status_modules('purchase')){
+            $where_purchase = '(select count(*) from ' . db_prefix() . 'pur_orders where ' . db_prefix() . 'pur_orders.expense_convert = ' . db_prefix() . 'expenses.id)';
+        }
+        $this->db->where('('.$where_purchase.' = 0)');
         $expenses = $this->db->get(db_prefix().'expenses')->result_array();
 
         $data_return = [];
@@ -10591,9 +11589,80 @@ class Accounting_model extends App_Model
           }
         }
         
+        // Reset Project Budget, Imprest, Claim
+        if ($this->db->table_exists(db_prefix() . 'acc_project_budgets')) {
+            $this->db->where('id > 0');
+            $this->db->delete(db_prefix() . 'acc_project_budgets');
+            if ($this->db->affected_rows() > 0) {
+                $affectedRows++;
+            }
+        }
+        if ($this->db->table_exists(db_prefix() . 'acc_project_budget_details')) {
+            $this->db->where('id > 0');
+            $this->db->delete(db_prefix() . 'acc_project_budget_details');
+            if ($this->db->affected_rows() > 0) {
+                $affectedRows++;
+            }
+        }
+        if ($this->db->table_exists(db_prefix() . 'acc_imprest_requests')) {
+            $this->db->where('id > 0');
+            $this->db->delete(db_prefix() . 'acc_imprest_requests');
+            if ($this->db->affected_rows() > 0) {
+                $affectedRows++;
+            }
+        }
+        if ($this->db->table_exists(db_prefix() . 'acc_claims')) {
+            $this->db->where('id > 0');
+            $this->db->delete(db_prefix() . 'acc_claims');
+            if ($this->db->affected_rows() > 0) {
+                $affectedRows++;
+            }
+        }
+        if ($this->db->table_exists(db_prefix() . 'acc_claim_refunds')) {
+            $this->db->where('id > 0');
+            $this->db->delete(db_prefix() . 'acc_claim_refunds');
+            if ($this->db->affected_rows() > 0) {
+                $affectedRows++;
+            }
+        }
+        if ($this->db->table_exists(db_prefix() . 'acc_project_budget_mappings')) {
+            $this->db->where('id > 0');
+            $this->db->delete(db_prefix() . 'acc_project_budget_mappings');
+            if ($this->db->affected_rows() > 0) {
+                $affectedRows++;
+            }
+        }
+        if ($this->db->table_exists(db_prefix() . 'acc_approval_details')) {
+            $this->db->where_in('rel_type', ['project_budget', 'imprest', 'claim']);
+            $this->db->delete(db_prefix() . 'acc_approval_details');
+            if ($this->db->affected_rows() > 0) {
+                $affectedRows++;
+            }
+        }
+        $this->db->where_in('rel_type', ['project_budget', 'imprest_request', 'imprest_retirement', 'claim_request', 'claim_refund']);
+        $this->db->delete(db_prefix() . 'files');
+        if ($this->db->affected_rows() > 0) {
+            $affectedRows++;
+        }
+
+        $imprests_dir = ACCOUTING_MODULE_UPLOAD_FOLDER . '/imprests';
+        $claims_dir = ACCOUTING_MODULE_UPLOAD_FOLDER . '/claims';
+        $project_budgets_dir = ACCOUTING_MODULE_UPLOAD_FOLDER . '/project_budgets';
+        if (is_dir($imprests_dir)) {
+            delete_dir($imprests_dir);
+        }
+        if (is_dir($claims_dir)) {
+            delete_dir($claims_dir);
+        }
+        if (is_dir($project_budgets_dir)) {
+            delete_dir($project_budgets_dir);
+        }
+
+
         if ($affectedRows > 0) {
             return true;
         }
+        
         return false;
     }
 
@@ -10671,8 +11740,10 @@ class Accounting_model extends App_Model
             foreach ($invoice->items as $item) {
                 $item_detail = $this->get_item_by_name($item['description']);
                 $item_id = 0;
+                $item_group_id = 0;
                 if(isset($item_detail->id)){
                     $item_id = $item_detail->id;
+                    $item_group_id = $item_detail->group_id;
                 }
 
                 $item_total = $item['qty'] * $item['rate'];
@@ -10680,85 +11751,56 @@ class Accounting_model extends App_Model
                     $item_total = round($currency_rate * ($item['qty'] * $item['rate']), 2);
                 }
 
+                $item_payment_account = $payment_account;
+            
                 $item_automatic = $this->get_item_automatic($item_id);
-
                 if($item_automatic){
-                    $node = [];
-                    $node['itemable_id'] = $item['id'];
-                    $node['split'] = $payment_account;
-                    $node['account'] = $deposit_to;
-                    $node['item'] = $item_id;
-                    $node['date'] = $invoice->date;
-                    $node['paid'] = $paid;
-                    $node['debit'] = $item_total;
-                    $node['customer'] = $invoice->clientid;
-                    $node['tax'] = 0;
-                    $node['credit'] = 0;
-                    $node['description'] = '';
-                    $node['rel_id'] = $invoice_id;
-                    $node['rel_type'] = 'invoice';
-                    $node['datecreated'] = date('Y-m-d H:i:s');
-                    $node['addedfrom'] = get_staff_user_id();
-                    $node['currency_rate'] = $currency_rate;
-                    $data_insert[] = $node;
-
-                    $node = [];
-                    $node['itemable_id'] = $item['id'];
-                    $node['split'] = $deposit_to;
-                    $node['customer'] = $invoice->clientid;
-                    $node['account'] = $item_automatic->income_account;
-                    $node['item'] = $item_id;
-                    $node['paid'] = $paid;
-                    $node['date'] = $invoice->date;
-                    $node['tax'] = 0;
-                    $node['debit'] = 0;
-                    $node['credit'] = $item_total;
-                    $node['description'] = '';
-                    $node['rel_id'] = $invoice_id;
-                    $node['rel_type'] = 'invoice';
-                    $node['datecreated'] = date('Y-m-d H:i:s');
-                    $node['addedfrom'] = get_staff_user_id();
-                    $node['currency_rate'] = $currency_rate;
-                    $data_insert[] = $node;
+                    $item_payment_account = $item_automatic->income_account;
                 }else{
-                    $node = [];
-                    $node['itemable_id'] = $item['id'];
-                    $node['split'] = $payment_account;
-                    $node['account'] = $deposit_to;
-                    $node['item'] = $item_id;
-                    $node['debit'] = $item_total;
-                    $node['customer'] = $invoice->clientid;
-                    $node['paid'] = $paid;
-                    $node['date'] = $invoice->date;
-                    $node['tax'] = 0;
-                    $node['credit'] = 0;
-                    $node['description'] = '';
-                    $node['rel_id'] = $invoice_id;
-                    $node['rel_type'] = 'invoice';
-                    $node['datecreated'] = date('Y-m-d H:i:s');
-                    $node['addedfrom'] = get_staff_user_id();
-                    $node['currency_rate'] = $currency_rate;
-                    $data_insert[] = $node;
-
-                    $node = [];
-                    $node['itemable_id'] = $item['id'];
-                    $node['split'] = $deposit_to;
-                    $node['customer'] = $invoice->clientid;
-                    $node['account'] = $payment_account;
-                    $node['item'] = $item_id;
-                    $node['date'] = $invoice->date;
-                    $node['paid'] = $paid;
-                    $node['tax'] = 0;
-                    $node['debit'] = 0;
-                    $node['credit'] = $item_total;
-                    $node['description'] = '';
-                    $node['rel_id'] = $invoice_id;
-                    $node['rel_type'] = 'invoice';
-                    $node['datecreated'] = date('Y-m-d H:i:s');
-                    $node['addedfrom'] = get_staff_user_id();
-                    $node['currency_rate'] = $currency_rate;
-                    $data_insert[] = $node;
+                    $item_group_automatic = $this->get_item_group_automatic($item_group_id);
+                    if($item_group_automatic){
+                        $item_payment_account = $item_group_automatic->income_account;
+                    }
                 }
+                
+
+                $node = [];
+                $node['itemable_id'] = $item['id'];
+                $node['split'] = $item_payment_account;
+                $node['account'] = $deposit_to;
+                $node['item'] = $item_id;
+                $node['debit'] = $item_total;
+                $node['customer'] = $invoice->clientid;
+                $node['paid'] = $paid;
+                $node['date'] = $invoice->date;
+                $node['tax'] = 0;
+                $node['credit'] = 0;
+                $node['description'] = '';
+                $node['rel_id'] = $invoice_id;
+                $node['rel_type'] = 'invoice';
+                $node['datecreated'] = date('Y-m-d H:i:s');
+                $node['addedfrom'] = get_staff_user_id();
+                $node['currency_rate'] = $currency_rate;
+                $data_insert[] = $node;
+
+                $node = [];
+                $node['itemable_id'] = $item['id'];
+                $node['split'] = $deposit_to;
+                $node['customer'] = $invoice->clientid;
+                $node['account'] = $item_payment_account;
+                $node['item'] = $item_id;
+                $node['date'] = $invoice->date;
+                $node['paid'] = $paid;
+                $node['tax'] = 0;
+                $node['debit'] = 0;
+                $node['credit'] = $item_total;
+                $node['description'] = '';
+                $node['rel_id'] = $invoice_id;
+                $node['rel_type'] = 'invoice';
+                $node['datecreated'] = date('Y-m-d H:i:s');
+                $node['addedfrom'] = get_staff_user_id();
+                $node['currency_rate'] = $currency_rate;
+                $data_insert[] = $node;
 
                 if(get_option('acc_tax_automatic_conversion') == 1){
                     $data_tax = $this->get_invoice_item_tax($item, $invoice);
@@ -11120,6 +12162,7 @@ class Accounting_model extends App_Model
                     $node['datecreated'] = date('Y-m-d H:i:s');
                     $node['addedfrom'] = get_staff_user_id();
                     $node['currency_rate'] = $currency_rate;
+                    $node['vendor'] = $expense->vendor;
                     $data_insert[] = $node;
 
                     $node = [];
@@ -11136,6 +12179,7 @@ class Accounting_model extends App_Model
                     $node['datecreated'] = date('Y-m-d H:i:s');
                     $node['addedfrom'] = get_staff_user_id();
                     $node['currency_rate'] = $currency_rate;
+                    $node['vendor'] = $expense->vendor;
                     $data_insert[] = $node;
                 }
             }
@@ -11158,6 +12202,7 @@ class Accounting_model extends App_Model
                     $node['datecreated'] = date('Y-m-d H:i:s');
                     $node['addedfrom'] = get_staff_user_id();
                     $node['currency_rate'] = $currency_rate;
+                    $node['vendor'] = $expense->vendor;
                     $data_insert[] = $node;
 
                     $node = [];
@@ -11174,6 +12219,7 @@ class Accounting_model extends App_Model
                     $node['datecreated'] = date('Y-m-d H:i:s');
                     $node['addedfrom'] = get_staff_user_id();
                     $node['currency_rate'] = $currency_rate;
+                    $node['vendor'] = $expense->vendor;
                     $data_insert[] = $node;
                 }elseif(get_option('acc_payment_expense_automatic_conversion') == 1){
                     $node = [];
@@ -11190,6 +12236,7 @@ class Accounting_model extends App_Model
                     $node['datecreated'] = date('Y-m-d H:i:s');
                     $node['addedfrom'] = get_staff_user_id();
                     $node['currency_rate'] = $currency_rate;
+                    $node['vendor'] = $expense->vendor;
                     $data_insert[] = $node;
 
                     $node = [];
@@ -11206,6 +12253,7 @@ class Accounting_model extends App_Model
                     $node['datecreated'] = date('Y-m-d H:i:s');
                     $node['addedfrom'] = get_staff_user_id();
                     $node['currency_rate'] = $currency_rate;
+                    $node['vendor'] = $expense->vendor;
                     $data_insert[] = $node;
                 }
             }
@@ -11225,6 +12273,7 @@ class Accounting_model extends App_Model
                 $node['datecreated'] = date('Y-m-d H:i:s');
                 $node['addedfrom'] = get_staff_user_id();
                 $node['currency_rate'] = $currency_rate;
+                $node['vendor'] = $expense->vendor;
                 $data_insert[] = $node;
 
                 $node = [];
@@ -11241,6 +12290,7 @@ class Accounting_model extends App_Model
                 $node['datecreated'] = date('Y-m-d H:i:s');
                 $node['addedfrom'] = get_staff_user_id();
                 $node['currency_rate'] = $currency_rate;
+                $node['vendor'] = $expense->vendor;
                 $data_insert[] = $node;
             }
 
@@ -11273,6 +12323,7 @@ class Accounting_model extends App_Model
                         $node['datecreated'] = date('Y-m-d H:i:s');
                         $node['addedfrom'] = get_staff_user_id();
                         $node['currency_rate'] = $currency_rate;
+                        $node['vendor'] = $expense->vendor;
                         $data_insert[] = $node;
 
                         $node = [];
@@ -11289,6 +12340,7 @@ class Accounting_model extends App_Model
                         $node['datecreated'] = date('Y-m-d H:i:s');
                         $node['addedfrom'] = get_staff_user_id();
                         $node['currency_rate'] = $currency_rate;
+                        $node['vendor'] = $expense->vendor;
                         $data_insert[] = $node;
                     }else{
                         $node = [];
@@ -11305,6 +12357,7 @@ class Accounting_model extends App_Model
                         $node['datecreated'] = date('Y-m-d H:i:s');
                         $node['addedfrom'] = get_staff_user_id();
                         $node['currency_rate'] = $currency_rate;
+                        $node['vendor'] = $expense->vendor;
                         $data_insert[] = $node;
 
                         $node = [];
@@ -11321,6 +12374,7 @@ class Accounting_model extends App_Model
                         $node['datecreated'] = date('Y-m-d H:i:s');
                         $node['addedfrom'] = get_staff_user_id();
                         $node['currency_rate'] = $currency_rate;
+                        $node['vendor'] = $expense->vendor;
                         $data_insert[] = $node;
                     }
                 }
@@ -11353,6 +12407,7 @@ class Accounting_model extends App_Model
                         $node['datecreated'] = date('Y-m-d H:i:s');
                         $node['addedfrom'] = get_staff_user_id();
                         $node['currency_rate'] = $currency_rate;
+                        $node['vendor'] = $expense->vendor;
                         $data_insert[] = $node;
 
                         $node = [];
@@ -11369,6 +12424,7 @@ class Accounting_model extends App_Model
                         $node['datecreated'] = date('Y-m-d H:i:s');
                         $node['addedfrom'] = get_staff_user_id();
                         $node['currency_rate'] = $currency_rate;
+                        $node['vendor'] = $expense->vendor;
                         $data_insert[] = $node;
                     }else{
                         $node = [];
@@ -11385,6 +12441,7 @@ class Accounting_model extends App_Model
                         $node['datecreated'] = date('Y-m-d H:i:s');
                         $node['addedfrom'] = get_staff_user_id();
                         $node['currency_rate'] = $currency_rate;
+                        $node['vendor'] = $expense->vendor;
                         $data_insert[] = $node;
 
                         $node = [];
@@ -11401,6 +12458,7 @@ class Accounting_model extends App_Model
                         $node['datecreated'] = date('Y-m-d H:i:s');
                         $node['addedfrom'] = get_staff_user_id();
                         $node['currency_rate'] = $currency_rate;
+                        $node['vendor'] = $expense->vendor;
                         $data_insert[] = $node;
                     }
                 }
@@ -11500,7 +12558,12 @@ class Accounting_model extends App_Model
         }
         $this->db->where('category != 0');
         $this->db->where('is_bill', 0);
+        $where_purchase = '0';
+        if(acc_get_status_modules('purchase')){
+            $where_purchase = '(select count(*) from ' . db_prefix() . 'pur_orders where ' . db_prefix() . 'pur_orders.expense_convert = ' . db_prefix() . 'expenses.id)';
+        }
 
+        $this->db->where('('.$where_purchase.' = 0)');
         $expense_total = $this->db->count_all_results(db_prefix().'expenses');
 
         $count = $this->db->query('
@@ -11803,7 +12866,7 @@ class Accounting_model extends App_Model
             $rate = explode('</div>', $string1[1]);
 
             if(isset($rate[0])){
-                $_rate = str_replace(',', '', $rate[0]);
+                $_rate = acc_unformat_number($rate[0]);
                 $result = $_rate * $amount;
                 
                 return $result;
@@ -12043,11 +13106,11 @@ class Accounting_model extends App_Model
         $data_report['total_taxable_sales_in_period_before_tax'] = [];
 
         $this->db->select('*, ' . db_prefix() . 'acc_account_history.date as date, ' . db_prefix() . 'acc_account_history.tax as tax');
-        $this->db->where('(' . db_prefix() . 'acc_account_history.date >= "' . $from_date . '" and ' . db_prefix() . 'acc_account_history.date <= "' . $to_date . '") and ' . db_prefix() . 'acc_account_history.tax > 0 and rel_type = "invoice" and debit >= 0');
+        $this->db->where('(' . db_prefix() . 'acc_account_history.date >= "' . $from_date . '" and ' . db_prefix() . 'acc_account_history.date <= "' . $to_date . '") and ' . db_prefix() . 'acc_account_history.tax > 0 and rel_type = "invoice" and debit > 0');
         if($accounting_method == 'cash'){
             $this->db->where('((rel_type = "invoice" and paid = 1) or rel_type != "invoice")');
         }
-        $this->db->join(db_prefix() . 'invoices', '' . db_prefix() . 'invoices.id = ' . db_prefix() . 'acc_account_history.rel_id AND ' . db_prefix() . 'acc_account_history.rel_id = "invoice"', 'left');
+        $this->db->join(db_prefix() . 'invoices', '' . db_prefix() . 'invoices.id = ' . db_prefix() . 'acc_account_history.rel_id AND ' . db_prefix() . 'acc_account_history.rel_type = "invoice"', 'left');
         $this->db->join(db_prefix() . 'taxes', '' . db_prefix() . 'taxes.id = ' . db_prefix() . 'acc_account_history.tax', 'left');
         $this->db->order_by(db_prefix() . 'acc_account_history.date', 'asc');
         $account_history = $this->db->get(db_prefix().'acc_account_history')->result_array();
@@ -12058,13 +13121,17 @@ class Accounting_model extends App_Model
 
             if(!in_array($v['rel_id'], $list_invoice)){
                 $list_invoice[] = $v['rel_id'];
+                $subtotal = $v['subtotal'];
+                if($v['currency_rate'] != ''){
+                    $subtotal = round($v['subtotal'] * $v['currency_rate'], 2);
+                }
 
                 $data_report['total_taxable_sales_in_period_before_tax'][] = [
                                 'date' => date('Y-m-d', strtotime($v['date'])),
                                 'type' => _l($v['rel_type']),
                                 'description' => $v['description'],
                                 'customer' => $v['customer'],
-                                'amount' => $v['subtotal'],
+                                'amount' => $subtotal,
                                 'rel_id' => $v['rel_id'],
                                 'rel_type' => $v['rel_type'],
 
@@ -12088,7 +13155,7 @@ class Accounting_model extends App_Model
         $data_report['total_taxable_purchases_in_period_before_tax'] = [];
 
         $this->db->select('*, ' . db_prefix() . 'acc_account_history.date as date, ' . db_prefix() . 'acc_account_history.tax as tax,'.db_prefix() . 'pur_orders.subtotal as order_subtotal,'.db_prefix() . 'pur_invoices.subtotal as invoice_subtotal,'.db_prefix() . 'expenses.amount as expense_amount');
-        $this->db->where('(' . db_prefix() . 'acc_account_history.date >= "' . $from_date . '" and ' . db_prefix() . 'acc_account_history.date <= "' . $to_date . '") and ' . db_prefix() . 'acc_account_history.tax > 0 and (rel_type = "expense" or rel_type = "purchase_order" or rel_type = "purchase_invoice") and credit >= 0');
+        $this->db->where('(' . db_prefix() . 'acc_account_history.date >= "' . $from_date . '" and ' . db_prefix() . 'acc_account_history.date <= "' . $to_date . '") and ' . db_prefix() . 'acc_account_history.tax > 0 and (rel_type = "expense" or rel_type = "purchase_order" or rel_type = "purchase_invoice") and credit > 0');
      
         $this->db->join(db_prefix() . 'pur_orders', '' . db_prefix() . 'pur_orders.id = ' . db_prefix() . 'acc_account_history.rel_id AND ' . db_prefix() . 'acc_account_history.rel_id = "purchase_order"', 'left');
         $this->db->join(db_prefix() . 'pur_invoices', '' . db_prefix() . 'pur_invoices.id = ' . db_prefix() . 'acc_account_history.rel_id AND ' . db_prefix() . 'acc_account_history.rel_id = "purchase_invoice"', 'left');
@@ -12108,12 +13175,17 @@ class Accounting_model extends App_Model
                     $list_purchase_order[] = $v['rel_id'];
 
                     if($v['order_subtotal'] > 0){
+                        
+                        $subtotal = $v['order_subtotal'];
+                        if($v['currency_rate'] != ''){
+                            $subtotal = round($v['order_subtotal'] * $v['currency_rate'], 2);
+                        }
                         $data_report['total_taxable_purchases_in_period_before_tax'][] = [
                                         'date' => date('Y-m-d', strtotime($v['date'])),
                                         'type' => _l($v['rel_type']),
                                         'description' => $v['description'],
                                         'customer' => $v['customer'],
-                                        'amount' => $v['order_subtotal'],
+                                        'amount' => $subtotal,
                                         'rel_id' => $v['rel_id'],
                                         'rel_type' => $v['rel_type'],
                                     ];
@@ -12124,12 +13196,18 @@ class Accounting_model extends App_Model
                     $list_purchase_invoice[] = $v['rel_id'];
 
                     if($v['invoice_subtotal'] > 0){
+
+                        $subtotal = $v['invoice_subtotal'];
+                        if($v['currency_rate'] != ''){
+                            $subtotal = round($v['invoice_subtotal'] * $v['currency_rate'], 2);
+                        }
+
                         $data_report['total_taxable_purchases_in_period_before_tax'][] = [
                                     'date' => date('Y-m-d', strtotime($v['date'])),
                                     'type' => _l($v['rel_type']),
                                     'description' => $v['description'],
                                     'customer' => $v['customer'],
-                                    'amount' => $v['invoice_subtotal'],
+                                    'amount' => $subtotal,
                                     'rel_id' => $v['rel_id'],
                                         'rel_type' => $v['rel_type'],
                                 ];
@@ -12140,12 +13218,17 @@ class Accounting_model extends App_Model
                     $list_expense[] = $v['rel_id'];
 
                     if($v['expense_amount'] > 0){
+                        $subtotal = $v['expense_amount'];
+                        if($v['currency_rate'] != ''){
+                            $subtotal = round($v['expense_amount'] * $v['currency_rate'], 2);
+                        }
+
                         $data_report['total_taxable_purchases_in_period_before_tax'][] = [
                                     'date' => date('Y-m-d', strtotime($v['date'])),
                                     'type' => _l($v['rel_type']),
                                     'description' => $v['description'],
                                     'customer' => $v['customer'],
-                                    'amount' => $v['expense_amount'],
+                                    'amount' => $subtotal,
                                     'rel_id' => $v['rel_id'],
                                         'rel_type' => $v['rel_type'],
                                 ];
@@ -12190,9 +13273,19 @@ class Accounting_model extends App_Model
             $to_date = to_sql_date($data_filter['to_date']);
         }
 
-        $tax = 0;
+        $where_tax = '';
         if(isset($data_filter['tax'])){
-            $tax = $data_filter['tax'];
+            foreach ($data_filter['tax'] as $key => $value) {
+                if ($where_tax != '') {
+                    $where_tax .= ' OR ' . db_prefix() . 'acc_account_history.tax = '.$value;
+                }else{
+                    $where_tax .= db_prefix() . 'acc_account_history.tax = '.$value;
+                }
+            }
+        }
+
+        if ($where_tax != '') {
+            $where_tax = ' AND ('.$where_tax.')';
         }
 
         $accounts = $this->get_accounts();
@@ -12214,7 +13307,7 @@ class Accounting_model extends App_Model
         $data_report['tax_payments_made_this_period'] = 0;
         $data_report['adjustments_to_reclaimable_tax_on_purchases'] = 0;
 
-        $this->db->where('(date >= "' . $from_date . '" and date <= "' . $to_date . '") and tax = '.$tax.' and rel_type = "invoice" and debit > 0');
+        $this->db->where('(date >= "' . $from_date . '" and date <= "' . $to_date . '") '.$where_tax.' and rel_type = "invoice" and debit > 0 and ' . db_prefix() . 'acc_account_history.tax > 0');
 
         if($accounting_method == 'cash'){
             $this->db->where('((rel_type = "invoice" and paid = 1) or rel_type != "invoice")');
@@ -12229,25 +13322,42 @@ class Accounting_model extends App_Model
 
             if(!in_array($v['rel_id'], $list_invoice)){
                 $list_invoice[] = $v['rel_id'];
-                $invoice = $this->invoices_model->get($v['rel_id']);
+                
+                $subtotal = $this->acc_get_subtotal_tax_by_invoice($v['rel_id'], $v['tax']);
+                if($v['currency_rate'] != ''){
+                    $subtotal = round($subtotal * $v['currency_rate'], 2);
+                }
 
-                $data_report['total_taxable_sales_in_period_before_tax'] += $invoice->subtotal;
+                $data_report['total_taxable_sales_in_period_before_tax'] += $subtotal;
             }
 
             $data_report['tax_collected_on_sales'] += $v['debit'];
         }
 
-        $this->db->select('*, ' . db_prefix() . 'acc_account_history.date as date, ' . db_prefix() . 'acc_account_history.tax as tax,'.db_prefix() . 'pur_orders.subtotal as order_subtotal,'.db_prefix() . 'pur_invoices.subtotal as invoice_subtotal,'.db_prefix() . 'expenses.amount as expense_amount');
+        $purchase_module_status = acc_get_status_modules('purchase');
+        if ($purchase_module_status) {
+            $this->db->select('*, ' . db_prefix() . 'acc_account_history.date as date, ' . db_prefix() . 'acc_account_history.tax as tax,'.db_prefix() . 'pur_orders.subtotal as order_subtotal,'.db_prefix() . 'pur_invoices.subtotal as invoice_subtotal,'.db_prefix() . 'expenses.amount as expense_amount');
 
-        $this->db->where('(' . db_prefix() . 'acc_account_history.date >= "' . $from_date . '" and ' . db_prefix() . 'acc_account_history.date <= "' . $to_date . '") and ' . db_prefix() . 'acc_account_history.tax > 0 and (rel_type = "expense" or rel_type = "purchase_order" or rel_type = "purchase_invoice") and credit >= 0');
+            $this->db->where('(' . db_prefix() . 'acc_account_history.date >= "' . $from_date . '" and ' . db_prefix() . 'acc_account_history.date <= "' . $to_date . '") and ' . db_prefix() . 'acc_account_history.tax > 0 and (rel_type = "expense" or rel_type = "purchase_order" or rel_type = "purchase_invoice") and credit >= 0 '.$where_tax);
 
-        $this->db->join(db_prefix() . 'pur_orders', '' . db_prefix() . 'pur_orders.id = ' . db_prefix() . 'acc_account_history.rel_id AND ' . db_prefix() . 'acc_account_history.rel_id = "purchase_order"', 'left');
-        $this->db->join(db_prefix() . 'pur_invoices', '' . db_prefix() . 'pur_invoices.id = ' . db_prefix() . 'acc_account_history.rel_id AND ' . db_prefix() . 'acc_account_history.rel_id = "purchase_invoice"', 'left');
-        $this->db->join(db_prefix() . 'expenses', '' . db_prefix() . 'expenses.id = ' . db_prefix() . 'acc_account_history.rel_id AND ' . db_prefix() . 'acc_account_history.rel_id = "expense"', 'left');
-        $this->db->join(db_prefix() . 'taxes', '' . db_prefix() . 'taxes.id = ' . db_prefix() . 'acc_account_history.tax', 'left');
-        $this->db->order_by(db_prefix() . 'acc_account_history.date', 'asc');
-        
-        $account_history = $this->db->get(db_prefix().'acc_account_history')->result_array();
+            $this->db->join(db_prefix() . 'pur_orders', '' . db_prefix() . 'pur_orders.id = ' . db_prefix() . 'acc_account_history.rel_id AND ' . db_prefix() . 'acc_account_history.rel_id = "purchase_order"', 'left');
+            $this->db->join(db_prefix() . 'pur_invoices', '' . db_prefix() . 'pur_invoices.id = ' . db_prefix() . 'acc_account_history.rel_id AND ' . db_prefix() . 'acc_account_history.rel_id = "purchase_invoice"', 'left');
+            $this->db->join(db_prefix() . 'expenses', '' . db_prefix() . 'expenses.id = ' . db_prefix() . 'acc_account_history.rel_id AND ' . db_prefix() . 'acc_account_history.rel_id = "expense"', 'left');
+            $this->db->join(db_prefix() . 'taxes', '' . db_prefix() . 'taxes.id = ' . db_prefix() . 'acc_account_history.tax', 'left');
+            $this->db->order_by(db_prefix() . 'acc_account_history.date', 'asc');
+            
+            $account_history = $this->db->get(db_prefix().'acc_account_history')->result_array();
+        }else{
+            $this->db->select('*, ' . db_prefix() . 'acc_account_history.date as date, ' . db_prefix() . 'acc_account_history.tax as tax,'.db_prefix() . 'expenses.amount as expense_amount');
+
+            $this->db->where('(' . db_prefix() . 'acc_account_history.date >= "' . $from_date . '" and ' . db_prefix() . 'acc_account_history.date <= "' . $to_date . '") and ' . db_prefix() . 'acc_account_history.tax > 0 and (rel_type = "expense") and credit >= 0 '.$where_tax);
+
+            $this->db->join(db_prefix() . 'expenses', '' . db_prefix() . 'expenses.id = ' . db_prefix() . 'acc_account_history.rel_id AND ' . db_prefix() . 'acc_account_history.rel_id = "expense"', 'left');
+            $this->db->join(db_prefix() . 'taxes', '' . db_prefix() . 'taxes.id = ' . db_prefix() . 'acc_account_history.tax', 'left');
+            $this->db->order_by(db_prefix() . 'acc_account_history.date', 'asc');
+            
+            $account_history = $this->db->get(db_prefix().'acc_account_history')->result_array();
+        }
 
 
         $list_expense = [];        
@@ -12260,7 +13370,12 @@ class Accounting_model extends App_Model
                     $list_purchase_order[] = $v['rel_id'];
 
                     if($v['order_subtotal'] > 0){
-                        $data_report['total_taxable_purchases_in_period_before_tax'] += $v['order_subtotal'];
+                        $subtotal = $v['order_subtotal'];
+                        if($v['currency_rate'] != ''){
+                            $subtotal = round($v['order_subtotal'] * $v['currency_rate'], 2);
+                        }
+
+                        $data_report['total_taxable_purchases_in_period_before_tax'] += $subtotal;
                     }
                 }
             }elseif($v['rel_type'] == 'purchase_invoice'){
@@ -12268,7 +13383,11 @@ class Accounting_model extends App_Model
                     $list_purchase_invoice[] = $v['rel_id'];
 
                     if($v['invoice_subtotal'] > 0){
-                        $data_report['total_taxable_purchases_in_period_before_tax'] += $v['invoice_subtotal'];
+                        $subtotal = $v['invoice_subtotal'];
+                        if($v['currency_rate'] != ''){
+                            $subtotal = round($v['invoice_subtotal'] * $v['currency_rate'], 2);
+                        }
+                        $data_report['total_taxable_purchases_in_period_before_tax'] += $subtotal;
                     }
                 }
             }else{
@@ -12276,7 +13395,11 @@ class Accounting_model extends App_Model
                     $list_expense[] = $v['rel_id'];
 
                     if($v['expense_amount'] > 0){
-                        $data_report['total_taxable_purchases_in_period_before_tax'] += $v['expense_amount'];
+                        $subtotal = $v['expense_amount'];
+                        if($v['currency_rate'] != ''){
+                            $subtotal = round($v['expense_amount'] * $v['currency_rate'], 2);
+                        }
+                        $data_report['total_taxable_purchases_in_period_before_tax'] += $subtotal;
                     }
                 }
             }
@@ -12648,6 +13771,55 @@ class Accounting_model extends App_Model
         return $accounts;
     }
 
+    public function filter_zero_value_recursive($nodes) {
+        if (!is_array($nodes)) return $nodes;
+        $filtered = [];
+        foreach ($nodes as $node) {
+            if (isset($node['child_account']) && is_array($node['child_account'])) {
+                $node['child_account'] = $this->filter_zero_value_recursive($node['child_account']);
+            }
+
+            $has_nonzero_child = (isset($node['child_account']) && count($node['child_account']) > 0);
+            
+            $has_nonzero_amount = false;
+            $amount_keys = [
+                'amount', 'py_amount', 'debit', 'credit', 'balance', 
+                'beginning_balance', 'movement', 
+                'py_beginning_balance', 'py_movement',
+                'budget_amount', 'actual_amount', 'over_budget', 'ytd_budget_amount', 'details'
+            ];
+            
+            foreach ($amount_keys as $key) {
+                if (isset($node[$key])) {
+                    if (is_array($node[$key]) && $key == 'details') {
+                        if (count($node[$key]) > 0) {
+                            $has_nonzero_amount = true;
+                            break;
+                        }
+                    } else if ($this->_is_nonzero($node[$key])) {
+                        $has_nonzero_amount = true;
+                        break;
+                    }
+                }
+            }
+
+            if ($has_nonzero_amount || $has_nonzero_child) {
+                $filtered[] = $node;
+            }
+        }
+        return $filtered;
+    }
+    
+    private function _is_nonzero($val) {
+        if (is_array($val)) {
+            foreach ($val as $v) {
+                if ($this->_is_nonzero($v)) return true;
+            }
+            return false;
+        }
+        return is_numeric($val) && round(floatval($val), 4) != 0;
+    }
+
     /**
      * get html balance sheet comparision
      * @param  array $child_account 
@@ -12657,6 +13829,9 @@ class Accounting_model extends App_Model
      * @return array               
      */
     public function get_html_balance_sheet_comparision($child_account, $data_return, $parent_index, $currency, $flag = false, $level = 1){
+        if (get_option('acc_hide_zero_value_rows') == 1) {
+            $child_account = $this->filter_zero_value_recursive($child_account);
+        }
         $categoryOutput='';
         if ($flag) {
             for ($i = 0; $i < $level; $i++) {
@@ -12671,45 +13846,74 @@ class Accounting_model extends App_Model
 
         foreach ($child_account as $val) {
             $data_return['row_index']++;
+            $current_node_id = $data_return['row_index'];
             $total_amount = $val['amount'];
             $total_py_amount = $val['py_amount'];
+            $has_opening_balance = isset($val['beginning_balance']) && isset($val['movement']) && $val['from_date'] != '1970-01-01';
 
             if($flag){
                 $balance_url = $val['name'];
-
+                if ($has_opening_balance) {
+                    $balance_url .= ' (' . _l('balance_forward_as_of', _d($val['from_date'])) . ')';
+                }
             }else{
-                $balance_url = '<a href="'.admin_url('accounting/user_register_view/'.$val['account_id'].'?from_date='.$val['from_date'].'&to_date='.$val['to_date']).'" class="text-default-bl">'.$val['name'].'</a>';
+                $balance_url = '<a href="'.admin_url('accounting/user_register_view/'.$val['account_id'].'?from_date='.$val['from_date'].'&to_date='.$val['to_date']).'" class="text-default-bl">'.$val['name'];
+                if ($has_opening_balance) {
+                    $balance_url .= ' (' . _l('balance_forward_as_of', _d($val['from_date'])) . ')';
+                }
+                $balance_url .= '</a>';
             }
 
-            $data_return['html'] .= '<tr data-node-id="'.$data_return['row_index'].'" '.($parent_index != 0 ? 'data-node-pid="'.$parent_index.'"' : '').'>
+            $amount_to_show = $has_opening_balance ? $val['beginning_balance'] : $val['amount'];
+            $py_amount_to_show = $has_opening_balance ? $val['py_beginning_balance'] : $val['py_amount'];
+
+            $data_return['html'] .= '<tr data-node-id="'.$current_node_id.'" '.($parent_index != 0 ? 'data-node-pid="'.$parent_index.'"' : '').'>
               <td>
                 '.$categoryOutput.$balance_url.'
               </td>
               <td class="total_amount">
-              '.app_format_money($val['amount'], $currency->name).'
+              '.app_format_money($amount_to_show, $currency->name).'
               </td>
               <td class="total_amount">
-              '.app_format_money($val['py_amount'], $currency->name).'
+              '.app_format_money($py_amount_to_show, $currency->name).'
               </td>
             </tr>';
 
-            if(count($val['child_account']) > 0){
+            if ($has_opening_balance) {
+                $subCategoryOutput = $categoryOutput . '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;';
+                $movement_lang = _l('acc_movement') == 'acc_movement' ? 'Movement' : _l('acc_movement');
+
+                $data_return['row_index']++;
+                $data_return['html'] .= '<tr data-node-id="'.$data_return['row_index'].'" data-node-pid="'.$current_node_id.'">
+                  <td>
+                '.$subCategoryOutput.'<span>'.$movement_lang.'</span>
+                  </td>
+                  <td class="total_amount">
+                  '.app_format_money($val['movement'], $currency->name).'
+                  </td>
+                  <td class="total_amount">
+                  '.app_format_money($val['py_movement'], $currency->name).'
+                  </td>
+                </tr>';
+            }
+
+            if(count($val['child_account']) > 0 || $has_opening_balance){
                 $t = $data_return['total_amount'];
                 $t_py = $data_return['total_py_amount'];
-                $data_return = $this->get_html_balance_sheet_comparision($val['child_account'], $data_return, $data_return['row_index'], $currency);
 
-                $total_amount += $data_return['total_amount'];
-                $total_py_amount += $data_return['total_py_amount'];
+                if (count($val['child_account']) > 0) {
+                    $data_return = $this->get_html_balance_sheet_comparision($val['child_account'], $data_return, $current_node_id, $currency);
+                    $total_amount += $data_return['total_amount'];
+                    $total_py_amount += $data_return['total_py_amount'];
+                }
                 
-                $data_return['row_index']++;
-
                 if($flag){
                     $balance_url = $val['name'];
-
                 }else{
                     $balance_url = '<a href="'.admin_url('accounting/rp_account_history?account='.$val['account_id'].'&from_date='.$val['from_date'].'&to_date='.$val['to_date']).'" class="text-default-bl">'.$val['name'].'</a>';
                 }
 
+                $data_return['row_index']++;
                 $data_return['html'] .= '<tr data-node-id="'.$data_return['row_index'].'" '.($parent_index != 0 ? 'data-node-pid="'.$parent_index.'"' : '').' class="tr_total">
                   <td>
                     '.$categoryOutput._l('total_for').' '.$balance_url.'
@@ -12721,8 +13925,11 @@ class Accounting_model extends App_Model
                   '.app_format_money($total_py_amount, $currency->name).'
                   </td>
                 </tr>';
-                $data_return['total_amount'] += $t;
-                $data_return['total_py_amount'] += $t_py;
+                
+                if (count($val['child_account']) > 0) {
+                    $data_return['total_amount'] += $t;
+                    $data_return['total_py_amount'] += $t_py;
+                }
             }
 
             $data_return['total_amount'] += $val['amount'];
@@ -12732,6 +13939,9 @@ class Accounting_model extends App_Model
     }
 
     public function get_html_balance_sheet_detail_new($child_account, $data_return, $parent_index, $currency, $flag = false, $level=1){
+        if (get_option('acc_hide_zero_value_rows') == 1) {
+            $child_account = $this->filter_zero_value_recursive($child_account);
+        }
         $total_amount = 0;
         $balance = 0;
         $data_return['total_amount'] = 0;
@@ -12867,6 +14077,9 @@ class Accounting_model extends App_Model
      * @return array               
      */
     public function get_html_balance_sheet_summary($child_account, $data_return, $parent_index, $currency, $flag = false, $level = 1){
+        if (get_option('acc_hide_zero_value_rows') == 1) {
+            $child_account = $this->filter_zero_value_recursive($child_account);
+        }
         $categoryOutput='';
         if ($flag) {
             for ($i = 0; $i < $level; $i++) {
@@ -12879,45 +14092,78 @@ class Accounting_model extends App_Model
         foreach ($child_account as $val) {
 
             $data_return['row_index']++;
+            $current_node_id = $data_return['row_index'];
             $total_amount = $val['amount'];
+            $has_opening_balance = isset($val['beginning_balance']) && isset($val['movement']) && $val['from_date'] != '1970-01-01';
+
             if($flag){
                 $report_url = $val['name'];
+                if ($has_opening_balance) {
+                    $report_url .= ' (' . _l('balance_forward_as_of', _d($val['from_date'])) . ')';
+                }
             }else{
-                $report_url = '<a href="'.admin_url('accounting/user_register_view/'.$val['account_id'].'?from_date='.$val['from_date'].'&to_date='.$val['to_date']).'" class="text-default-bl">'.$val['name'].'</a>';
+                $report_url = '<a href="'.admin_url('accounting/user_register_view/'.$val['account_id'].'?from_date='.$val['from_date'].'&to_date='.$val['to_date']).'" class="text-default-bl">'.$val['name'];
+                if ($has_opening_balance) {
+                    $report_url .= ' (' . _l('balance_forward_as_of', _d($val['from_date'])) . ')';
+                }
+                $report_url .= '</a>';
             }
 
-            $data_return['html'] .= '<tr data-node-id="'.$data_return['row_index'].'" '.($parent_index != 0 ? 'data-node-pid="'.$parent_index.'"' : '').'>
+            $amount_to_show = $has_opening_balance ? $val['beginning_balance'] : $val['amount'];
+
+            $data_return['html'] .= '<tr data-node-id="'.$current_node_id.'" '.($parent_index != 0 ? 'data-node-pid="'.$parent_index.'"' : '').'>
               <td>
             '.$categoryOutput.$report_url.'
               </td>
               <td class="total_amount">
-              '.app_format_money($val['amount'], $currency->name).'
+              '.app_format_money($amount_to_show, $currency->name).'
               </td>
             </tr>';
 
-            if(count($val['child_account']) > 0){
+            if ($has_opening_balance) {
+                $subCategoryOutput = $categoryOutput . '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;';
+                $movement_lang = _l('acc_movement') == 'acc_movement' ? 'Movement' : _l('acc_movement');
+
+                $data_return['row_index']++;
+                $data_return['html'] .= '<tr data-node-id="'.$data_return['row_index'].'" data-node-pid="'.$current_node_id.'">
+                  <td>
+                '.$subCategoryOutput.'<span>'.$movement_lang.'</span>
+                  </td>
+                  <td class="total_amount">
+                  '.app_format_money($val['movement'], $currency->name).'
+                  </td>
+                </tr>';
+            }
+
+            if(count($val['child_account']) > 0 || $has_opening_balance){
                 $level++;
                 $t = $data_return['total_amount'];
-                $data_return = $this->get_html_balance_sheet_summary($val['child_account'], $data_return, $data_return['row_index'], $currency, $flag, $level);
 
-                $total_amount += $data_return['total_amount'];
+                if (count($val['child_account']) > 0) {
+                    $data_return = $this->get_html_balance_sheet_summary($val['child_account'], $data_return, $current_node_id, $currency, $flag, $level);
+                    $total_amount += $data_return['total_amount'];
+                }
                 
-                $data_return['row_index']++;
                 if($flag){
                     $report_url = $val['name'];
                 }else{
                     $report_url = '<a href="'.admin_url('accounting/rp_account_history?account='.$val['account_id'].'&from_date='.$val['from_date'].'&to_date='.$val['to_date']).'" class="text-default-bl">'.$val['name'].'</a>';
                 }
                 
+                $data_return['row_index']++;
                 $data_return['html'] .= '<tr data-node-id="'.$data_return['row_index'].'" '.($parent_index != 0 ? 'data-node-pid="'.$parent_index.'"' : '').' class="tr_total">
                   <td>
-                '.$categoryOutput._l('total_for').$report_url.'
+                '.$categoryOutput._l('total_for').' '.$report_url.'
                   </td>
                   <td class="total_amount">
                   '.app_format_money($total_amount, $currency->name).'
                   </td>
                 </tr>';
-                $data_return['total_amount'] += $t;
+
+                if (count($val['child_account']) > 0) {
+                    $data_return['total_amount'] += $t;
+                }
+                $level--;
             }
 
             $data_return['total_amount'] += $val['amount'];
@@ -12934,6 +14180,9 @@ class Accounting_model extends App_Model
      * @return array               
      */
     public function get_html_balance_sheet($child_account, $data_return, $parent_index, $currency, $flag = false, $level = 1){
+        if (get_option('acc_hide_zero_value_rows') == 1) {
+            $child_account = $this->filter_zero_value_recursive($child_account);
+        }
         $categoryOutput='';
         if ($flag) {
             for ($i = 0; $i < $level; $i++) {
@@ -12946,24 +14195,50 @@ class Accounting_model extends App_Model
         foreach ($child_account as $val) {
 
             $data_return['row_index']++;
+            $current_node_id = $data_return['row_index'];
             $total_amount = $val['amount'];
+            $has_opening_balance = isset($val['beginning_balance']) && isset($val['movement']) && $val['from_date'] != '1970-01-01';
 
             if($flag){
                 $report_url = $val['name'];
+                if ($has_opening_balance) {
+                    $report_url .= ' (' . _l('balance_forward_as_of', _d($val['from_date'])) . ')';
+                }
             }else{
-                $report_url = '<a href="'.admin_url('accounting/user_register_view/'.$val['account_id'].'?from_date='.$val['from_date'].'&to_date='.$val['to_date']).'" class="text-default-bl">'.$val['name'].'</a>';
+                $report_url = '<a href="'.admin_url('accounting/user_register_view/'.$val['account_id'].'?from_date='.$val['from_date'].'&to_date='.$val['to_date']).'" class="text-default-bl">'.$val['name'];
+                if ($has_opening_balance) {
+                    $report_url .= ' (' . _l('balance_forward_as_of', _d($val['from_date'])) . ')';
+                }
+                $report_url .= '</a>';
             }
 
-            $data_return['html'] .= '<tr data-node-id="'.$data_return['row_index'].'" '.($parent_index != 0 ? 'data-node-pid="'.$parent_index.'"' : '').'>
+            $amount_to_show = $has_opening_balance ? $val['beginning_balance'] : $val['amount'];
+
+            $data_return['html'] .= '<tr data-node-id="'.$current_node_id.'" '.($parent_index != 0 ? 'data-node-pid="'.$parent_index.'"' : '').'>
               <td>
             '.$categoryOutput.$report_url.'
               </td>
               <td class="total_amount">
-              '.app_format_money($val['amount'], $currency->name).'
+              '.app_format_money($amount_to_show, $currency->name).'
               </td>
             </tr>';
 
-            if(count($val['child_account']) > 0){
+            if ($has_opening_balance) {
+                $subCategoryOutput = $categoryOutput . '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;';
+                $movement_lang = _l('acc_movement') == 'acc_movement' ? 'Movement' : _l('acc_movement');
+
+                $data_return['row_index']++;
+                $data_return['html'] .= '<tr data-node-id="'.$data_return['row_index'].'" data-node-pid="'.$current_node_id.'">
+                  <td>
+                '.$subCategoryOutput.'<span>'.$movement_lang.'</span>
+                  </td>
+                  <td class="total_amount">
+                  '.app_format_money($val['movement'], $currency->name).'
+                  </td>
+                </tr>';
+            }
+
+            if(count($val['child_account']) > 0 || $has_opening_balance){
                 $level++;
 
                 if ($flag) {
@@ -12973,9 +14248,11 @@ class Accounting_model extends App_Model
                 }
 
                 $t = $data_return['total_amount'];
-                $data_return = $this->get_html_balance_sheet($val['child_account'], $data_return, $data_return['row_index'], $currency, $flag, $level);
-
-                $total_amount += $data_return['total_amount'];
+                
+                if (count($val['child_account']) > 0) {
+                    $data_return = $this->get_html_balance_sheet($val['child_account'], $data_return, $current_node_id, $currency, $flag, $level);
+                    $total_amount += $data_return['total_amount'];
+                }
 
                 if($flag){
                     $report_url = $val['name'];
@@ -12986,13 +14263,17 @@ class Accounting_model extends App_Model
                 $data_return['row_index']++;
                 $data_return['html'] .= '<tr data-node-id="'.$data_return['row_index'].'" '.($parent_index != 0 ? 'data-node-pid="'.$parent_index.'"' : '').' class="tr_total">
                   <td>
-                '.$categoryOutput._l('total_for').$report_url.'
+                '.$categoryOutput._l('total_for').' '.$report_url.'
                   </td>
                   <td class="total_amount">
                   '.app_format_money($total_amount, $currency->name).'
                   </td>
                 </tr>';
-                $data_return['total_amount'] += $t;
+                
+                if (count($val['child_account']) > 0) {
+                    $data_return['total_amount'] += $t;
+                }
+                $level--;
             }
 
             $data_return['total_amount'] += $val['amount'];
@@ -13009,6 +14290,9 @@ class Accounting_model extends App_Model
      * @return array               
      */
     public function get_html_custom_summary($child_account, $data_return, $parent_index, $currency){
+        if (get_option('acc_hide_zero_value_rows') == 1) {
+            $child_account = $this->filter_zero_value_recursive($child_account);
+        }
         $total_amount = 0;
         $data_return['total_amount'] = 0;
         foreach ($child_account as $val) {
@@ -13065,6 +14349,9 @@ class Accounting_model extends App_Model
      * @return array               
      */
     public function get_html_profit_and_loss_as_of_total_income($child_account, $income, $data_return, $parent_index, $currency, $flag = false, $level = 1){
+        if (get_option('acc_hide_zero_value_rows') == 1) {
+            $child_account = $this->filter_zero_value_recursive($child_account);
+        }
         $categoryOutput='';
            if ($flag) {
             for ($i = 0; $i < $level; $i++) {
@@ -13142,6 +14429,9 @@ class Accounting_model extends App_Model
      * @return array               
      */
     public function get_html_profit_and_loss_comparison($child_account, $data_return, $parent_index, $currency, $flag = false, $level = 1){
+        if (get_option('acc_hide_zero_value_rows') == 1) {
+            $child_account = $this->filter_zero_value_recursive($child_account);
+        }
         $categoryOutput='';
            if ($flag) {
             for ($i = 0; $i < $level; $i++) {
@@ -13215,6 +14505,9 @@ class Accounting_model extends App_Model
      * @return array               
      */
     public function get_html_profit_and_loss_detail($child_account, $data_return, $parent_index, $currency, $flag = false, $level=1){
+        if (get_option('acc_hide_zero_value_rows') == 1) {
+            $child_account = $this->filter_zero_value_recursive($child_account);
+        }
         $categoryOutput='';
         if ($flag) {
             for ($i = 0; $i < $level; $i++) {
@@ -13334,6 +14627,9 @@ class Accounting_model extends App_Model
      * @return array               
      */
     public function get_html_profit_and_loss_year_to_date_comparison($child_account, $data_return, $parent_index, $currency){
+        if (get_option('acc_hide_zero_value_rows') == 1) {
+            $child_account = $this->filter_zero_value_recursive($child_account);
+        }
         $total_amount = 0;
         $total_py_amount = 0;
         $data_return['total_amount'] = 0;
@@ -13393,6 +14689,9 @@ class Accounting_model extends App_Model
      * @return array               
      */
     public function get_html_profit_and_loss($child_account, $data_return, $parent_index, $currency, $flag = false, $level = 1){
+        if (get_option('acc_hide_zero_value_rows') == 1) {
+            $child_account = $this->filter_zero_value_recursive($child_account);
+        }
         $categoryOutput='';
         if ($flag) {
             for ($i = 0; $i < $level; $i++) {
@@ -13495,6 +14794,9 @@ class Accounting_model extends App_Model
      * @return array               
      */
     public function get_html_statement_of_cash_flows($child_account, $data_return, $parent_index, $currency, $flag = false, $level = 1){
+        if (get_option('acc_hide_zero_value_rows') == 1) {
+            $child_account = $this->filter_zero_value_recursive($child_account);
+        }
         $categoryOutput='';
         if ($flag) {
             for ($i = 0; $i < $level; $i++) {
@@ -13565,6 +14867,9 @@ class Accounting_model extends App_Model
      * @return array               
      */
     public function get_html_statement_of_changes_in_equity($child_account, $data_return, $parent_index, $currency){
+        if (get_option('acc_hide_zero_value_rows') == 1) {
+            $child_account = $this->filter_zero_value_recursive($child_account);
+        }
         $total_amount = 0;
         $data_return['total_amount'] = 0;
         foreach ($child_account as $val) {
@@ -13613,6 +14918,9 @@ class Accounting_model extends App_Model
      * @return array               
      */
     public function get_html_account_list($child_account, $data_return, $parent_index, $currency, $flag = false, $level = 1){
+        if (get_option('acc_hide_zero_value_rows') == 1) {
+            $child_account = $this->filter_zero_value_recursive($child_account);
+        }
         $categoryOutput='';
         if ($flag) {
             for ($i = 0; $i < $level; $i++) {
@@ -13685,6 +14993,9 @@ class Accounting_model extends App_Model
      * @return array               
      */
     public function get_html_general_ledger($child_account, $data_return, $parent_index, $currency, $flag = false, $level = 1, $show_url = true){
+        if (get_option('acc_hide_zero_value_rows') == 1) {
+            $child_account = $this->filter_zero_value_recursive($child_account);
+        }
 
         $categoryOutput='';
         if ($flag) {
@@ -13834,6 +15145,9 @@ class Accounting_model extends App_Model
      * @return array               
      */
     public function get_html_trial_balance($child_account, $data_return, $parent_index, $currency, $flag = false, $level = 1, $show_url = true){
+        if (get_option('acc_hide_zero_value_rows') == 1) {
+            $child_account = $this->filter_zero_value_recursive($child_account);
+        }
         $categoryOutput='';
         if ($flag) {
             for ($i = 0; $i < $level; $i++) {
@@ -13911,6 +15225,9 @@ class Accounting_model extends App_Model
      * @return array               
      */
     public function get_html_transaction_detail_by_account($child_account, $data_return, $parent_index, $currency, $flag = false, $level = 1){
+        if (get_option('acc_hide_zero_value_rows') == 1) {
+            $child_account = $this->filter_zero_value_recursive($child_account);
+        }
         $categoryOutput='';
         if ($flag) {
             for ($i = 0; $i < $level; $i++) {
@@ -14031,6 +15348,9 @@ class Accounting_model extends App_Model
      * @return array               
      */
     public function get_html_deposit_detail($child_account, $data_return, $parent_index, $currency, $flag = false, $level = 1){
+        if (get_option('acc_hide_zero_value_rows') == 1) {
+            $child_account = $this->filter_zero_value_recursive($child_account);
+        }
         $categoryOutput='';
         if ($flag) {
             for ($i = 0; $i < $level; $i++) {
@@ -14758,86 +16078,69 @@ class Accounting_model extends App_Model
             $data_insert = [];
 
             $currency_rate = 1;
-            if($base_currency->name != $currency->name){
+            if($base_currency->name != $currency->name && $purchase_order->currency_rate != 0){
                 $currency_rate = 1/$purchase_order->currency_rate;
             }
 
             foreach ($purchase_order_detail as $value) {
 
                 $item_id = $value['item_code'];
+                $item_detail = $this->get_items($item_id);
+                $item_group_id = 0;
+                if ($item_detail) {
+                    $item_group_id = $item_detail->group_id;
+                }
 
                 $item_total = $value['into_money'];
                 if($base_currency->name != $currency->name){
                     $item_total = round(($value['into_money'] * $currency_rate), 2);
                 }
 
+                $item_deposit_to = $deposit_to;
+                
                 $item_automatic = $this->get_item_automatic($item_id);
-
                 if($item_automatic){
-                    $node = [];
-                    $node['split'] = $payment_account;
-                    $node['account'] = $item_automatic->expense_account;
-                    $node['item'] = $item_id;
-                    $node['date'] = $purchase_order->order_date;
-                    $node['debit'] = $item_total;
-                    $node['tax'] = 0;
-                    $node['credit'] = 0;
-                    $node['description'] = '';
-                    $node['rel_id'] = $purchase_order_id;
-                    $node['rel_type'] = 'purchase_order';
-                    $node['datecreated'] = date('Y-m-d H:i:s');
-                    $node['addedfrom'] = get_staff_user_id();
-                    $node['currency_rate'] = $currency_rate;
-                    $data_insert[] = $node;
-
-                    $node = [];
-                    $node['split'] = $item_automatic->expense_account;
-                    $node['account'] = $payment_account;
-                    $node['item'] = $item_id;
-                    $node['date'] = $purchase_order->order_date;
-                    $node['tax'] = 0;
-                    $node['debit'] = 0;
-                    $node['credit'] = $item_total;
-                    $node['description'] = '';
-                    $node['rel_id'] = $purchase_order_id;
-                    $node['rel_type'] = 'purchase_order';
-                    $node['datecreated'] = date('Y-m-d H:i:s');
-                    $node['addedfrom'] = get_staff_user_id();
-                    $node['currency_rate'] = $currency_rate;
-                    $data_insert[] = $node;
+                    $item_deposit_to = $item_automatic->expense_account;
                 }else{
-                    $node = [];
-                    $node['split'] = $payment_account;
-                    $node['account'] = $deposit_to;
-                    $node['item'] = $item_id;
-                    $node['debit'] = $item_total;
-                    $node['date'] = $purchase_order->order_date;
-                    $node['tax'] = 0;
-                    $node['credit'] = 0;
-                    $node['description'] = '';
-                    $node['rel_id'] = $purchase_order_id;
-                    $node['rel_type'] = 'purchase_order';
-                    $node['datecreated'] = date('Y-m-d H:i:s');
-                    $node['addedfrom'] = get_staff_user_id();
-                    $node['currency_rate'] = $currency_rate;
-                    $data_insert[] = $node;
-
-                    $node = [];
-                    $node['split'] = $deposit_to;
-                    $node['account'] = $payment_account;
-                    $node['item'] = $item_id;
-                    $node['date'] = $purchase_order->order_date;
-                    $node['tax'] = 0;
-                    $node['debit'] = 0;
-                    $node['credit'] = $item_total;
-                    $node['description'] = '';
-                    $node['rel_id'] = $purchase_order_id;
-                    $node['rel_type'] = 'purchase_order';
-                    $node['datecreated'] = date('Y-m-d H:i:s');
-                    $node['addedfrom'] = get_staff_user_id();
-                    $node['currency_rate'] = $currency_rate;
-                    $data_insert[] = $node;
+                    $item_group_automatic = $this->get_item_group_automatic($item_group_id);
+                    if($item_group_automatic){
+                        $item_deposit_to = $item_group_automatic->expense_account;
+                    }
                 }
+
+                $node = [];
+                $node['split'] = $payment_account;
+                $node['account'] = $item_deposit_to;
+                $node['item'] = $item_id;
+                $node['debit'] = $item_total;
+                $node['date'] = $purchase_order->order_date;
+                $node['tax'] = 0;
+                $node['credit'] = 0;
+                $node['description'] = '';
+                $node['rel_id'] = $purchase_order_id;
+                $node['rel_type'] = 'purchase_order';
+                $node['datecreated'] = date('Y-m-d H:i:s');
+                $node['addedfrom'] = get_staff_user_id();
+                $node['currency_rate'] = $currency_rate;
+                $node['vendor'] = $purchase_order->vendor;
+                $data_insert[] = $node;
+
+                $node = [];
+                $node['split'] = $item_deposit_to;
+                $node['account'] = $payment_account;
+                $node['item'] = $item_id;
+                $node['date'] = $purchase_order->order_date;
+                $node['tax'] = 0;
+                $node['debit'] = 0;
+                $node['credit'] = $item_total;
+                $node['description'] = '';
+                $node['rel_id'] = $purchase_order_id;
+                $node['rel_type'] = 'purchase_order';
+                $node['datecreated'] = date('Y-m-d H:i:s');
+                $node['addedfrom'] = get_staff_user_id();
+                $node['currency_rate'] = $currency_rate;
+                $node['vendor'] = $purchase_order->vendor;
+                $data_insert[] = $node;
 
                 if(get_option('acc_tax_automatic_conversion') == 1 && $value['tax'] > 0){
                     $tax_payment_account = get_option('acc_pur_tax_payment_account');
@@ -14899,6 +16202,7 @@ class Accounting_model extends App_Model
                                 $node['datecreated'] = date('Y-m-d H:i:s');
                                 $node['addedfrom'] = get_staff_user_id();
                                 $node['currency_rate'] = $currency_rate;
+                                $node['vendor'] = $purchase_order->vendor;
                                 $data_insert[] = $node;
 
                                 $node = [];
@@ -14915,6 +16219,7 @@ class Accounting_model extends App_Model
                                 $node['datecreated'] = date('Y-m-d H:i:s');
                                 $node['addedfrom'] = get_staff_user_id();
                                 $node['currency_rate'] = $currency_rate;
+                                $node['vendor'] = $purchase_order->vendor;
                                 $data_insert[] = $node;
                             }else{
                                 $node = [];
@@ -14931,6 +16236,7 @@ class Accounting_model extends App_Model
                                 $node['datecreated'] = date('Y-m-d H:i:s');
                                 $node['addedfrom'] = get_staff_user_id();
                                 $node['currency_rate'] = $currency_rate;
+                                $node['vendor'] = $purchase_order->vendor;
                                 $data_insert[] = $node;
 
                                 $node = [];
@@ -14947,6 +16253,7 @@ class Accounting_model extends App_Model
                                 $node['datecreated'] = date('Y-m-d H:i:s');
                                 $node['addedfrom'] = get_staff_user_id();
                                 $node['currency_rate'] = $currency_rate;
+                                $node['vendor'] = $purchase_order->vendor;
                                 $data_insert[] = $node;
                             }
                         }
@@ -14973,6 +16280,7 @@ class Accounting_model extends App_Model
                     $node['datecreated'] = date('Y-m-d H:i:s');
                     $node['addedfrom'] = get_staff_user_id();
                     $node['currency_rate'] = $currency_rate;
+                    $node['vendor'] = $purchase_order->vendor;
                     $data_insert[] = $node;
 
                     $node = [];
@@ -14989,6 +16297,7 @@ class Accounting_model extends App_Model
                     $node['datecreated'] = date('Y-m-d H:i:s');
                     $node['addedfrom'] = get_staff_user_id();
                     $node['currency_rate'] = $currency_rate;
+                    $node['vendor'] = $purchase_order->vendor;
                     $data_insert[] = $node;
                 }
             }
@@ -15013,6 +16322,7 @@ class Accounting_model extends App_Model
                 $node['datecreated'] = date('Y-m-d H:i:s');
                 $node['addedfrom'] = get_staff_user_id();
                 $node['currency_rate'] = $currency_rate;
+                $node['vendor'] = $purchase_order->vendor;
                 $data_insert[] = $node;
 
                 $node = [];
@@ -15029,6 +16339,7 @@ class Accounting_model extends App_Model
                 $node['datecreated'] = date('Y-m-d H:i:s');
                 $node['addedfrom'] = get_staff_user_id();
                 $node['currency_rate'] = $currency_rate;
+                $node['vendor'] = $purchase_order->vendor;
                 $data_insert[] = $node;
             }
 
@@ -15052,6 +16363,7 @@ class Accounting_model extends App_Model
                 $node['datecreated'] = date('Y-m-d H:i:s');
                 $node['addedfrom'] = get_staff_user_id();
                 $node['currency_rate'] = $currency_rate;
+                $node['vendor'] = $purchase_order->vendor;
                 $data_insert[] = $node;
 
                 $node = [];
@@ -15068,6 +16380,7 @@ class Accounting_model extends App_Model
                 $node['datecreated'] = date('Y-m-d H:i:s');
                 $node['addedfrom'] = get_staff_user_id();
                 $node['currency_rate'] = $currency_rate;
+                $node['vendor'] = $purchase_order->vendor;
                 $data_insert[] = $node;
             }
 
@@ -15161,7 +16474,7 @@ class Accounting_model extends App_Model
             $currency_rate = 1;
 
             if($goods_receipt->pr_order_id != 0 && $goods_receipt->currency != 0 && $goods_receipt->currency != $currency->id && (float)($goods_receipt->currency_exchange_rate) != 0){
-                $currency_rate = $goods_receipt->currency_exchange_rate; 
+                $currency_rate = round(1/$goods_receipt->currency_exchange_rate, 6); 
             }
 
             foreach ($goods_receipt_detail as $value) {
@@ -15170,26 +16483,34 @@ class Accounting_model extends App_Model
                 $item = $this->db->get(db_prefix().'items')->row();
 
                 $item_id = 0;
+                $item_group_id = 0;
                 if(isset($item->id)){
                     $item_id = $item->id;
+                    $item_group_id = $item->group_id;
                 }
 
                 if($check_return_order && isset($item_price_arr[$item_id])){
                     $item_total = $item_price_arr[$item_id] * $value['quantities'];
                 }else{
-                    $item_total = round($value['sub_total'] / $currency_rate, 2);
+                    $unit_price = round((float)$value['unit_price'] * $currency_rate, 5);
+                    $item_total = round((float)$unit_price * $value['quantities'], 2);
                 }
 
+                $item_deposit_to = $deposit_to;
+                
                 $item_automatic = $this->get_item_automatic($item_id);
-                $deposit_to = get_option('acc_wh_stock_import_deposit_to');
-
                 if($item_automatic && !$check_return_order){
-                    $deposit_to = $item_automatic->inventory_asset_account;
+                    $item_deposit_to = $item_automatic->inventory_asset_account;
+                }else{
+                    $item_group_automatic = $this->get_item_group_automatic($item_group_id);
+                    if($item_group_automatic && !$check_return_order){
+                        $item_deposit_to = $item_group_automatic->inventory_asset_account;
+                    }
                 }
                 
                 $node = [];
                 $node['split'] = $payment_account;
-                $node['account'] = $deposit_to;
+                $node['account'] = $item_deposit_to;
                 $node['item'] = $item_id;
                 $node['debit'] = $item_total;
                 $node['date'] = $goods_receipt->date_c;
@@ -15203,7 +16524,7 @@ class Accounting_model extends App_Model
                 $data_insert[] = $node;
 
                 $node = [];
-                $node['split'] = $deposit_to;
+                $node['split'] = $item_deposit_to;
                 $node['account'] = $payment_account;
                 $node['item'] = $item_id;
                 $node['date'] = $goods_receipt->date_c;
@@ -15223,7 +16544,7 @@ class Accounting_model extends App_Model
                         $tax_payment_account = get_option('acc_expense_tax_payment_account');
                         $tax_deposit_to = get_option('acc_expense_tax_deposit_to');
 
-                        $total_tax = round($value['tax_money'] / $currency_rate, 2);
+                        $total_tax = round($value['tax_money'] * $currency_rate, 2);
 
                         $tax_mapping = $this->get_tax_mapping($value['tax']);
 
@@ -15353,7 +16674,11 @@ class Accounting_model extends App_Model
             
             $data_insert = [];
 
-
+            $currency_exchange_rate = 1;
+            if($goods_delivery->currency != 0 && $goods_delivery->currency != $currency->id && (float)($goods_delivery->currency_exchange_rate) != 0){
+                $currency_exchange_rate = $goods_delivery->currency_exchange_rate; 
+            }
+           
             foreach ($goods_delivery_detail as $value) {
 
                 $goods_transaction_detail = $this->get_goods_transaction_detail($value['id']);
@@ -15362,105 +16687,88 @@ class Accounting_model extends App_Model
                 $item = $this->db->get(db_prefix().'items')->row();
 
                 $item_id = 0;
+                $item_group_id = 0;
                 if(isset($item->id)){
                     $item_id = $item->id;
+                    $item_group_id = $item->group_id;
                 }
 
                 if($goods_transaction_detail){
-                    $item_amount = $goods_transaction_detail->quantity * $goods_transaction_detail->purchase_price;
-                    $profit_item_amount = ($goods_transaction_detail->quantity * $goods_transaction_detail->price) - $item_amount;
+                    $unit_price = $goods_transaction_detail->price;
+                    
+                    $item_amount = $value['quantities'] * $goods_transaction_detail->purchase_price;
+                    $profit_item_amount = ($value['quantities'] * $unit_price) - ($value['quantities'] * $goods_transaction_detail->purchase_price);
                     $item_total = $item_amount + $profit_item_amount;
                 }else{
+                    $unit_price = $value['unit_price'];
+                    
                     if($item_id != 0){
                         $item_amount = $value['quantities'] * $item->purchase_price;
+                        $profit_item_amount = ($value['quantities'] * $unit_price) - ($value['quantities'] * $item->purchase_price);
                     }else{
-                        $item_amount = $value['quantities'] * $value['unit_price'];
+                        $item_amount = $value['quantities'] * $unit_price;
+                        $profit_item_amount = 0;
                     }
 
-                    $profit_item_amount = ($value['quantities'] * $value['unit_price']) - $item_amount;
                     $item_total = $item_amount + $profit_item_amount;
                 }
 
+                $item_payment_account = $payment_account;
+                
                 $item_automatic = $this->get_item_automatic($item_id);
-
-                if($item_amount > 0){
-                    if($item_automatic){
-                        $node = [];
-                        $node['split'] = $item_automatic->inventory_asset_account;
-                        $node['account'] = $payment_account;
-                        $node['item'] = $item_id;
-                        $node['date'] = $goods_delivery->date_c;
-                        $node['debit'] = $item_amount;
-                        $node['tax'] = 0;
-                        $node['sub_type'] = 'inventory';
-                        $node['credit'] = 0;
-                        $node['description'] = '';
-                        $node['rel_id'] = $stock_export_id;
-                        $node['rel_type'] = 'stock_export';
-                        $node['datecreated'] = date('Y-m-d H:i:s');
-                        $node['addedfrom'] = get_staff_user_id();
-                        $data_insert[] = $node;
-
-                        $node = [];
-                        $node['split'] = $payment_account;
-                        $node['account'] = $item_automatic->inventory_asset_account;
-                        $node['item'] = $item_id;
-                        $node['date'] = $goods_delivery->date_c;
-                        $node['tax'] = 0;
-                        $node['sub_type'] = 'inventory';
-                        $node['debit'] = 0;
-                        $node['credit'] = $item_amount;
-                        $node['description'] = '';
-                        $node['rel_id'] = $stock_export_id;
-                        $node['rel_type'] = 'stock_export';
-                        $node['datecreated'] = date('Y-m-d H:i:s');
-                        $node['addedfrom'] = get_staff_user_id();
-                        $data_insert[] = $node;
-                    }else{
-                        $node = [];
-                        $node['split'] = $payment_account;
-                        $node['account'] = $deposit_to;
-                        $node['item'] = $item_id;
-                        $node['debit'] = $item_amount;
-                        $node['date'] = $goods_delivery->date_c;
-                        $node['sub_type'] = 'inventory';
-                        $node['tax'] = 0;
-                        $node['credit'] = 0;
-                        $node['description'] = '';
-                        $node['rel_id'] = $stock_export_id;
-                        $node['rel_type'] = 'stock_export';
-                        $node['datecreated'] = date('Y-m-d H:i:s');
-                        $node['addedfrom'] = get_staff_user_id();
-                        $data_insert[] = $node;
-
-                        $node = [];
-                        $node['split'] = $deposit_to;
-                        $node['account'] = $payment_account;
-                        $node['item'] = $item_id;
-                        $node['date'] = $goods_delivery->date_c;
-                        $node['sub_type'] = 'inventory';
-                        $node['tax'] = 0;
-                        $node['debit'] = 0;
-                        $node['credit'] = $item_amount;
-                        $node['description'] = '';
-                        $node['rel_id'] = $stock_export_id;
-                        $node['rel_type'] = 'stock_export';
-                        $node['datecreated'] = date('Y-m-d H:i:s');
-                        $node['addedfrom'] = get_staff_user_id();
-                        $data_insert[] = $node;
+                if($item_automatic){
+                    $item_payment_account = $item_automatic->inventory_asset_account;
+                }else{
+                    $item_group_automatic = $this->get_item_group_automatic($item_group_id);
+                    if($item_group_automatic){
+                        $item_payment_account = $item_group_automatic->inventory_asset_account;
                     }
+                }
+               
+                if($item_amount > 0){
+                    $node = [];
+                    $node['split'] = $item_payment_account;
+                    $node['account'] = $deposit_to;
+                    $node['item'] = $item_id;
+                    $node['debit'] = $item_amount;
+                    $node['date'] = $goods_delivery->date_c;
+                    $node['sub_type'] = 'inventory';
+                    $node['tax'] = 0;
+                    $node['credit'] = 0;
+                    $node['description'] = '';
+                    $node['rel_id'] = $stock_export_id;
+                    $node['rel_type'] = 'stock_export';
+                    $node['datecreated'] = date('Y-m-d H:i:s');
+                    $node['addedfrom'] = get_staff_user_id();
+                    $data_insert[] = $node;
+
+                    $node = [];
+                    $node['split'] = $deposit_to;
+                    $node['account'] = $item_payment_account;
+                    $node['item'] = $item_id;
+                    $node['date'] = $goods_delivery->date_c;
+                    $node['sub_type'] = 'inventory';
+                    $node['tax'] = 0;
+                    $node['debit'] = 0;
+                    $node['credit'] = $item_amount;
+                    $node['description'] = '';
+                    $node['rel_id'] = $stock_export_id;
+                    $node['rel_type'] = 'stock_export';
+                    $node['datecreated'] = date('Y-m-d H:i:s');
+                    $node['addedfrom'] = get_staff_user_id();
+                    $data_insert[] = $node;
                 }
 
                 if($profit_item_amount > 0 && $acc_wh_stock_export_profit_automatic_conversion == 1){
                     if($item_automatic){
                         $node = [];
-                        $node['split'] = $profit_deposit_to;
-                        $node['account'] = $item_automatic->income_account;
+                        $node['split'] = $item_automatic->income_account;
+                        $node['account'] = $profit_deposit_to;
                         $node['item'] = $item_id;
-                        $node['date'] = $goods_delivery->date_c;
                         $node['debit'] = $profit_item_amount;
-                        $node['tax'] = 0;
+                        $node['date'] = $goods_delivery->date_c;
                         $node['sub_type'] = 'profit';
+                        $node['tax'] = 0;
                         $node['credit'] = 0;
                         $node['description'] = '';
                         $node['rel_id'] = $stock_export_id;
@@ -15470,12 +16778,12 @@ class Accounting_model extends App_Model
                         $data_insert[] = $node;
 
                         $node = [];
-                        $node['split'] = $item_automatic->income_account;
-                        $node['account'] = $profit_deposit_to;
+                        $node['split'] = $profit_deposit_to;
+                        $node['account'] = $item_automatic->income_account;
                         $node['item'] = $item_id;
                         $node['date'] = $goods_delivery->date_c;
-                        $node['tax'] = 0;
                         $node['sub_type'] = 'profit';
+                        $node['tax'] = 0;
                         $node['debit'] = 0;
                         $node['credit'] = $profit_item_amount;
                         $node['description'] = '';
@@ -15484,6 +16792,7 @@ class Accounting_model extends App_Model
                         $node['datecreated'] = date('Y-m-d H:i:s');
                         $node['addedfrom'] = get_staff_user_id();
                         $data_insert[] = $node;
+
                     }else{
                         $node = [];
                         $node['split'] = $profit_payment_account;
@@ -15524,6 +16833,9 @@ class Accounting_model extends App_Model
                     $tax_deposit_to = get_option('acc_tax_deposit_to');
 
                     $total_tax = $value['total_money'] - $item_total;
+                    if($goods_delivery->currency != 0 && $goods_delivery->currency != $currency->id && (float)($goods_delivery->currency_exchange_rate) != 0){
+                        $total_tax = round((float)$total_tax * $currency_exchange_rate, 2);
+                    }
 
                     $tax_mapping = $this->get_tax_mapping($value['tax_id']);
 
@@ -15653,8 +16965,10 @@ class Accounting_model extends App_Model
                 $item = $this->db->get(db_prefix().'items')->row();
 
                 $item_id = 0;
+                $item_group_id = 0;
                 if(isset($item->id)){
                     $item_id = $item->id;
+                    $item_group_id = $item->group_id;
                 }
 
                 $price = 0;
@@ -15680,28 +16994,29 @@ class Accounting_model extends App_Model
                 }
 
 
+                $item_increase_deposit_to = $increase_deposit_to;
+                $item_decrease_payment_account = $decrease_payment_account;
+                
                 $item_automatic = $this->get_item_automatic($item_id);
-
                 if($item_automatic){
-                    if($value['current_number'] < $value['updates_number']){
-                        $number = $value['updates_number'] - $value['current_number'];
-                        $loss_adjustment_payment_account = $increase_payment_account;
-                        $loss_adjustment_deposit_to = $item_automatic->inventory_asset_account;
-                    }else{
-                        $number = $value['current_number'] - $value['updates_number'];
-                        $loss_adjustment_payment_account = $item_automatic->inventory_asset_account;
-                        $loss_adjustment_deposit_to = $decrease_deposit_to;
-                    }
+                    $item_increase_deposit_to = $item_automatic->inventory_asset_account;
+                    $item_decrease_payment_account = $item_automatic->inventory_asset_account;
                 }else{
-                    if($value['current_number'] < $value['updates_number']){
-                        $number = $value['updates_number'] - $value['current_number'];
-                        $loss_adjustment_payment_account = $increase_payment_account;
-                        $loss_adjustment_deposit_to = $increase_deposit_to;
-                    }else{
-                        $number = $value['current_number'] - $value['updates_number'];
-                        $loss_adjustment_payment_account = $decrease_payment_account;
-                        $loss_adjustment_deposit_to = $decrease_deposit_to;
+                    $item_group_automatic = $this->get_item_group_automatic($item_group_id);
+                    if($item_group_automatic){
+                        $item_increase_deposit_to = $item_group_automatic->inventory_asset_account;
+                        $item_decrease_payment_account = $item_group_automatic->inventory_asset_account;
                     }
+                }
+
+                if($value['current_number'] < $value['updates_number']){
+                    $number = $value['updates_number'] - $value['current_number'];
+                    $loss_adjustment_payment_account = $increase_payment_account;
+                    $loss_adjustment_deposit_to = $item_increase_deposit_to;
+                }else{
+                    $number = $value['current_number'] - $value['updates_number'];
+                    $loss_adjustment_payment_account = $item_decrease_payment_account;
+                    $loss_adjustment_deposit_to = $decrease_deposit_to;
                 }
 
                 $item_total = $number * $price;
@@ -15717,6 +17032,7 @@ class Accounting_model extends App_Model
                 $node['description'] = '';
                 $node['rel_id'] = $loss_adjustment_id;
                 $node['rel_type'] = 'loss_adjustment';
+                $node['class'] = $loss_adjustment->acc_class;
                 $node['datecreated'] = date('Y-m-d H:i:s');
                 $node['addedfrom'] = get_staff_user_id();
                 $data_insert[] = $node;
@@ -15732,6 +17048,7 @@ class Accounting_model extends App_Model
                 $node['description'] = '';
                 $node['rel_id'] = $loss_adjustment_id;
                 $node['rel_type'] = 'loss_adjustment';
+                $node['class'] = $loss_adjustment->acc_class;
                 $node['datecreated'] = date('Y-m-d H:i:s');
                 $node['addedfrom'] = get_staff_user_id();
                 $data_insert[] = $node;
@@ -15861,6 +17178,14 @@ class Accounting_model extends App_Model
 
         if(!isset($data['acc_pur_tax_automatic_conversion'])){
             $data['acc_pur_tax_automatic_conversion'] = 0;
+        }
+
+        if(!isset($data['acc_debit_note_automatic_conversion'])){
+            $data['acc_debit_note_automatic_conversion'] = 0;
+        }
+
+        if(!isset($data['acc_debit_note_refund_automatic_conversion'])){
+            $data['acc_debit_note_refund_automatic_conversion'] = 0;
         }
 
         foreach ($data as $key => $value) {
@@ -16000,6 +17325,7 @@ class Accounting_model extends App_Model
                 $node['datecreated'] = date('Y-m-d H:i:s');
                 $node['addedfrom'] = get_staff_user_id();
                 $node['currency_rate'] = $currency_rate;
+                $node['vendor'] = $purchase_invoice->vendor;
                 $data_insert[] = $node;
 
                 $node = [];
@@ -16015,6 +17341,7 @@ class Accounting_model extends App_Model
                 $node['datecreated'] = date('Y-m-d H:i:s');
                 $node['addedfrom'] = get_staff_user_id();
                 $node['currency_rate'] = $currency_rate;
+                $node['vendor'] = $purchase_invoice->vendor;
                 $data_insert[] = $node;
             }else{
                 if(get_option('acc_pur_payment_automatic_conversion') == 1){
@@ -16030,6 +17357,7 @@ class Accounting_model extends App_Model
                     $node['datecreated'] = date('Y-m-d H:i:s');
                     $node['addedfrom'] = get_staff_user_id();
                     $node['currency_rate'] = $currency_rate;
+                    $node['vendor'] = $purchase_invoice->vendor;
                     $data_insert[] = $node;
 
                     $node = [];
@@ -16044,6 +17372,7 @@ class Accounting_model extends App_Model
                     $node['datecreated'] = date('Y-m-d H:i:s');
                     $node['addedfrom'] = get_staff_user_id();
                     $node['currency_rate'] = $currency_rate;
+                    $node['vendor'] = $purchase_invoice->vendor;
                     $data_insert[] = $node;
                 }
             }
@@ -16938,6 +18267,9 @@ class Accounting_model extends App_Model
         $to_date = date('Y-m-d');
         $this->load->model('invoices_model');
 
+        $this->load->model('currencies_model');
+        $currency = $this->currencies_model->get_base_currency();
+
         if(isset($data_filter['from_date'])){
             $from_date = to_sql_date($data_filter['from_date']);
         }
@@ -16970,11 +18302,15 @@ class Accounting_model extends App_Model
             $this->db->where($where_string);
         }
 
-        $this->db->select('*, (select sum(amount) from '.db_prefix() . 'invoicepaymentrecords where invoiceid = '.db_prefix().'invoices.id) as total_payments');
-        $this->db->where('(status = 1 or status = 3 or status = 4)');
+        $this->db->select(db_prefix() . 'invoices.id as id, '.db_prefix() . 'invoices.status, '.db_prefix() . 'invoices.number, '.db_prefix() . 'invoices.number_format, '.db_prefix() . 'invoices.prefix, '.db_prefix() . 'invoices.date, '.db_prefix() . 'invoices.duedate, '.db_prefix() . 'invoices.clientid, '.db_prefix() . 'invoices.total,sum(' . db_prefix() . 'invoicepaymentrecords.amount) as total_payments, sum('.db_prefix() . 'credits.amount) as total_credits, ' . db_prefix() . 'currencies.name as currency_name');
 
-        $this->db->order_by('date', 'asc');
+        $this->db->where('(status = 1 or status = 3 or status = 4)');
         
+        $this->db->join(db_prefix() . 'credits', '' . db_prefix() . 'invoices.id = ' . db_prefix() . 'credits.invoice_id', 'left');
+        $this->db->join(db_prefix() . 'invoicepaymentrecords', '' . db_prefix() . 'invoices.id = ' . db_prefix() . 'invoicepaymentrecords.invoiceid', 'left');
+        $this->db->group_by(db_prefix() . 'invoices.id');
+        $this->db->join(db_prefix() . 'currencies', '' . db_prefix() . 'currencies.id = ' . db_prefix() . 'invoices.currency', 'left');
+        $this->db->order_by('date', 'asc');
         $invoices = $this->db->get(db_prefix().'invoices')->result_array();
         
         foreach ($invoices as $v) {
@@ -16999,6 +18335,12 @@ class Accounting_model extends App_Model
                 $group = '91_and_over';
             }
 
+            $total = $v['total'] - $v['total_payments'] - $v['total_credits'];
+            if($v['currency_name'] != $currency->name){
+                $currency_rate = acc_get_currency_rate($v['currency_name'], $currency->name);
+                $total = round($currency_rate * $total, 2);
+            }
+
             if($group != ''){
                 $data_report[$group][] = [
                     'date' => $v['date'],
@@ -17008,7 +18350,7 @@ class Accounting_model extends App_Model
                     'rel_id' => $v['id'],
                     'number' => $number,
                     'customer' => $v['clientid'],
-                    'amount' => $v['total'] - $v['total_payments'],
+                    'amount' => $total,
                 ];
             }
         }
@@ -17021,6 +18363,9 @@ class Accounting_model extends App_Model
      * @return array 
      */
     public function get_data_accounts_payable_ageing_detail($data_filter){
+        $this->load->model('currencies_model');
+        $currency = $this->currencies_model->get_base_currency();
+
         $from_date = date('Y-m-01');
         $to_date = date('Y-m-d');
 
@@ -17058,11 +18403,12 @@ class Accounting_model extends App_Model
         $data_report['61_90_days_past_due'] = [];
         $data_report['91_and_over'] = [];
 
-        $this->db->select('*, ' . db_prefix() . 'expenses.id as expense_id, ' . db_prefix() . 'taxes.taxrate as taxrate, ' . db_prefix() . 'taxes_2.taxrate as taxrate2');
+        $this->db->select('*, ' . db_prefix() . 'expenses.id as expense_id, ' . db_prefix() . 'taxes.taxrate as taxrate, ' . db_prefix() . 'taxes_2.taxrate as taxrate2, ' . db_prefix() . 'currencies.name as currency_name');
         $this->db->where('paymentmode', '');
         $this->db->where('is_bill', 0);
         $this->db->join(db_prefix() . 'taxes', '' . db_prefix() . 'taxes.id = ' . db_prefix() . 'expenses.tax', 'left');
         $this->db->join('' . db_prefix() . 'taxes as ' . db_prefix() . 'taxes_2', '' . db_prefix() . 'taxes_2.id = ' . db_prefix() . 'expenses.tax2', 'left');
+        $this->db->join(db_prefix() . 'currencies', '' . db_prefix() . 'currencies.id = ' . db_prefix() . 'expenses.currency', 'left');
         $this->db->order_by('date', 'asc');
         $expenses = $this->db->get(db_prefix().'expenses')->result_array();
 
@@ -17089,6 +18435,11 @@ class Accounting_model extends App_Model
                 $group = '91_and_over';
             }
 
+            if($v['currency_name'] != $currency->name){
+                $currency_rate = acc_get_currency_rate($v['currency_name'], $currency->name);
+                $total = round($currency_rate * $total, 2);
+            }
+
             if($group != ''){
                 $data_report[$group][] = [
                     'date' => $v['date'],
@@ -17104,15 +18455,17 @@ class Accounting_model extends App_Model
             }
         }
 
+        $this->db->select('*, ' . db_prefix() . 'expenses.id as expense_id, ' . db_prefix() . 'currencies.name as currency_name');
         $this->db->where('approved', 1);
         $this->db->where('voided', 0);
         $this->db->where('status != 2');
         $this->db->where('is_bill', 1);
+        $this->db->join(db_prefix() . 'currencies', '' . db_prefix() . 'currencies.id = ' . db_prefix() . 'expenses.currency', 'left');
         $this->db->order_by('date', 'asc');
         $expenses = $this->db->get(db_prefix().'expenses')->result_array();
         
         foreach ($expenses as $v) {
-            $total = bill_amount_left($v['id']);
+            $total = bill_amount_left($v['expense_id']);
 
             $group = '';
             if (strtotime($v['date']) == strtotime($to_date)) {
@@ -17125,6 +18478,11 @@ class Accounting_model extends App_Model
                 $group = '61_90_days_past_due';
             }elseif (strtotime($v['date']) <= strtotime($to_date.' - 91 days')) {
                 $group = '91_and_over';
+            }
+
+            if($v['currency_name'] != $currency->name){
+                $currency_rate = acc_get_currency_rate($v['currency_name'], $currency->name);
+                $total = round($currency_rate * $total, 2);
             }
 
             if($group != ''){
@@ -17143,16 +18501,18 @@ class Accounting_model extends App_Model
         }
 
         if(acc_get_status_modules('purchase')){
+            $this->db->select('*, ' . db_prefix() . 'pur_invoices.id as invoice_id, ' . db_prefix() . 'currencies.name as currency_name');
             $this->db->where('payment_status != "paid"');
             $this->db->order_by('invoice_date', 'asc');
             $this->db->where('approval_status', 2);
+            $this->db->join(db_prefix() . 'currencies', '' . db_prefix() . 'currencies.id = ' . db_prefix() . 'pur_invoices.currency', 'left');
             $pur_invoices = $this->db->get(db_prefix().'pur_invoices')->result_array();
             
             foreach ($pur_invoices as $v) {
                 $total = $v['total'];
 
                 if($v['payment_status'] == 'partially_paid'){
-                    $total = $this->pur_invoice_amount_left($v['id']);
+                    $total = $this->pur_invoice_amount_left($v['invoice_id']);
                 }
 
                 $group = '';
@@ -17168,6 +18528,14 @@ class Accounting_model extends App_Model
                     $group = '91_and_over';
                 }
                 
+                if($v['currency_name'] != $currency->name){
+                    $currency_rate = acc_get_currency_rate($v['currency_name'], $currency->name);
+                    if ($v['currency_rate'] != 0) {
+                        $currency_rate = 1 / $v['currency_rate'];
+                    }
+                    $total = round($currency_rate * $total, 2);
+                }
+
                 if($group != ''){
                     $data_report[$group][] = [
                         'date' => $v['invoice_date'],
@@ -17193,6 +18561,12 @@ class Accounting_model extends App_Model
      * @return array 
      */
     public function get_data_accounts_receivable_ageing_summary($data_filter){
+
+        $this->load->model('currencies_model');
+        $currency = $this->currencies_model->get_base_currency();
+
+        
+
         $from_date = date('Y-m-01');
         $to_date = date('Y-m-d');
         if(isset($data_filter['from_date'])){
@@ -17225,16 +18599,24 @@ class Accounting_model extends App_Model
             $this->db->where($where_string);
         }
 
-        $this->db->select(db_prefix() . 'invoices.id as id, '.db_prefix() . 'invoices.date, '.db_prefix() . 'invoices.duedate, '.db_prefix() . 'invoices.clientid, '.db_prefix() . 'invoices.total,sum(amount) as total_payments');
+        $this->db->select(db_prefix() . 'invoices.id as id, '.db_prefix() . 'invoices.date, '.db_prefix() . 'invoices.duedate, '.db_prefix() . 'invoices.clientid, '.db_prefix() . 'invoices.total,sum(' . db_prefix() . 'invoicepaymentrecords.amount) as total_payments, sum('.db_prefix() . 'credits.amount) as total_credits, ' . db_prefix() . 'currencies.name as currency_name');
         $this->db->where('('.db_prefix().'invoices.status = 1 OR '.db_prefix().'invoices.status = 3 OR '.db_prefix().'invoices.status = 4)');
         $this->db->order_by(db_prefix() . 'invoices.date', 'asc');
+        $this->db->join(db_prefix() . 'credits', '' . db_prefix() . 'invoices.id = ' . db_prefix() . 'credits.invoice_id', 'left');
         $this->db->join(db_prefix() . 'invoicepaymentrecords', '' . db_prefix() . 'invoices.id = ' . db_prefix() . 'invoicepaymentrecords.invoiceid', 'left');
+        $this->db->join(db_prefix() . 'currencies', '' . db_prefix() . 'currencies.id = ' . db_prefix() . 'invoices.currency', 'left');
         $this->db->group_by(db_prefix() . 'invoices.id');
         $invoices = $this->db->get(db_prefix().'invoices')->result_array();
         $data_report = [];
 
         foreach ($invoices as $v) {
-            $total = $v['total'] - $v['total_payments'];
+            $total = $v['total'] - $v['total_payments'] - $v['total_credits'];
+
+            if($v['currency_name'] != $currency->name){
+                $currency_rate = acc_get_currency_rate($v['currency_name'], $currency->name);
+                $total = round($currency_rate * $total, 2);
+            }
+
             $due_date = $v['duedate'] ? $v['duedate'] : $v['date'];
 
             if(!isset($data_report[$v['clientid']])){
@@ -17290,14 +18672,18 @@ class Accounting_model extends App_Model
         $data_report['customer'] = [];
         $data_report['vendor'] = [];
 
-        $this->db->select('*, ' . db_prefix() . 'expenses.id as expense_id, ' . db_prefix() . 'taxes.taxrate as taxrate, ' . db_prefix() . 'taxes_2.taxrate as taxrate2');
+        $this->db->select('*, ' . db_prefix() . 'expenses.id as expense_id, ' . db_prefix() . 'taxes.taxrate as taxrate, ' . db_prefix() . 'taxes_2.taxrate as taxrate2, ' . db_prefix() . 'currencies.name as currency_name');
         $this->db->where('paymentmode', '');
         $this->db->where('is_bill', 0);
         $this->db->join(db_prefix() . 'taxes', '' . db_prefix() . 'taxes.id = ' . db_prefix() . 'expenses.tax', 'left');
         $this->db->join('' . db_prefix() . 'taxes as ' . db_prefix() . 'taxes_2', '' . db_prefix() . 'taxes_2.id = ' . db_prefix() . 'expenses.tax2', 'left');
+        $this->db->join(db_prefix() . 'currencies', '' . db_prefix() . 'currencies.id = ' . db_prefix() . 'expenses.currency', 'left');
         $this->db->order_by('date', 'asc');
         $expenses = $this->db->get(db_prefix().'expenses')->result_array();
         
+        $this->load->model('currencies_model');
+        $currency = $this->currencies_model->get_base_currency();
+
         foreach ($expenses as $v) {
             $rel_type = 'customer';
             $rel_id = 0;
@@ -17316,6 +18702,11 @@ class Accounting_model extends App_Model
             }
             if($v['tax2'] != 0){
                 $total += ($v['amount'] / 100 * $v['taxrate2']);
+            }
+
+            if($v['currency_name'] != $currency->name){
+                $currency_rate = acc_get_currency_rate($v['currency_name'], $currency->name);
+                $total = round($currency_rate * $total, 2);
             }
 
             if(!isset($data_report[$rel_type][$rel_id])){
@@ -17342,17 +18733,24 @@ class Accounting_model extends App_Model
             $data_report[$rel_type][$rel_id]['total'] += $total;
         }
 
+        $this->db->select('*, ' . db_prefix() . 'expenses.id as expense_id, ' . db_prefix() . 'currencies.name as currency_name');
         $this->db->where('approved', 1);
         $this->db->where('voided', 0);
         $this->db->where('status != 2');
         $this->db->where('is_bill', 1);
         $this->db->order_by('date', 'asc');
+        $this->db->join(db_prefix() . 'currencies', '' . db_prefix() . 'currencies.id = ' . db_prefix() . 'expenses.currency', 'left');
         $expenses = $this->db->get(db_prefix().'expenses')->result_array();
         
         foreach ($expenses as $v) {
 
             if($v['vendor'] != ''){
-                $total = bill_amount_left($v['id']);
+                $total = bill_amount_left($v['expense_id']);
+
+                if($v['currency_name'] != $currency->name){
+                    $currency_rate = acc_get_currency_rate($v['currency_name'], $currency->name);
+                    $total = round($currency_rate * $total, 2);
+                }
 
                 if(!isset($data_report['vendor'][$v['vendor']])){
                     $data_report['vendor'][$v['vendor']]['current'] = 0;
@@ -17382,16 +18780,27 @@ class Accounting_model extends App_Model
 
 
         if(acc_get_status_modules('purchase')){
+            
+            $this->db->select('*, ' . db_prefix() . 'pur_invoices.id as invoice_id, ' . db_prefix() . 'currencies.name as currency_name');
             $this->db->where('payment_status != "paid"');
             $this->db->order_by('invoice_date', 'asc');
             $this->db->where('approval_status', 2);
+            $this->db->join(db_prefix() . 'currencies', '' . db_prefix() . 'currencies.id = ' . db_prefix() . 'pur_invoices.currency', 'left');
             $pur_invoices = $this->db->get(db_prefix().'pur_invoices')->result_array();
 
             foreach ($pur_invoices as $v) {
                 $total = $v['total'];
 
                 if($v['payment_status'] == 'partially_paid'){
-                    $total = $this->pur_invoice_amount_left($v['id']);
+                    $total = $this->pur_invoice_amount_left($v['invoice_id']);
+                }
+
+                if($v['currency_name'] != $currency->name){
+                    $currency_rate = acc_get_currency_rate($v['currency_name'], $currency->name);
+                    if ($v['currency_rate'] != 0) {
+                        $currency_rate = 1 / $v['currency_rate'];
+                    }
+                    $total = round($currency_rate * $total, 2);
                 }
 
                 if(!isset($data_report['vendor'][$v['vendor']])){
@@ -17577,6 +18986,9 @@ class Accounting_model extends App_Model
      * @return array               
      */
     public function get_html_profit_and_loss_12_months($child_account, $data_return, $parent_index, $currency, $flag = false, $level = 1){
+        if (get_option('acc_hide_zero_value_rows') == 1) {
+            $child_account = $this->filter_zero_value_recursive($child_account);
+        }
         $categoryOutput='';
         if ($flag) {
             for ($i = 0; $i < $level; $i++) {
@@ -17863,6 +19275,9 @@ class Accounting_model extends App_Model
      * @return array               
      */
     public function get_html_budget_overview($child_account, $data_return, $parent_index, $currency){
+        if (get_option('acc_hide_zero_value_rows') == 1) {
+            $child_account = $this->filter_zero_value_recursive($child_account);
+        }
         $total_amount = 0;
         $data_return['total_amount'] = 0;
         foreach ($child_account as $val) {
@@ -18209,6 +19624,9 @@ class Accounting_model extends App_Model
      * @return array               
      */
     public function get_html_profit_and_loss_budget_vs_actual($child_account, $data_return, $parent_index, $currency){
+        if (get_option('acc_hide_zero_value_rows') == 1) {
+            $child_account = $this->filter_zero_value_recursive($child_account);
+        }
         $total_amount = 0;
         $data_return['total_amount'] = 0;
         $data_return['total_budget_amount'] = 0;
@@ -18297,6 +19715,9 @@ class Accounting_model extends App_Model
      * @return array               
      */
     public function get_html_profit_and_loss_budget_performance($child_account, $data_return, $parent_index, $currency){
+        if (get_option('acc_hide_zero_value_rows') == 1) {
+            $child_account = $this->filter_zero_value_recursive($child_account);
+        }
         $total_amount = 0;
         $data_return['total_last_amount'] = 0;
         $data_return['total_last_budget_amount'] = 0;
@@ -18787,6 +20208,9 @@ class Accounting_model extends App_Model
      * @return array               
      */
     public function get_html_custom_summary_report($child_account, $data_return, $parent_index, $currency){
+        if (get_option('acc_hide_zero_value_rows') == 1) {
+            $child_account = $this->filter_zero_value_recursive($child_account);
+        }
         $total_amount = 0;
         $data_return['total_amount'] = 0;
         foreach ($child_account as $val) {
@@ -22078,6 +23502,9 @@ class Accounting_model extends App_Model
      * @return array               
      */
     public function get_html_custom_summary_by_income_statement($child_account, $data_return, $parent_index, $currency, $display_columns_by){
+        if (get_option('acc_hide_zero_value_rows') == 1) {
+            $child_account = $this->filter_zero_value_recursive($child_account);
+        }
         $total_amount = 0;
         $data_return['total_amount'] = 0;
         foreach ($child_account as $val) {
@@ -23015,12 +24442,19 @@ class Accounting_model extends App_Model
      * @param  integer $payment_id 
      * @return boolean
      */
-    public function automatic_credit_note_conversion($data){
-        $this->delete_convert($data['credit_id'], 'credit_note');
+    public function automatic_credit_note_apply_conversion($id){
+        $this->delete_convert($id, 'credit_note');
 
         $payment_account = get_option('acc_credit_note_payment_account');
         $deposit_to = get_option('acc_credit_note_deposit_to');
         $affectedRows = 0;
+
+
+        $this->db->where('id', $id);
+        $credits = $this->db->get(db_prefix() . 'credits')->row();
+
+        $this->load->model('credit_notes_model');
+        $credit_note = $this->credit_notes_model->get($credits->credit_id);
 
         if(get_option('acc_close_the_books') == 1){
             if(strtotime(date('Y-m-d')) <= strtotime(get_option('acc_closing_date')) && strtotime(date('Y-m-d')) > strtotime(get_option('acc_closing_date'))){
@@ -23028,29 +24462,26 @@ class Accounting_model extends App_Model
             }
         }
 
-        $this->load->model('invoices_model');
-        $invoice = $this->invoices_model->get($data['data']['invoice_id']);
-
         $this->load->model('currencies_model');
         $currency = $this->currencies_model->get_base_currency();
 
-        $payment_total = $data['data']['amount'];
+        $payment_total = $credits->amount;
         $currency_rate = 0;
-        if($invoice->currency_name != $currency->name){
-            $currency_rate = acc_get_currency_rate($invoice->currency_name, $currency->name);
-            $payment_total = round($currency_rate * $data['data']['amount'], 2);
+        if($credit_note->currency_name != $currency->name){
+            $currency_rate = acc_get_currency_rate($credit_note->currency_name, $currency->name);
+            $payment_total = round($currency_rate * $credits->amount, 2);
         }
 
         if(get_option('acc_credit_note_automatic_conversion') == 1){
             $node = [];
             $node['split'] = $payment_account;
             $node['account'] = $deposit_to;
-            $node['customer'] = $invoice->clientid;
+            $node['customer'] = $credit_note->clientid;
             $node['debit'] = $payment_total;
             $node['credit'] = 0;
             $node['date'] = date('Y-m-d');
             $node['description'] = '';
-            $node['rel_id'] = $data['credit_id'];
+            $node['rel_id'] = $id;
             $node['rel_type'] = 'credit_note';
             $node['datecreated'] = date('Y-m-d H:i:s');
             $node['addedfrom'] = get_staff_user_id();
@@ -23059,13 +24490,13 @@ class Accounting_model extends App_Model
 
             $node = [];
             $node['split'] = $deposit_to;
-            $node['customer'] = $invoice->clientid;
+            $node['customer'] = $credit_note->clientid;
             $node['account'] = $payment_account;
             $node['date'] = date('Y-m-d');
             $node['debit'] = 0;
             $node['credit'] = $payment_total;
             $node['description'] = '';
-            $node['rel_id'] = $data['credit_id'];
+            $node['rel_id'] = $id;
             $node['rel_type'] = 'credit_note';
             $node['datecreated'] = date('Y-m-d H:i:s');
             $node['addedfrom'] = get_staff_user_id();
@@ -23078,7 +24509,7 @@ class Accounting_model extends App_Model
         }
             
         if ($affectedRows > 0) {
-            $this->db->where('id', $data['credit_id']);
+            $this->db->where('id', $id);
             $this->db->update(db_prefix().'credits', ['acc_mapping' => 1]);
             return true;
         }
@@ -23404,10 +24835,10 @@ class Accounting_model extends App_Model
             $data['ending_date'] = to_sql_date($data['ending_date']);
         }
 
-        $data['ending_balance'] = str_replace(',', '', $data['ending_balance']);
-        $data['debits_for_period'] = str_replace(',', '', $data['debits_for_period']);
-        $data['credits_for_period'] = str_replace(',', '', $data['credits_for_period']);
-        $data['beginning_balance'] = str_replace(',', '', $data['beginning_balance']);
+        $data['ending_balance'] = acc_unformat_number($data['ending_balance']);
+        $data['debits_for_period'] = acc_unformat_number($data['debits_for_period']);
+        $data['credits_for_period'] = acc_unformat_number($data['credits_for_period']);
+        $data['beginning_balance'] = acc_unformat_number($data['beginning_balance']);
         
         $this->db->insert(db_prefix().'acc_bank_reconciles', $data);
         $insert_id = $this->db->insert_id();
@@ -23823,8 +25254,8 @@ class Accounting_model extends App_Model
 
             $this->db->where('id', $data['transaction']);
             $account_history = $this->db->get(db_prefix().'acc_account_history')->row();
-            $withdrawal = str_replace(',', '', $data['withdrawal']);
-            $deposit = str_replace(',', '', $data['deposit']);
+            $withdrawal = acc_unformat_number($data['withdrawal']);
+            $deposit = acc_unformat_number($data['deposit']);
             if($withdrawal > 0){
                 $amount = $withdrawal;
             }else{
@@ -23894,6 +25325,7 @@ class Accounting_model extends App_Model
     public function get_bank_transaction_uncleared($bank_account){
 
         $this->db->where('account', $bank_account);
+        $this->db->where('cleared', 0);
 
         $account_histories = $this->db->get(db_prefix().'acc_account_history')->result_array();
 
@@ -24314,10 +25746,10 @@ class Accounting_model extends App_Model
             $data['ending_date'] = to_sql_date($data['ending_date']);
         }
 
-        $data['ending_balance'] = str_replace(',', '', $data['ending_balance']);
-        $data['debits_for_period'] = str_replace(',', '', $data['debits_for_period']);
-        $data['credits_for_period'] = str_replace(',', '', $data['credits_for_period']);
-        $data['beginning_balance'] = str_replace(',', '', $data['beginning_balance']);
+        $data['ending_balance'] = acc_unformat_number($data['ending_balance']);
+        $data['debits_for_period'] = acc_unformat_number($data['debits_for_period']);
+        $data['credits_for_period'] = acc_unformat_number($data['credits_for_period']);
+        $data['beginning_balance'] = acc_unformat_number($data['beginning_balance']);
 
         $this->db->where('id', $id);
         $affectedRows = $this->db->update(db_prefix().'acc_bank_reconciles', $data);
@@ -24619,6 +26051,12 @@ class Accounting_model extends App_Model
             $data_insert[] = $node;
         }
 
+        if (isset($manufacturing_order->acc_class) && $manufacturing_order->acc_class > 0) {
+            foreach ($data_insert as $key => $node) {
+                $data_insert[$key]['class'] = $manufacturing_order->acc_class;
+            }
+        }
+
         if($data_insert != []){
             $affectedRows = $this->db->insert_batch(db_prefix().'acc_account_history', $data_insert);
         }
@@ -24673,6 +26111,11 @@ class Accounting_model extends App_Model
                         <td></td>
                      </tr>
                      <tr class="project-overview">
+                        <td class="bold">'. _l('fee_for_return_order').'</td>
+                        <td>'. app_format_money((float)(isset($order_return->fee_return_order) ? $order_return->fee_return_order : 0), $base_currency->name) .'</td>
+                        <td></td>
+                     </tr>
+                     <tr class="project-overview">
                         <td class="bold">'. _l('pur_total_after_discount').'</td>
                         <td>'. app_format_money($order_return->total_after_discount, $base_currency->name) .'</td>
                         <td></td>
@@ -24713,8 +26156,10 @@ class Accounting_model extends App_Model
                 $item_description = $value['commodity_name'];
 
                 $item_id = 0;
+                $item_group_id = 0;
                 if(isset($item->id)){
                     $item_id = $item->id;
+                    $item_group_id = $item->group_id;
                 }
 
                 if($item_id == 0){
@@ -24755,38 +26200,32 @@ class Accounting_model extends App_Model
                       </div>
                     </div>';
                 }else{
+
+                    $item_deposit_to = $deposit_to;
+                
                     $item_automatic = $this->get_item_automatic($item_id);
-
                     if($item_automatic){
-                        $html .= '
-                    <div class="div_content">
-                        <h5>'.$item_description.'('.app_format_money($item_total, $currency->name).')</h5>
-                        <div class="row">
-                        '.form_hidden('item_amount['.$item_id.']', $item_total).'
-                          <div class="col-md-6"> '.
-                            render_select('payment_account['.$item_id.']',$accounts,array('id','name', 'account_type_name'),'payment_account',$payment_account,array(),array(),'','',false) .'
-                          </div>
-                          <div class="col-md-6">
-                            '. render_select('deposit_to['.$item_id.']',$accounts,array('id','name', 'account_type_name'),'deposit_to',$item_automatic->expense_account,array(),array(),'','',false).'
-                          </div>
-                      </div>
-                    </div>';
+                        $item_deposit_to = $item_automatic->expense_account;
                     }else{
-
-                        $html .= '
-                            <div class="div_content">
-                                <h5>'.$item_description.'('.app_format_money($item_total, $currency->name).')</h5>
-                                <div class="row">
-                                '.form_hidden('item_amount['.$item_id.']', $item_total).'
-                                  <div class="col-md-6"> '.
-                                    render_select('payment_account['.$item_id.']',$accounts,array('id','name', 'account_type_name'),'payment_account',$payment_account,array(),array(),'','',false) .'
-                                  </div>
-                                  <div class="col-md-6">
-                                    '. render_select('deposit_to['.$item_id.']',$accounts,array('id','name', 'account_type_name'),'deposit_to',$deposit_to,array(),array(),'','',false).'
-                                  </div>
-                              </div>
-                            </div>';
+                        $item_group_automatic = $this->get_item_group_automatic($item_group_id);
+                        if($item_group_automatic){
+                            $item_deposit_to = $item_group_automatic->expense_account;
+                        }
                     }
+
+                    $html .= '
+                        <div class="div_content">
+                            <h5>'.$item_description.'('.app_format_money($item_total, $currency->name).')</h5>
+                            <div class="row">
+                            '.form_hidden('item_amount['.$item_id.']', $item_total).'
+                              <div class="col-md-6"> '.
+                                render_select('payment_account['.$item_id.']',$accounts,array('id','name', 'account_type_name'),'payment_account',$payment_account,array(),array(),'','',false) .'
+                              </div>
+                              <div class="col-md-6">
+                                '. render_select('deposit_to['.$item_id.']',$accounts,array('id','name', 'account_type_name'),'deposit_to',$item_deposit_to,array(),array(),'','',false).'
+                              </div>
+                          </div>
+                        </div>';
                 }
             }
         }
@@ -24964,6 +26403,7 @@ class Accounting_model extends App_Model
             $node['datecreated'] = date('Y-m-d H:i:s');
             $node['addedfrom'] = get_staff_user_id();
             $node['currency_rate'] = $currency_rate;
+            $node['vendor'] = $order_return->company_id;
             $data_insert[] = $node;
 
             $node = [];
@@ -24978,6 +26418,7 @@ class Accounting_model extends App_Model
             $node['datecreated'] = date('Y-m-d H:i:s');
             $node['addedfrom'] = get_staff_user_id();
             $node['currency_rate'] = $currency_rate;
+            $node['vendor'] = $order_return->company_id;
             $data_insert[] = $node;
 
             if($data_insert != []){
@@ -25035,6 +26476,12 @@ class Accounting_model extends App_Model
             $currency_rate = $purchase_order->currency_rate;
         }
 
+        $order_return_item_discount_total = 0;
+        foreach ($order_return_detail as $value) {
+            $order_return_item_discount_total += (float)$value['discount_total'];
+        }
+        $order_return_header_discount_total = max(0, (float)$order_return->discount_total - $order_return_item_discount_total);
+
         foreach ($order_return_detail as $value) {
             $item_total = $value['sub_total'];
 
@@ -25043,74 +26490,57 @@ class Accounting_model extends App_Model
             }
 
             $item_id = $value['commodity_code'];
-
-            $item_automatic = $this->get_item_automatic($item_id);
-
-            if($item_automatic){
-                $node = [];
-                $node['split'] = $item_automatic->expense_account;
-                $node['account'] = $expense_payment_account;
-                $node['date'] = $order_return->datecreated;
-                $node['item'] = $item_id;
-                $node['debit'] = $item_total;
-                $node['tax'] = 0;
-                $node['credit'] = 0;
-                $node['description'] = '';
-                $node['rel_id'] = $purchase_order_id;
-                $node['rel_type'] = 'purchase_order_return';
-                $node['datecreated'] = date('Y-m-d H:i:s');
-                $node['addedfrom'] = get_staff_user_id();
-                $node['currency_rate'] = $currency_rate;
-                $data_insert[] = $node;
-
-                $node = [];
-                $node['split'] = $expense_payment_account;
-                $node['account'] = $item_automatic->expense_account;
-                $node['date'] = $order_return->datecreated;
-                $node['item'] = $item_id;
-                $node['tax'] = 0;
-                $node['debit'] = 0;
-                $node['credit'] = $item_total;
-                $node['description'] = '';
-                $node['rel_id'] = $purchase_order_id;
-                $node['rel_type'] = 'purchase_order_return';
-                $node['datecreated'] = date('Y-m-d H:i:s');
-                $node['addedfrom'] = get_staff_user_id();
-                $node['currency_rate'] = $currency_rate;
-                $data_insert[] = $node;
-            }else{
-                $node = [];
-                $node['split'] = $expense_payment_account;
-                $node['account'] = $expense_deposit_to;
-                $node['date'] = $order_return->datecreated;
-                $node['item'] = $item_id;
-                $node['debit'] = $item_total;
-                $node['tax'] = 0;
-                $node['credit'] = 0;
-                $node['description'] = '';
-                $node['rel_id'] = $purchase_order_id;
-                $node['rel_type'] = 'purchase_order_return';
-                $node['datecreated'] = date('Y-m-d H:i:s');
-                $node['addedfrom'] = get_staff_user_id();
-                $node['currency_rate'] = $currency_rate;
-                $data_insert[] = $node;
-
-                $node = [];
-                $node['split'] = $expense_deposit_to;
-                $node['account'] = $expense_payment_account;
-                $node['date'] = $order_return->datecreated;
-                $node['item'] = $item_id;
-                $node['tax'] = 0;
-                $node['debit'] = 0;
-                $node['credit'] = $item_total;
-                $node['description'] = '';
-                $node['rel_id'] = $purchase_order_id;
-                $node['rel_type'] = 'purchase_order_return';
-                $node['datecreated'] = date('Y-m-d H:i:s');
-                $node['addedfrom'] = get_staff_user_id();
-                $node['currency_rate'] = $currency_rate;
-                $data_insert[] = $node;
+            $item_detail = $this->get_items($item_id);
+            $item_group_id = 0;
+            if ($item_detail) {
+                $item_group_id = $item_detail->group_id;
             }
+
+            $item_deposit_to = $expense_deposit_to;
+            
+            $item_automatic = $this->get_item_automatic($item_id);
+            if($item_automatic){
+                $item_deposit_to = $item_automatic->expense_account;
+            }else{
+                $item_group_automatic = $this->get_item_group_automatic($item_group_id);
+                if($item_group_automatic){
+                    $item_deposit_to = $item_group_automatic->expense_account;
+                }
+            }
+
+            $node = [];
+            $node['split'] = $expense_payment_account;
+            $node['account'] = $item_deposit_to;
+            $node['date'] = $order_return->datecreated;
+            $node['item'] = $item_id;
+            $node['debit'] = $item_total;
+            $node['tax'] = 0;
+            $node['credit'] = 0;
+            $node['description'] = '';
+            $node['rel_id'] = $purchase_order_id;
+            $node['rel_type'] = 'purchase_order_return';
+            $node['datecreated'] = date('Y-m-d H:i:s');
+            $node['addedfrom'] = get_staff_user_id();
+            $node['currency_rate'] = $currency_rate;
+            $node['vendor'] = $order_return->company_id;
+            $data_insert[] = $node;
+
+            $node = [];
+            $node['split'] = $item_deposit_to;
+            $node['account'] = $expense_payment_account;
+            $node['date'] = $order_return->datecreated;
+            $node['item'] = $item_id;
+            $node['tax'] = 0;
+            $node['debit'] = 0;
+            $node['credit'] = $item_total;
+            $node['description'] = '';
+            $node['rel_id'] = $purchase_order_id;
+            $node['rel_type'] = 'purchase_order_return';
+            $node['datecreated'] = date('Y-m-d H:i:s');
+            $node['addedfrom'] = get_staff_user_id();
+            $node['currency_rate'] = $currency_rate;
+            $node['vendor'] = $order_return->company_id;
+            $data_insert[] = $node;
 
             if(get_option('acc_tax_automatic_conversion') == 1 && $value['tax_id'] != ''){
                 $tax_payment_account = get_option('acc_pur_tax_payment_account');
@@ -25138,14 +26568,14 @@ class Accounting_model extends App_Model
                     $total_tax = ($tax_rate_arr[$k] * $base_amount) / 100; 
 
                     if($order_return->discount_type == 'before_tax'){
-                        if ($purchase_order->discount_total > 0) {
-                          $t = ($purchase_order->discount_total / $purchase_order->subtotal) * 100;
+                        if ($order_return_header_discount_total > 0 && $order_return->subtotal > 0) {
+                          $t = ($order_return_header_discount_total / $order_return->subtotal) * 100;
                           $total_tax = ($total_tax - ($total_tax * $t) / 100);
                         }
                     }
 
                     if($base_currency->name != $currency->name){
-                        $total_tax = round(($currency_rate * ($total_tax)), 2); // Calculate tax rate
+                        $total_tax = round($total_tax / $currency_rate, 2); // Calculate tax rate
                     }
 
                     $tax_mapping = $this->get_tax_mapping($tax_it);
@@ -25165,6 +26595,7 @@ class Accounting_model extends App_Model
                         $node['datecreated'] = date('Y-m-d H:i:s');
                         $node['addedfrom'] = get_staff_user_id();
                         $node['currency_rate'] = $currency_rate;
+                        $node['vendor'] = $order_return->company_id;
                         $data_insert[] = $node;
 
                         $node = [];
@@ -25181,6 +26612,7 @@ class Accounting_model extends App_Model
                         $node['datecreated'] = date('Y-m-d H:i:s');
                         $node['addedfrom'] = get_staff_user_id();
                         $node['currency_rate'] = $currency_rate;
+                        $node['vendor'] = $order_return->company_id;
                         $data_insert[] = $node;
 
                     }else{
@@ -25198,6 +26630,7 @@ class Accounting_model extends App_Model
                         $node['datecreated'] = date('Y-m-d H:i:s');
                         $node['addedfrom'] = get_staff_user_id();
                         $node['currency_rate'] = $currency_rate;
+                        $node['vendor'] = $order_return->company_id;
                         $data_insert[] = $node;
 
                         $node = [];
@@ -25214,6 +26647,7 @@ class Accounting_model extends App_Model
                         $node['datecreated'] = date('Y-m-d H:i:s');
                         $node['addedfrom'] = get_staff_user_id();
                         $node['currency_rate'] = $currency_rate;
+                        $node['vendor'] = $order_return->company_id;
                         $data_insert[] = $node;
                     }
                 }
@@ -25222,7 +26656,7 @@ class Accounting_model extends App_Model
             if($value['discount_total'] > 0){
                 $discount_total = $value['discount_total'];
                 if($base_currency->name != $currency->name){
-                    $discount_total = round($currency_rate * $value['discount_total'], 2);
+                    $discount_total = round($value['discount_total'] / $currency_rate, 2);
                 }
 
                 $node = [];
@@ -25239,6 +26673,7 @@ class Accounting_model extends App_Model
                 $node['datecreated'] = date('Y-m-d H:i:s');
                 $node['addedfrom'] = get_staff_user_id();
                 $node['currency_rate'] = $currency_rate;
+                $node['vendor'] = $order_return->company_id;
                 $data_insert[] = $node;
 
                 $node = [];
@@ -25255,6 +26690,7 @@ class Accounting_model extends App_Model
                 $node['datecreated'] = date('Y-m-d H:i:s');
                 $node['addedfrom'] = get_staff_user_id();
                 $node['currency_rate'] = $currency_rate;
+                $node['vendor'] = $order_return->company_id;
                 $data_insert[] = $node;
             }
         }
@@ -25262,7 +26698,7 @@ class Accounting_model extends App_Model
         if($order_return->fee_return_order > 0){
             $fee_return_order = $order_return->fee_return_order;
             if($base_currency->name != $currency->name){
-                $fee_return_order = round($currency_rate * $order_return->fee_return_order, 2);
+                $fee_return_order = round($order_return->fee_return_order / $currency_rate, 2);
             }
 
             $node = [];
@@ -25279,6 +26715,7 @@ class Accounting_model extends App_Model
             $node['datecreated'] = date('Y-m-d H:i:s');
             $node['addedfrom'] = get_staff_user_id();
             $node['currency_rate'] = $currency_rate;
+            $node['vendor'] = $order_return->company_id;
             $data_insert[] = $node;
 
             $node = [];
@@ -25295,13 +26732,14 @@ class Accounting_model extends App_Model
             $node['datecreated'] = date('Y-m-d H:i:s');
             $node['addedfrom'] = get_staff_user_id();
             $node['currency_rate'] = $currency_rate;
+            $node['vendor'] = $order_return->company_id;
             $data_insert[] = $node;
         }
 
-        if($purchase_order->discount_total > 0){
-            $discount_total = $purchase_order->discount_total;
+        $discount_total = $order_return_header_discount_total + (float)(isset($order_return->additional_discount) ? $order_return->additional_discount : 0);
+        if($discount_total > 0){
             if($base_currency->name != $currency->name){
-                $discount_total = round($currency_rate * $purchase_order->discount_total, 2);
+                $discount_total = round($discount_total / $currency_rate, 2);
             }
 
             $node = [];
@@ -25318,6 +26756,7 @@ class Accounting_model extends App_Model
             $node['datecreated'] = date('Y-m-d H:i:s');
             $node['addedfrom'] = get_staff_user_id();
             $node['currency_rate'] = $currency_rate;
+            $node['vendor'] = $order_return->company_id;
             $data_insert[] = $node;
 
             $node = [];
@@ -25334,6 +26773,7 @@ class Accounting_model extends App_Model
             $node['datecreated'] = date('Y-m-d H:i:s');
             $node['addedfrom'] = get_staff_user_id();
             $node['currency_rate'] = $currency_rate;
+            $node['vendor'] = $order_return->company_id;
             $data_insert[] = $node;
         }
 
@@ -25503,6 +26943,9 @@ class Accounting_model extends App_Model
 
                 if($base_currency->name != $currency->name){
                     $amount = acc_get_currency_rate($base_currency->name, $currency->name);
+                    if ($pur_invoice->currency_rate != 0) {
+                        $amount = 1 / $pur_invoice->currency_rate;
+                    }
 
                     $edit_template = "";
                     $edit_template .= render_input('edit_exchange_rate','exchange_rate', $amount, 'number');
@@ -25547,8 +26990,10 @@ class Accounting_model extends App_Model
                 }
 
                 $item_id = 0;
+                $item_group_id = 0;
                 if(isset($item->id)){
                     $item_id = $item->id;
+                    $item_group_id = $item->group_id;
                 }
 
                 if($item_id == 0){
@@ -25586,25 +27031,19 @@ class Accounting_model extends App_Model
                       </div>
                     </div>';
                 }else{
+                    $item_deposit_to = $deposit_to;
+            
                     $item_automatic = $this->get_item_automatic($item_id);
-
                     if($item_automatic){
-                        $html .= '
-                    <div class="div_content">
-                        <h5>'.$item_description.'('.app_format_money($value['into_money'], $base_currency->symbol).')</h5>
-                        <div class="row">
-                        '.form_hidden('item_amount['.$item_id.']', $value['into_money']).'
-                          <div class="col-md-6"> '.
-                            render_select('payment_account['.$item_id.']',$accounts,array('id','name', 'account_type_name'),'payment_account',$payment_account,array(),array(),'','',false) .'
-                          </div>
-                          <div class="col-md-6">
-                            '. render_select('deposit_to['.$item_id.']',$accounts,array('id','name', 'account_type_name'),'deposit_to',$item_automatic->expense_account,array(),array(),'','',false).'
-                          </div>
-                      </div>
-                    </div>';
+                        $item_deposit_to = $item_automatic->expense_account;
                     }else{
+                        $item_group_automatic = $this->get_item_group_automatic($item_group_id);
+                        if($item_group_automatic){
+                            $item_deposit_to = $item_group_automatic->expense_account;
+                        }
+                    }
 
-                        $html .= '
+                    $html .= '
                     <div class="div_content">
                         <h5>'.$item_description.'('.app_format_money($value['into_money'], $base_currency->symbol).')</h5>
                         <div class="row">
@@ -25613,11 +27052,10 @@ class Accounting_model extends App_Model
                             render_select('payment_account['.$item_id.']',$accounts,array('id','name', 'account_type_name'),'payment_account',$payment_account,array(),array(),'','',false) .'
                           </div>
                           <div class="col-md-6">
-                            '. render_select('deposit_to['.$item_id.']',$accounts,array('id','name', 'account_type_name'),'deposit_to',$deposit_to,array(),array(),'','',false).'
+                            '. render_select('deposit_to['.$item_id.']',$accounts,array('id','name', 'account_type_name'),'deposit_to',$item_deposit_to,array(),array(),'','',false).'
                           </div>
                       </div>
                     </div>';
-                    }
                 }
             }
         }
@@ -25683,13 +27121,19 @@ class Accounting_model extends App_Model
             $data_insert = [];
             $currency_rate = acc_get_currency_rate($base_currency->name, $currency->name);
 
+            if($base_currency->name != $currency->name && $purchase_invoice->currency_rate != 0){
+                $currency_rate = 1 / $purchase_invoice->currency_rate;
+            }
+
             foreach ($purchase_invoice_detail as $value) {
 
                 $item = get_item_hp($value['item_code']);
 
                 $item_id = 0;
+                $item_group_id = 0;
                 if(isset($item->id)){
                     $item_id = $item->id;
+                    $item_group_id = $item->group_id;
                 }
 
                 $item_total = $value['into_money'];
@@ -25697,73 +27141,51 @@ class Accounting_model extends App_Model
                     $item_total = round(($currency_rate * $value['into_money']), 2);
                 }
 
+                $item_deposit_to = $deposit_to;
+            
                 $item_automatic = $this->get_item_automatic($item_id);
-
                 if($item_automatic){
-                    $node = [];
-                    $node['split'] = $payment_account;
-                    $node['account'] = $item_automatic->expense_account;
-                    $node['item'] = $item_id;
-                    $node['date'] = $purchase_invoice->invoice_date;
-                    $node['debit'] = $item_total;
-                    $node['tax'] = 0;
-                    $node['credit'] = 0;
-                    $node['description'] = '';
-                    $node['rel_id'] = $purchase_invoice_id;
-                    $node['rel_type'] = 'purchase_invoice';
-                    $node['datecreated'] = date('Y-m-d H:i:s');
-                    $node['addedfrom'] = get_staff_user_id();
-                    $node['currency_rate'] = $currency_rate;
-                    $data_insert[] = $node;
-
-                    $node = [];
-                    $node['split'] = $item_automatic->expense_account;
-                    $node['account'] = $payment_account;
-                    $node['item'] = $item_id;
-                    $node['date'] = $purchase_invoice->invoice_date;
-                    $node['tax'] = 0;
-                    $node['debit'] = 0;
-                    $node['credit'] = $item_total;
-                    $node['description'] = '';
-                    $node['rel_id'] = $purchase_invoice_id;
-                    $node['rel_type'] = 'purchase_invoice';
-                    $node['datecreated'] = date('Y-m-d H:i:s');
-                    $node['addedfrom'] = get_staff_user_id();
-                    $node['currency_rate'] = $currency_rate;
-                    $data_insert[] = $node;
+                    $item_deposit_to = $item_automatic->expense_account;
                 }else{
-                    $node = [];
-                    $node['split'] = $payment_account;
-                    $node['account'] = $deposit_to;
-                    $node['item'] = $item_id;
-                    $node['debit'] = $item_total;
-                    $node['date'] = $purchase_invoice->invoice_date;
-                    $node['tax'] = 0;
-                    $node['credit'] = 0;
-                    $node['description'] = '';
-                    $node['rel_id'] = $purchase_invoice_id;
-                    $node['rel_type'] = 'purchase_invoice';
-                    $node['datecreated'] = date('Y-m-d H:i:s');
-                    $node['addedfrom'] = get_staff_user_id();
-                    $node['currency_rate'] = $currency_rate;
-                    $data_insert[] = $node;
-
-                    $node = [];
-                    $node['split'] = $deposit_to;
-                    $node['account'] = $payment_account;
-                    $node['item'] = $item_id;
-                    $node['date'] = $purchase_invoice->invoice_date;
-                    $node['tax'] = 0;
-                    $node['debit'] = 0;
-                    $node['credit'] = $item_total;
-                    $node['description'] = '';
-                    $node['rel_id'] = $purchase_invoice_id;
-                    $node['rel_type'] = 'purchase_invoice';
-                    $node['datecreated'] = date('Y-m-d H:i:s');
-                    $node['addedfrom'] = get_staff_user_id();
-                    $node['currency_rate'] = $currency_rate;
-                    $data_insert[] = $node;
+                    $item_group_automatic = $this->get_item_group_automatic($item_group_id);
+                    if($item_group_automatic){
+                        $item_deposit_to = $item_group_automatic->expense_account;
+                    }
                 }
+
+                $node = [];
+                $node['split'] = $payment_account;
+                $node['account'] = $item_deposit_to;
+                $node['item'] = $item_id;
+                $node['debit'] = $item_total;
+                $node['date'] = $purchase_invoice->invoice_date;
+                $node['tax'] = 0;
+                $node['credit'] = 0;
+                $node['description'] = '';
+                $node['rel_id'] = $purchase_invoice_id;
+                $node['rel_type'] = 'purchase_invoice';
+                $node['datecreated'] = date('Y-m-d H:i:s');
+                $node['addedfrom'] = get_staff_user_id();
+                $node['currency_rate'] = $currency_rate;
+                $node['vendor'] = $purchase_invoice->vendor;
+                $data_insert[] = $node;
+
+                $node = [];
+                $node['split'] = $item_deposit_to;
+                $node['account'] = $payment_account;
+                $node['item'] = $item_id;
+                $node['date'] = $purchase_invoice->invoice_date;
+                $node['tax'] = 0;
+                $node['debit'] = 0;
+                $node['credit'] = $item_total;
+                $node['description'] = '';
+                $node['rel_id'] = $purchase_invoice_id;
+                $node['rel_type'] = 'purchase_invoice';
+                $node['datecreated'] = date('Y-m-d H:i:s');
+                $node['addedfrom'] = get_staff_user_id();
+                $node['currency_rate'] = $currency_rate;
+                $node['vendor'] = $purchase_invoice->vendor;
+                $data_insert[] = $node;
                 
                 if(get_option('acc_tax_automatic_conversion') == 1 && $value['tax'] > 0){
                     $tax_payment_account = get_option('acc_pur_tax_payment_account');
@@ -25823,6 +27245,7 @@ class Accounting_model extends App_Model
                                 $node['datecreated'] = date('Y-m-d H:i:s');
                                 $node['addedfrom'] = get_staff_user_id();
                                 $node['currency_rate'] = $currency_rate;
+                                $node['vendor'] = $purchase_invoice->vendor;
                                 $data_insert[] = $node;
 
                                 $node = [];
@@ -25839,6 +27262,7 @@ class Accounting_model extends App_Model
                                 $node['datecreated'] = date('Y-m-d H:i:s');
                                 $node['addedfrom'] = get_staff_user_id();
                                 $node['currency_rate'] = $currency_rate;
+                                $node['vendor'] = $purchase_invoice->vendor;
                                 $data_insert[] = $node;
                             }else{
                                 $node = [];
@@ -25855,6 +27279,7 @@ class Accounting_model extends App_Model
                                 $node['datecreated'] = date('Y-m-d H:i:s');
                                 $node['addedfrom'] = get_staff_user_id();
                                 $node['currency_rate'] = $currency_rate;
+                                $node['vendor'] = $purchase_invoice->vendor;
                                 $data_insert[] = $node;
 
                                 $node = [];
@@ -25871,6 +27296,7 @@ class Accounting_model extends App_Model
                                 $node['datecreated'] = date('Y-m-d H:i:s');
                                 $node['addedfrom'] = get_staff_user_id();
                                 $node['currency_rate'] = $currency_rate;
+                                $node['vendor'] = $purchase_invoice->vendor;
                                 $data_insert[] = $node;
                             }
                         }
@@ -25897,6 +27323,7 @@ class Accounting_model extends App_Model
                     $node['datecreated'] = date('Y-m-d H:i:s');
                     $node['addedfrom'] = get_staff_user_id();
                     $node['currency_rate'] = $currency_rate;
+                    $node['vendor'] = $purchase_invoice->vendor;
                     $data_insert[] = $node;
 
                     $node = [];
@@ -25913,6 +27340,7 @@ class Accounting_model extends App_Model
                     $node['datecreated'] = date('Y-m-d H:i:s');
                     $node['addedfrom'] = get_staff_user_id();
                     $node['currency_rate'] = $currency_rate;
+                    $node['vendor'] = $purchase_invoice->vendor;
                     $data_insert[] = $node;
                 }
             }
@@ -25937,6 +27365,7 @@ class Accounting_model extends App_Model
                 $node['datecreated'] = date('Y-m-d H:i:s');
                 $node['addedfrom'] = get_staff_user_id();
                 $node['currency_rate'] = $currency_rate;
+                $node['vendor'] = $purchase_invoice->vendor;
                 $data_insert[] = $node;
 
                 $node = [];
@@ -25953,6 +27382,7 @@ class Accounting_model extends App_Model
                 $node['datecreated'] = date('Y-m-d H:i:s');
                 $node['addedfrom'] = get_staff_user_id();
                 $node['currency_rate'] = $currency_rate;
+                $node['vendor'] = $purchase_invoice->vendor;
                 $data_insert[] = $node;
             }
 
@@ -25976,6 +27406,7 @@ class Accounting_model extends App_Model
                 $node['datecreated'] = date('Y-m-d H:i:s');
                 $node['addedfrom'] = get_staff_user_id();
                 $node['currency_rate'] = $currency_rate;
+                $node['vendor'] = $purchase_invoice->vendor;
                 $data_insert[] = $node;
 
                 $node = [];
@@ -25992,6 +27423,7 @@ class Accounting_model extends App_Model
                 $node['datecreated'] = date('Y-m-d H:i:s');
                 $node['addedfrom'] = get_staff_user_id();
                 $node['currency_rate'] = $currency_rate;
+                $node['vendor'] = $purchase_invoice->vendor;
                 $data_insert[] = $node;
             }
 
@@ -26157,6 +27589,16 @@ class Accounting_model extends App_Model
                         <td class="bold">'. _l('total').'</td>
                         <td>'. app_format_money($order_return->total,$base_currency->name) .'</td>
                         <td></td>
+                     </tr>
+                     <tr class="project-overview">
+                        <td class="bold">'. _l('fee_for_return_order').'</td>
+                        <td>'. app_format_money(max((float)(isset($order_return->fee_return_order) ? $order_return->fee_return_order : 0), (float)(isset($order_return->fee_for_return_order) ? $order_return->fee_for_return_order : 0)) + (float)(isset($order_return->shipping) ? $order_return->shipping : 0),$base_currency->name) .'</td>
+                        <td></td>
+                     </tr>
+                     <tr class="project-overview">
+                        <td class="bold">'. _l('discount').'</td>
+                        <td>'. app_format_money((float)(isset($order_return->discount_total) ? $order_return->discount_total : 0) + (float)(isset($order_return->additional_discount) ? $order_return->additional_discount : 0),$base_currency->name) .'</td>
+                        <td></td>
                      </tr>';
             $_html = '';
 
@@ -26290,6 +27732,11 @@ class Accounting_model extends App_Model
             $data['acc_omni_sales_refund_automatic_conversion'] = 0;
         }
 
+        add_option('acc_omni_sales_order_return_fee_payment_account', 1);
+        add_option('acc_omni_sales_order_return_fee_deposit_to', 66);
+        add_option('acc_omni_sales_order_return_discount_payment_account', 66);
+        add_option('acc_omni_sales_order_return_discount_deposit_to', 1);
+
         foreach ($data as $key => $value) {
             $this->db->where('name', $key);
             $this->db->update(db_prefix() . 'options', [
@@ -26332,6 +27779,14 @@ class Accounting_model extends App_Model
 
         $payment_account = get_option('acc_omni_sales_order_return_payment_account');
         $deposit_to = get_option('acc_omni_sales_order_return_deposit_to');
+        $return_fee_payment_account = get_option('acc_omni_sales_order_return_fee_payment_account');
+        $return_fee_deposit_to = get_option('acc_omni_sales_order_return_fee_deposit_to');
+        $return_discount_payment_account = get_option('acc_omni_sales_order_return_discount_payment_account');
+        $return_discount_deposit_to = get_option('acc_omni_sales_order_return_discount_deposit_to');
+        $return_fee_payment_account = $return_fee_payment_account != '' ? $return_fee_payment_account : $payment_account;
+        $return_fee_deposit_to = $return_fee_deposit_to != '' ? $return_fee_deposit_to : $deposit_to;
+        $return_discount_payment_account = $return_discount_payment_account != '' ? $return_discount_payment_account : $deposit_to;
+        $return_discount_deposit_to = $return_discount_deposit_to != '' ? $return_discount_deposit_to : $payment_account;
 
         if($sales_return_order){
             if(get_option('acc_close_the_books') == 1){
@@ -26392,6 +27847,89 @@ class Accounting_model extends App_Model
              
             }
 
+            $return_fee = max((float)(isset($sales_return_order->fee_return_order) ? $sales_return_order->fee_return_order : 0), (float)(isset($sales_return_order->fee_for_return_order) ? $sales_return_order->fee_for_return_order : 0));
+            $return_fee += (float)(isset($sales_return_order->shipping) ? $sales_return_order->shipping : 0);
+            if($return_fee > 0){
+                if($base_currency->name != $currency->name){
+                    $return_fee = round($currency_rate * $return_fee, 2);
+                }
+
+                $node = [];
+                $node['split'] = $return_fee_payment_account;
+                $node['account'] = $return_fee_deposit_to;
+                $node['item'] = 0;
+                $node['debit'] = $return_fee;
+                $node['customer'] = $sales_return_order->userid;
+                $node['date'] = $sales_return_order->datecreator;
+                $node['tax'] = 0;
+                $node['credit'] = 0;
+                $node['description'] = '';
+                $node['rel_id'] = $sales_return_order_id;
+                $node['rel_type'] = 'sales_return_order';
+                $node['datecreated'] = date('Y-m-d H:i:s');
+                $node['addedfrom'] = get_staff_user_id();
+                $node['currency_rate'] = $currency_rate;
+                $data_insert[] = $node;
+
+                $node = [];
+                $node['split'] = $return_fee_deposit_to;
+                $node['account'] = $return_fee_payment_account;
+                $node['item'] = 0;
+                $node['customer'] = $sales_return_order->userid;
+                $node['date'] = $sales_return_order->datecreator;
+                $node['tax'] = 0;
+                $node['debit'] = 0;
+                $node['credit'] = $return_fee;
+                $node['description'] = '';
+                $node['rel_id'] = $sales_return_order_id;
+                $node['rel_type'] = 'sales_return_order';
+                $node['datecreated'] = date('Y-m-d H:i:s');
+                $node['addedfrom'] = get_staff_user_id();
+                $node['currency_rate'] = $currency_rate;
+                $data_insert[] = $node;
+            }
+
+            $discount_total = (float)(isset($sales_return_order->discount_total) ? $sales_return_order->discount_total : 0) + (float)(isset($sales_return_order->additional_discount) ? $sales_return_order->additional_discount : 0);
+            if($discount_total > 0){
+                if($base_currency->name != $currency->name){
+                    $discount_total = round($currency_rate * $discount_total, 2);
+                }
+
+                $node = [];
+                $node['split'] = $return_discount_payment_account;
+                $node['account'] = $return_discount_deposit_to;
+                $node['item'] = 0;
+                $node['debit'] = $discount_total;
+                $node['customer'] = $sales_return_order->userid;
+                $node['date'] = $sales_return_order->datecreator;
+                $node['tax'] = 0;
+                $node['credit'] = 0;
+                $node['description'] = '';
+                $node['rel_id'] = $sales_return_order_id;
+                $node['rel_type'] = 'sales_return_order';
+                $node['datecreated'] = date('Y-m-d H:i:s');
+                $node['addedfrom'] = get_staff_user_id();
+                $node['currency_rate'] = $currency_rate;
+                $data_insert[] = $node;
+
+                $node = [];
+                $node['split'] = $return_discount_deposit_to;
+                $node['account'] = $return_discount_payment_account;
+                $node['item'] = 0;
+                $node['customer'] = $sales_return_order->userid;
+                $node['date'] = $sales_return_order->datecreator;
+                $node['tax'] = 0;
+                $node['debit'] = 0;
+                $node['credit'] = $discount_total;
+                $node['description'] = '';
+                $node['rel_id'] = $sales_return_order_id;
+                $node['rel_type'] = 'sales_return_order';
+                $node['datecreated'] = date('Y-m-d H:i:s');
+                $node['addedfrom'] = get_staff_user_id();
+                $node['currency_rate'] = $currency_rate;
+                $data_insert[] = $node;
+            }
+
             if($data_insert != []){
                 $affectedRows = $this->db->insert_batch(db_prefix().'acc_account_history', $data_insert);
             }
@@ -26420,7 +27958,7 @@ class Accounting_model extends App_Model
 
         $this->load->model('omni_sales/omni_sales_model');
         $refund = $this->omni_sales_model->get_refund($refund_id);
-        $order_return = $this->omni_sales_model->get_order_return($refund->order_id);
+        $order_return = $this->omni_sales_model->get_cart($refund->order_id);
 
         $this->load->model('currencies_model');
         $currency = $this->currencies_model->get_base_currency();
@@ -26466,6 +28004,7 @@ class Accounting_model extends App_Model
                     $node['datecreated'] = date('Y-m-d H:i:s');
                     $node['addedfrom'] = get_staff_user_id();
                     $node['currency_rate'] = $currency_rate;
+                    $node['customer'] = $order_return->userid;
                     $data_insert[] = $node;
 
                     $node = [];
@@ -26480,6 +28019,7 @@ class Accounting_model extends App_Model
                     $node['datecreated'] = date('Y-m-d H:i:s');
                     $node['addedfrom'] = get_staff_user_id();
                     $node['currency_rate'] = $currency_rate;
+                    $node['customer'] = $order_return->userid;
                     $data_insert[] = $node;
 
             if($data_insert != []){
@@ -26641,6 +28181,7 @@ class Accounting_model extends App_Model
                 $node['rel_type'] = 'bill';
                 $node['datecreated'] = date('Y-m-d H:i:s');
                 $node['addedfrom'] = get_staff_user_id();
+                $node['class'] = $bill->acc_class;
                 $data_insert[] = $node;
             }
 
@@ -26658,6 +28199,7 @@ class Accounting_model extends App_Model
                 $node['rel_type'] = 'bill';
                 $node['datecreated'] = date('Y-m-d H:i:s');
                 $node['addedfrom'] = get_staff_user_id();
+                $node['class'] = $bill->acc_class;
                 $data_insert[] = $node;
             }
 
@@ -26666,16 +28208,28 @@ class Accounting_model extends App_Model
 
             foreach ($bill->bill_items as $item) {
 
-                $item_automatic = $this->get_item_automatic($item['item_id']);
+                $item_id = $item['item_id'];
+                $item_detail = $this->get_items($item_id);
+                $item_group_id = 0;
+                if ($item_detail) {
+                    $item_group_id = $item_detail->group_id;
+                }
 
-                $deposit_to = get_option('acc_expense_deposit_to');
+                $item_deposit_to = $deposit_to;
+            
+                $item_automatic = $this->get_item_automatic($item['item_id']);
                 if($item_automatic){
-                    $deposit_to = $item_automatic->expense_account;
+                    $item_deposit_to = $item_automatic->expense_account;
+                }else{
+                    $item_group_automatic = $this->get_item_group_automatic($item_group_id);
+                    if($item_group_automatic){
+                        $item_deposit_to = $item_group_automatic->expense_account;
+                    }
                 }
 
                 $node = [];
                 $node['account'] = $payment_account;
-                $node['split'] = $deposit_to;
+                $node['split'] = $item_deposit_to;
                 $node['credit'] = $item['amount'];
                 $node['vendor'] = $bill->vendor;
                 $node['date'] = $bill->date;
@@ -26686,10 +28240,11 @@ class Accounting_model extends App_Model
                 $node['rel_type'] = 'bill';
                 $node['datecreated'] = date('Y-m-d H:i:s');
                 $node['addedfrom'] = get_staff_user_id();
+                $node['class'] = $bill->acc_class;
                 $data_insert[] = $node;
 
                 $node = [];
-                $node['account'] = $deposit_to;
+                $node['account'] = $item_deposit_to;
                 $node['split'] = $payment_account;
                 $node['credit'] = 0;
                 $node['vendor'] = $bill->vendor;
@@ -26701,6 +28256,7 @@ class Accounting_model extends App_Model
                 $node['rel_type'] = 'bill';
                 $node['datecreated'] = date('Y-m-d H:i:s');
                 $node['addedfrom'] = get_staff_user_id();
+                $node['class'] = $bill->acc_class;
                 $data_insert[] = $node;
             }
 
@@ -26929,8 +28485,8 @@ class Accounting_model extends App_Model
 
             foreach($pay_bill_amount_paid as $item_id => $amount_paid){
                 if($amount_paid > 0){
-                    $amount = str_replace(',', '', $amount_paid);
-                    $item_amount = str_replace(',', '', $pay_bill_amount[$item_id]);
+                    $amount = acc_unformat_number($amount_paid);
+                    $item_amount = acc_unformat_number($pay_bill_amount[$item_id]);
                     $this->db->insert(db_prefix().'acc_pay_bill_item_paid', [
                         'pay_bill_id' => $insert_id,
                         'item_id' => $item_id,
@@ -27046,8 +28602,8 @@ class Accounting_model extends App_Model
 
         foreach($pay_bill_amount_paid as $item_id => $amount_paid){
             if($amount_paid > 0){
-                $amount = str_replace(',', '', $amount_paid);
-                $item_amount = str_replace(',', '', $pay_bill_amount[$item_id]);
+                $amount = acc_unformat_number($amount_paid);
+                $item_amount = acc_unformat_number($pay_bill_amount[$item_id]);
                 $this->db->insert(db_prefix().'acc_pay_bill_item_paid', [
                     'pay_bill_id' => $id,
                     'item_id' => $item_id,
@@ -27202,6 +28758,48 @@ class Accounting_model extends App_Model
         $credit_account = [];
         $credit_amount = [];
 
+        $acc_data = [
+            'acc_recurring' => 0,
+            'acc_recurring_type' => null,
+            'acc_custom_recurring' => 0,
+            'acc_repeat_every' => 0,
+            'acc_cycles' => 0,
+            'acc_total_cycles' => 0,
+            'acc_last_recurring_date' => null,
+        ];
+
+        if (isset($data['recurring'])) {
+            if ($data['recurring'] == 'custom') {
+                $acc_data['acc_recurring_type']   = $data['repeat_type_custom'];
+                $acc_data['acc_custom_recurring'] = 1;
+                $acc_data['acc_recurring']        = $data['repeat_every_custom'];
+                $acc_data['acc_repeat_every']     = $data['repeat_every_custom'];
+            } elseif ($data['recurring'] != 0) {
+                $acc_data['acc_recurring_type']   = 'month';
+                $acc_data['acc_custom_recurring'] = 0;
+                $acc_data['acc_repeat_every']     = $data['recurring'];
+                $acc_data['acc_recurring']        = $data['recurring'];
+            }
+            if (isset($data['cycles'])) {
+                $acc_data['acc_cycles'] = !isset($data['cycles']) || $data['recurring'] == 0 ? 0 : $data['cycles'];
+            }
+        }
+
+        // Clean up UI parameters from $data
+        foreach (['recurring', 'custom_recurring', 'repeat_every', 'recurring_type', 'cycles', 'total_cycles', 'last_recurring_date'] as $field) {
+            if (isset($data[$field])) {
+                unset($data[$field]);
+            }
+        }
+        if (isset($data['repeat_type_custom'])) {
+            unset($data['repeat_type_custom']);
+        }
+        if (isset($data['repeat_every_custom'])) {
+            unset($data['repeat_every_custom']);
+        }
+
+        $data = array_merge($data, $acc_data);
+
         if(isset($data['debit_account'])){
             $debit_account = $data['debit_account'];
             unset($data['debit_account']);
@@ -27262,7 +28860,7 @@ class Accounting_model extends App_Model
         if ($insert_id) {
             $data_insert = [];
             foreach($debit_account as $key => $account){
-                $amount = str_replace(',', '', $debit_amount[$key]);
+                $amount = acc_unformat_number($debit_amount[$key]);
                 if($amount == '' || $account == ''){
                     continue;
                 }
@@ -27279,11 +28877,11 @@ class Accounting_model extends App_Model
             }
 
             foreach($credit_account as $key => $account){
-                if($amount == '' || $account == ''){
+                $amount = acc_unformat_number($credit_amount[$key]); if($amount == '' || $account == ''){
                     continue;
                 }
 
-                $amount = str_replace(',', '', $credit_amount[$key]);
+                // amount assigned above
                 $row = [];
                 $row['bill_id'] = $insert_id;
                 $row['type'] = 'credit';
@@ -27296,28 +28894,34 @@ class Accounting_model extends App_Model
                 $data_insert[] = $row;
             }
 
-            foreach($item_id as $key => $itemid){
-                $cost = str_replace(',', '', $item_cost[$key]);
-                $amount = str_replace(',', '', $item_amount[$key]);
+            if (isset($item_id)) {
+                foreach($item_id as $key => $itemid){
+                    $cost = acc_unformat_number($item_cost[$key]);
+                    $amount = acc_unformat_number($item_amount[$key]);
 
-                if($amount == '' || $itemid == ''){
-                    continue;
+                    if($amount == '' || $itemid == ''){
+                        continue;
+                    }
+
+                    $row = [];
+                    $row['bill_id'] = $insert_id;
+                    $row['type'] = 'item';
+                    $row['account'] = 0;
+                    $row['amount'] = $amount;
+                    $row['item_id'] = $itemid;
+                    $row['qty'] = $item_qty[$key];
+                    $row['cost'] = $cost;
+                    $row['description'] = $item_description[$key];
+                    $data_insert[] = $row;
                 }
-
-                $row = [];
-                $row['bill_id'] = $insert_id;
-                $row['type'] = 'item';
-                $row['account'] = 0;
-                $row['amount'] = $amount;
-                $row['item_id'] = $itemid;
-                $row['qty'] = $item_qty[$key];
-                $row['cost'] = $cost;
-                $row['description'] = $item_description[$key];
-                $data_insert[] = $row;
             }
 
             if($data_insert != []){
                 $this->db->insert_batch(db_prefix().'acc_bill_mappings', $data_insert);
+            }
+
+            if ($data['acc_recurring'] > 0) {
+                $this->recurring_bill_by_id($insert_id);
             }
 
             return $insert_id;
@@ -27339,6 +28943,48 @@ class Accounting_model extends App_Model
         $debit_amount = [];
         $credit_account = [];
         $credit_amount = [];
+
+        $acc_data = [
+            'acc_recurring' => 0,
+            'acc_recurring_type' => null,
+            'acc_custom_recurring' => 0,
+            'acc_repeat_every' => 0,
+            'acc_cycles' => 0,
+            'acc_total_cycles' => 0,
+            'acc_last_recurring_date' => null,
+        ];
+
+        if (isset($data['recurring'])) {
+            if ($data['recurring'] == 'custom') {
+                $acc_data['acc_recurring_type']   = $data['repeat_type_custom'];
+                $acc_data['acc_custom_recurring'] = 1;
+                $acc_data['acc_recurring']        = $data['repeat_every_custom'];
+                $acc_data['acc_repeat_every']     = $data['repeat_every_custom'];
+            } elseif ($data['recurring'] != 0) {
+                $acc_data['acc_recurring_type']   = 'month';
+                $acc_data['acc_custom_recurring'] = 0;
+                $acc_data['acc_repeat_every']     = $data['recurring'];
+                $acc_data['acc_recurring']        = $data['recurring'];
+            }
+            if (isset($data['cycles'])) {
+                $acc_data['acc_cycles'] = !isset($data['cycles']) || $data['recurring'] == 0 ? 0 : $data['cycles'];
+            }
+        }
+
+        // Clean up UI parameters from $data
+        foreach (['recurring', 'custom_recurring', 'repeat_every', 'recurring_type', 'cycles', 'total_cycles', 'last_recurring_date'] as $field) {
+            if (isset($data[$field])) {
+                unset($data[$field]);
+            }
+        }
+        if (isset($data['repeat_type_custom'])) {
+            unset($data['repeat_type_custom']);
+        }
+        if (isset($data['repeat_every_custom'])) {
+            unset($data['repeat_every_custom']);
+        }
+
+        $data = array_merge($data, $acc_data);
 
         if(isset($data['debit_account'])){
             $debit_account = $data['debit_account'];
@@ -27397,7 +29043,7 @@ class Accounting_model extends App_Model
 
         $data_insert = [];
         foreach($debit_account as $key => $account){
-            $amount = str_replace(',', '', $debit_amount[$key]);
+            $amount = acc_unformat_number($debit_amount[$key]);
 
             if($amount == '' || $account == ''){
                 continue;
@@ -27416,7 +29062,7 @@ class Accounting_model extends App_Model
         }
 
         foreach($credit_account as $key => $account){
-            $amount = str_replace(',', '', $credit_amount[$key]);
+            $amount = acc_unformat_number($credit_amount[$key]);
 
             if($amount == '' || $account == ''){
                 continue;
@@ -27435,8 +29081,8 @@ class Accounting_model extends App_Model
         }
 
         foreach($item_id as $key => $itemid){
-            $cost = str_replace(',', '', $item_cost[$key]);
-            $amount = str_replace(',', '', $item_amount[$key]);
+            $cost = acc_unformat_number($item_cost[$key]);
+            $amount = acc_unformat_number($item_amount[$key]);
 
             if($amount == '' || $itemid == ''){
                 continue;
@@ -27585,6 +29231,7 @@ class Accounting_model extends App_Model
             $node['description'] = '';
             $node['rel_id'] = $pay_bill_id;
             $node['rel_type'] = 'pay_bill';
+            $node['class'] = $pay_bill->acc_class;
             $node['datecreated'] = date('Y-m-d H:i:s');
             $node['addedfrom'] = get_staff_user_id();
             $data_insert[] = $node;
@@ -27600,6 +29247,7 @@ class Accounting_model extends App_Model
             $node['description'] = '';
             $node['rel_id'] = $pay_bill_id;
             $node['rel_type'] = 'pay_bill';
+            $node['class'] = $pay_bill->acc_class;
             $node['datecreated'] = date('Y-m-d H:i:s');
             $node['addedfrom'] = get_staff_user_id();
             $data_insert[] = $node;
@@ -27622,7 +29270,7 @@ class Accounting_model extends App_Model
         $data['rel_type'] = 'vendor';
         $data['dateadded'] = date('Y-m-d H:i:s');
         $data['addedfrom'] = get_staff_user_id();
-        $data['amount'] = str_replace(',', '', $data['amount']);
+        $data['amount'] = acc_unformat_number($data['amount']);
 
         if(isset($data['bill_items'])){
             $data['bill_items'] = implode(',', $data['bill_items']);
@@ -27726,8 +29374,8 @@ class Accounting_model extends App_Model
 
             foreach($pay_bill_amount_paid as $item_id => $amount_paid){
                 if($amount_paid > 0){
-                    $amount = str_replace(',', '', $amount_paid);
-                    $item_amount = str_replace(',', '', $pay_bill_amount[$item_id]);
+                    $amount = acc_unformat_number($amount_paid);
+                    $item_amount = acc_unformat_number($pay_bill_amount[$item_id]);
                     $this->db->insert(db_prefix().'acc_pay_bill_item_paid', [
                         'check_id' => $insert_id,
                         'item_id' => $item_id,
@@ -27807,7 +29455,7 @@ class Accounting_model extends App_Model
             unset($data['signature']);
         }
 
-        $data['amount'] = str_replace(',', '', $data['amount']);
+        $data['amount'] = acc_unformat_number($data['amount']);
         
         $bill_check = [];
         if(isset($data['bill_check'])){
@@ -27865,8 +29513,8 @@ class Accounting_model extends App_Model
 
             foreach($pay_bill_amount_paid as $item_id => $amount_paid){
                 if($amount_paid > 0){
-                    $amount = str_replace(',', '', $amount_paid);
-                    $item_amount = str_replace(',', '', $pay_bill_amount[$item_id]);
+                    $amount = acc_unformat_number($amount_paid);
+                    $item_amount = acc_unformat_number($pay_bill_amount[$item_id]);
                     $this->db->insert(db_prefix().'acc_pay_bill_item_paid', [
                         'check_id' => $id,
                         'item_id' => $item_id,
@@ -27980,6 +29628,7 @@ class Accounting_model extends App_Model
         $node['vendor'] = $check->rel_id;
         $node['number'] = $check->number;
         $node['date'] = $check->date;
+        $node['class'] = $check->acc_class;
         $node['tax'] = 0;
         $node['credit'] = 0;
         $node['description'] = '';
@@ -27995,6 +29644,7 @@ class Accounting_model extends App_Model
         $node['vendor'] = $check->rel_id;
         $node['number'] = $check->number;
         $node['date'] = $check->date;
+        $node['class'] = $check->acc_class;
         $node['tax'] = 0;
         $node['debit'] = 0;
         $node['credit'] = $check_total;
@@ -28163,7 +29813,7 @@ class Accounting_model extends App_Model
                         $path = ACCOUTING_MODULE_UPLOAD_FOLDER .'/checks/signature/' .$insert_id;
 
                         $file_path = ACCOUTING_MODULE_UPLOAD_FOLDER . '/checks/signature/' . $reprint_check_id.'/signature_'.$reprint_check_id.'.png';
-                        _maybe_create_upload_path($path);
+                        accounting_maybe_create_upload_path($path);
                         $sign = copy($file_path, $path.'/signature_'.$insert_id.'.png');
                     }
                     
@@ -28876,6 +30526,8 @@ class Accounting_model extends App_Model
             $currency_rate = round(1 /$asset->to_currency_rate, 6);
             $asset_total = round($asset->unit_price * $currency_rate, 2);
             
+            $class_id = isset($asset->acc_class) ? $asset->acc_class : 0;
+
             $node = [];
             $node['split'] = $payment_account;
             $node['account'] = $deposit_to;
@@ -28887,6 +30539,7 @@ class Accounting_model extends App_Model
             $node['rel_type'] = 'fe_asset';
             $node['datecreated'] = date('Y-m-d H:i:s');
             $node['addedfrom'] = get_staff_user_id();
+            if ($class_id > 0) { $node['class'] = $class_id; }
             $data_insert[] = $node;
 
             $node = [];
@@ -28900,6 +30553,7 @@ class Accounting_model extends App_Model
             $node['rel_type'] = 'fe_asset';
             $node['datecreated'] = date('Y-m-d H:i:s');
             $node['addedfrom'] = get_staff_user_id();
+            if ($class_id > 0) { $node['class'] = $class_id; }
             $data_insert[] = $node;
 
             if($data_insert != []){
@@ -28951,6 +30605,8 @@ class Accounting_model extends App_Model
 
             $license_total = $license->unit_price * $license->seats;
             
+            $class_id = isset($license->acc_class) ? $license->acc_class : 0;
+
             $node = [];
             $node['split'] = $payment_account;
             $node['account'] = $deposit_to;
@@ -28962,6 +30618,7 @@ class Accounting_model extends App_Model
             $node['rel_type'] = 'fe_license';
             $node['datecreated'] = date('Y-m-d H:i:s');
             $node['addedfrom'] = get_staff_user_id();
+            if ($class_id > 0) { $node['class'] = $class_id; }
             $data_insert[] = $node;
 
             $node = [];
@@ -28975,6 +30632,7 @@ class Accounting_model extends App_Model
             $node['rel_type'] = 'fe_license';
             $node['datecreated'] = date('Y-m-d H:i:s');
             $node['addedfrom'] = get_staff_user_id();
+            if ($class_id > 0) { $node['class'] = $class_id; }
             $data_insert[] = $node;
 
             if($data_insert != []){
@@ -29026,6 +30684,8 @@ class Accounting_model extends App_Model
 
             $component_total = $component->unit_price * $component->quantity;
             
+            $class_id = isset($component->acc_class) ? $component->acc_class : 0;
+
             $node = [];
             $node['split'] = $payment_account;
             $node['account'] = $deposit_to;
@@ -29037,6 +30697,7 @@ class Accounting_model extends App_Model
             $node['rel_type'] = 'fe_component';
             $node['datecreated'] = date('Y-m-d H:i:s');
             $node['addedfrom'] = get_staff_user_id();
+            if ($class_id > 0) { $node['class'] = $class_id; }
             $data_insert[] = $node;
 
             $node = [];
@@ -29050,6 +30711,7 @@ class Accounting_model extends App_Model
             $node['rel_type'] = 'fe_component';
             $node['datecreated'] = date('Y-m-d H:i:s');
             $node['addedfrom'] = get_staff_user_id();
+            if ($class_id > 0) { $node['class'] = $class_id; }
             $data_insert[] = $node;
 
             if($data_insert != []){
@@ -29101,6 +30763,8 @@ class Accounting_model extends App_Model
 
             $consumable_total = $consumable->unit_price * $consumable->quantity;
             
+            $class_id = isset($consumable->acc_class) ? $consumable->acc_class : 0;
+
             $node = [];
             $node['split'] = $payment_account;
             $node['account'] = $deposit_to;
@@ -29112,6 +30776,7 @@ class Accounting_model extends App_Model
             $node['rel_type'] = 'fe_consumable';
             $node['datecreated'] = date('Y-m-d H:i:s');
             $node['addedfrom'] = get_staff_user_id();
+            if ($class_id > 0) { $node['class'] = $class_id; }
             $data_insert[] = $node;
 
             $node = [];
@@ -29125,6 +30790,7 @@ class Accounting_model extends App_Model
             $node['rel_type'] = 'fe_consumable';
             $node['datecreated'] = date('Y-m-d H:i:s');
             $node['addedfrom'] = get_staff_user_id();
+            if ($class_id > 0) { $node['class'] = $class_id; }
             $data_insert[] = $node;
 
             if($data_insert != []){
@@ -29170,6 +30836,8 @@ class Accounting_model extends App_Model
 
             $maintenance_total = $maintenance->cost;
             
+            $class_id = isset($maintenance->acc_class) ? $maintenance->acc_class : 0;
+
             $node = [];
             $node['split'] = $payment_account;
             $node['account'] = $deposit_to;
@@ -29181,6 +30849,7 @@ class Accounting_model extends App_Model
             $node['rel_type'] = 'fe_maintenance';
             $node['datecreated'] = date('Y-m-d H:i:s');
             $node['addedfrom'] = get_staff_user_id();
+            if ($class_id > 0) { $node['class'] = $class_id; }
             $data_insert[] = $node;
 
             $node = [];
@@ -29194,6 +30863,7 @@ class Accounting_model extends App_Model
             $node['rel_type'] = 'fe_maintenance';
             $node['datecreated'] = date('Y-m-d H:i:s');
             $node['addedfrom'] = get_staff_user_id();
+            if ($class_id > 0) { $node['class'] = $class_id; }
             $data_insert[] = $node;
 
             if($data_insert != []){
@@ -29419,7 +31089,7 @@ class Accounting_model extends App_Model
      */
     public function add_vendor($data){
 
-        $data['balance'] = str_replace(',', '', $data['balance']);
+        $data['balance'] = acc_unformat_number($data['balance']);
         if($data['balance'] != '' && $data['balance'] > 0){
             if($data['balance_as_of'] != ''){
                 $data['balance_as_of'] = to_sql_date($data['balance_as_of']);
@@ -29459,7 +31129,7 @@ class Accounting_model extends App_Model
 
         $affectedRows = 0;
 
-        $data['balance'] = str_replace(',', '', $data['balance']);
+        $data['balance'] = acc_unformat_number($data['balance']);
         if($data['balance'] != '' && $data['balance'] > 0){
             if($data['balance_as_of'] != ''){
                 $data['balance_as_of'] = to_sql_date($data['balance_as_of']);
@@ -29548,38 +31218,41 @@ class Accounting_model extends App_Model
      * @param  integer $payment_id 
      * @return boolean
      */
-    public function automatic_credit_note_refund_conversion($data){
+    public function automatic_credit_note_refund_conversion($id){
 
         if(get_option('acc_credit_note_refund_automatic_conversion') != 1){
             return false;
         }
-        $this->delete_convert($data['refund_id'], 'credit_note_refund');
+        $this->delete_convert($id, 'credit_note_refund');
+
+        $this->db->where('id', $id);
+        $creditnote_refunds = $this->db->get(db_prefix() . 'creditnote_refunds')->row();
 
         $payment_account = get_option('acc_credit_note_refund_payment_account');
         $deposit_to = get_option('acc_credit_note_refund_deposit_to');
         $affectedRows = 0;
 
         if(get_option('acc_close_the_books') == 1){
-            if(strtotime($data['refunded_on']) <= strtotime(get_option('acc_closing_date')) && strtotime(date('Y-m-d')) > strtotime(get_option('acc_closing_date'))){
+            if(strtotime($creditnote_refunds->refunded_on) <= strtotime(get_option('acc_closing_date')) && strtotime(date('Y-m-d')) > strtotime(get_option('acc_closing_date'))){
                 return false;
             }
         }
 
         $this->load->model('credit_notes_model');
-        $credit_note = $this->credit_notes_model->get($data['credit_note_id']);
+        $credit_note = $this->credit_notes_model->get($creditnote_refunds->credit_note_id);
 
         $this->load->model('currencies_model');
         $currency = $this->currencies_model->get_base_currency();
 
-        $payment_total = $data['data']['amount'];
+        $payment_total = $creditnote_refunds->amount;
         $currency_rate = 0;
         if($credit_note->currency_name != $currency->name){
             $currency_rate = acc_get_currency_rate($credit_note->currency_name, $currency->name);
-            $payment_total = round($currency_rate * $data['data']['amount'], 2);
+            $payment_total = round($currency_rate * $creditnote_refunds->amount, 2);
         }
         $data_insert = [];
-        if(get_option('acc_active_payment_mode_mapping') == 1 && $data['data']['payment_mode'] != ''){
-            $payment_mode_mapping = $this->get_payment_mode_mapping($data['data']['payment_mode']);
+        if(get_option('acc_active_payment_mode_mapping') == 1 && $creditnote_refunds->payment_mode != ''){
+            $payment_mode_mapping = $this->get_payment_mode_mapping($creditnote_refunds->payment_mode);
 
             if($payment_mode_mapping){
                 $node = [];
@@ -29588,9 +31261,9 @@ class Accounting_model extends App_Model
                 $node['debit'] = $payment_total;
                 $node['credit'] = 0;
                 $node['customer'] = $credit_note->clientid;
-                $node['date'] = $data['data']['refunded_on'];
+                $node['date'] = $creditnote_refunds->refunded_on;
                 $node['description'] = '';
-                $node['rel_id'] = $data['refund_id'];
+                $node['rel_id'] = $id;
                 $node['rel_type'] = 'credit_note_refund';
                 $node['datecreated'] = date('Y-m-d H:i:s');
                 $node['addedfrom'] = get_staff_user_id();
@@ -29601,11 +31274,11 @@ class Accounting_model extends App_Model
                 $node['split'] = $payment_mode_mapping->credit_note_refund_deposit_to;
                 $node['customer'] = $credit_note->clientid;
                 $node['account'] = $payment_mode_mapping->credit_note_refund_payment_account;
-                $node['date'] = $data['data']['refunded_on'];
+                $node['date'] = $creditnote_refunds->refunded_on;
                 $node['debit'] = 0;
                 $node['credit'] = $payment_total;
                 $node['description'] = '';
-                $node['rel_id'] = $data['refund_id'];
+                $node['rel_id'] = $id;
                 $node['rel_type'] = 'credit_note_refund';
                 $node['datecreated'] = date('Y-m-d H:i:s');
                 $node['addedfrom'] = get_staff_user_id();
@@ -29621,9 +31294,9 @@ class Accounting_model extends App_Model
             $node['customer'] = $credit_note->clientid;
             $node['debit'] = $payment_total;
             $node['credit'] = 0;
-            $node['date'] = $data['data']['refunded_on'];
+            $node['date'] = $creditnote_refunds->refunded_on;
             $node['description'] = '';
-            $node['rel_id'] = $data['refund_id'];
+            $node['rel_id'] = $id;
             $node['rel_type'] = 'credit_note_refund';
             $node['datecreated'] = date('Y-m-d H:i:s');
             $node['addedfrom'] = get_staff_user_id();
@@ -29634,11 +31307,11 @@ class Accounting_model extends App_Model
             $node['split'] = $deposit_to;
             $node['customer'] = $credit_note->clientid;
             $node['account'] = $payment_account;
-            $node['date'] = $data['data']['refunded_on'];
+            $node['date'] = $creditnote_refunds->refunded_on;
             $node['debit'] = 0;
             $node['credit'] = $payment_total;
             $node['description'] = '';
-            $node['rel_id'] = $data['refund_id'];
+            $node['rel_id'] = $id;
             $node['rel_type'] = 'credit_note_refund';
             $node['datecreated'] = date('Y-m-d H:i:s');
             $node['addedfrom'] = get_staff_user_id();
@@ -29651,7 +31324,7 @@ class Accounting_model extends App_Model
         }
             
         if ($affectedRows > 0) {
-            $this->db->where('id', $data['refund_id']);
+            $this->db->where('id', $id);
             $this->db->update(db_prefix().'creditnote_refunds', ['acc_mapping' => 1]);
             return true;
         }
@@ -30480,16 +32153,42 @@ class Accounting_model extends App_Model
     public function update_bank_transaction($data, $id){
         
         $data['date'] = to_sql_date($data['date']);
-        $data['withdrawals'] = str_replace(',', '', $data['withdrawals']);
-        $data['deposits'] = str_replace(',', '', $data['deposits']);
+        if (empty($data['date']) || $data['date'] == '') {
+            return 'date_required';
+        }
+
+        $withdrawals = isset($data['withdrawals']) ? trim($data['withdrawals']) : '';
+        $deposits = isset($data['deposits']) ? trim($data['deposits']) : '';
+
+        if ($withdrawals === '') {
+            $withdrawals = 0;
+        }
+        if ($deposits === '') {
+            $deposits = 0;
+        }
+
+        $withdrawals = floatval(acc_unformat_number($withdrawals));
+        $deposits = floatval(acc_unformat_number($deposits));
+
+        if ($withdrawals <= 0 && $deposits <= 0) {
+            return 'amount_required';
+        }
+
+        if ($withdrawals > 0 && $deposits > 0) {
+            return 'both_positive';
+        }
+
+        if (empty($data['payee']) || trim($data['payee']) === '') {
+            return 'payee_required';
+        }
+
+        $data['withdrawals'] = $withdrawals;
+        $data['deposits'] = $deposits;
 
         $this->db->where('id', $id);
         $this->db->update(db_prefix().'acc_transaction_bankings', $data);
 
-        if ($this->db->affected_rows() > 0) {
-            return true;
-        }
-        return false;
+        return true;
     }
 
     /**
@@ -31431,33 +33130,68 @@ class Accounting_model extends App_Model
      * @return [type]      
      */
     public function acc_pur_vendor_created($data){
-        $data['data']['balance'] = str_replace(',', '', $data['data']['balance']);
+        if (!isset($data['data']['balance'])) {
+            return false;
+        }
+
+        $data['data']['balance'] = acc_unformat_number($data['data']['balance']);
 
         if($data['data']['balance'] > 0){
             
-            // $bill_data = [];
-            // $bill_data['vendor']                 = $data['id'];
-            // $bill_data['note']         = '';
-            // $bill_data['expense_name'] = _l('opening_balance');
-            // $bill_data['date']                     = _d($data['data']['balance_as_of']);
-            // $bill_data['due_date']                  = _d($data['data']['balance_as_of']);
-            // $bill_data['tax']            = '';
-            // $bill_data['tax2']            = '';
-            // $bill_data['paymentmode']            = '';
-            // $bill_data['reference_no']            = '';
-            // $bill_data['amount']               = $data['data']['balance'];
+            $opening_balance_equity_id = 87;
+            $accounts_payable_id = 52;
 
-            // $bill_data['debit_account']            = [52];
-            // $bill_data['debit_amount']            = [$data['data']['balance']];
-            // $bill_data['credit_account']            = [87];
-            // $bill_data['credit_amount']            = [$data['data']['balance']];
+            $acc = $this->db->where('key_name', 'acc_opening_balance_equity')->get(db_prefix().'acc_accounts')->row();
+            if ($acc) {
+                $opening_balance_equity_id = $acc->id;
+            } else {
+                // Create Opening Balance Equity if not present
+                $this->db->insert(db_prefix().'acc_accounts', [
+                    'name' => '',
+                    'key_name' => 'acc_opening_balance_equity',
+                    'account_type_id' => 10,
+                    'account_detail_type_id' => 71,
+                    'default_account' => 1,
+                ]);
+                $opening_balance_equity_id = $this->db->insert_id();
+            }
 
-            // $bill_id = $this->add_bill($bill_data);
+            $acc = $this->db->where('key_name', 'acc_accounts_payable')->get(db_prefix().'acc_accounts')->row();
+            if ($acc) {
+                $accounts_payable_id = $acc->id;
+            }
 
-            // if($bill_id){
-            //     $this->bill_appove_payable($bill_id);
-            //     return $bill_id;
-            // }
+            // Calculate date = 1 day before balance_as_of
+            $as_of_date = isset($data['data']['balance_as_of']) ? $data['data']['balance_as_of'] : '';
+            if (empty($as_of_date)) {
+                $as_of_date = date('Y-m-d');
+            }
+            $target_timestamp = strtotime('-1 day', strtotime($as_of_date));
+            $bill_date = date('Y-m-d', $target_timestamp);
+
+            $bill_data = [];
+            $bill_data['vendor']                 = $data['id'];
+            $bill_data['note']         = '';
+            $bill_data['expense_name'] = _l('opening_balance');
+            $bill_data['date']                     = _d($bill_date);
+            $bill_data['due_date']                  = _d($bill_date);
+            $bill_data['tax']            = '';
+            $bill_data['tax2']            = '';
+            $bill_data['paymentmode']            = '';
+            $bill_data['reference_no']            = '';
+            $bill_data['amount']               = $data['data']['balance'];
+
+            $bill_data['debit_account']            = [$opening_balance_equity_id];
+            $bill_data['debit_amount']            = [$data['data']['balance']];
+            $bill_data['credit_account']            = [$accounts_payable_id];
+            $bill_data['credit_amount']            = [$data['data']['balance']];
+
+            $bill_id = $this->add_bill($bill_data);
+
+            if($bill_id){
+                $this->bill_appove_payable($bill_id);
+                return $bill_id;
+            }
         }
 
         return false;
@@ -31471,33 +33205,64 @@ class Accounting_model extends App_Model
      */
     public function acc_pur_vendor_updated($data, $id){
         $vendor = $this->get_vendor($id);
-        $data['balance'] = str_replace(',', '', $data['balance']);
+        $data['balance'] = acc_unformat_number($data['balance']);
 
         if($vendor->balance == NULL && $data['balance'] > 0){
 
-            // $bill_data = [];
-            // $bill_data['vendor']                 = $id;
-            // $bill_data['note']         = '';
-            // $bill_data['expense_name'] = _l('opening_balance');
-            // $bill_data['date']                     = _d($data['balance_as_of']);
-            // $bill_data['due_date']                  = _d($data['balance_as_of']);
-            // $bill_data['tax']            = '';
-            // $bill_data['tax2']            = '';
-            // $bill_data['paymentmode']            = '';
-            // $bill_data['reference_no']            = '';
-            // $bill_data['amount']               = $data['balance'];
+            $opening_balance_equity_id = 87;
+            $accounts_payable_id = 52;
 
-            // $bill_data['debit_account']            = [52];
-            // $bill_data['debit_amount']            = [$data['balance']];
-            // $bill_data['credit_account']            = [87];
-            // $bill_data['credit_amount']            = [$data['balance']];
+            $acc = $this->db->where('key_name', 'acc_opening_balance_equity')->get(db_prefix().'acc_accounts')->row();
+            if ($acc) {
+                $opening_balance_equity_id = $acc->id;
+            } else {
+                // Create Opening Balance Equity if not present
+                $this->db->insert(db_prefix().'acc_accounts', [
+                    'name' => '',
+                    'key_name' => 'acc_opening_balance_equity',
+                    'account_type_id' => 10,
+                    'account_detail_type_id' => 71,
+                    'default_account' => 1,
+                ]);
+                $opening_balance_equity_id = $this->db->insert_id();
+            }
 
-            // $bill_id = $this->add_bill($bill_data);
+            $acc = $this->db->where('key_name', 'acc_accounts_payable')->get(db_prefix().'acc_accounts')->row();
+            if ($acc) {
+                $accounts_payable_id = $acc->id;
+            }
 
-            // if($bill_id){
-            //     $this->bill_appove_payable($bill_id);
-            //     return $bill_id;
-            // }
+            // Calculate date = 1 day before balance_as_of
+            $as_of_date = isset($data['balance_as_of']) ? $data['balance_as_of'] : '';
+            if (empty($as_of_date)) {
+                $as_of_date = date('Y-m-d');
+            }
+            $target_timestamp = strtotime('-1 day', strtotime($as_of_date));
+            $bill_date = date('Y-m-d', $target_timestamp);
+
+            $bill_data = [];
+            $bill_data['vendor']                 = $id;
+            $bill_data['note']         = '';
+            $bill_data['expense_name'] = _l('opening_balance');
+            $bill_data['date']                     = _d($bill_date);
+            $bill_data['due_date']                  = _d($bill_date);
+            $bill_data['tax']            = '';
+            $bill_data['tax2']            = '';
+            $bill_data['paymentmode']            = '';
+            $bill_data['reference_no']            = '';
+            $bill_data['amount']               = $data['balance'];
+
+            $bill_data['debit_account']            = [$opening_balance_equity_id];
+            $bill_data['debit_amount']            = [$data['balance']];
+            $bill_data['credit_account']            = [$accounts_payable_id];
+            $bill_data['credit_amount']            = [$data['balance']];
+
+            $bill_id = $this->add_bill($bill_data);
+
+            if($bill_id){
+                $this->bill_appove_payable($bill_id);
+                return $bill_id;
+            }
         }
 
         return false;
@@ -31778,12 +33543,17 @@ class Accounting_model extends App_Model
         $this->db->where('pur_invoice', $id);
         $this->db->where('approval_status', 2);
         $invoice_payment = $this->db->get(db_prefix().'pur_invoice_payment')->row();
-        $totalPayments = $invoice_payment->amount;
 
-        if($total <= $totalPayments){
+        $this->db->select_sum('amount');
+        $this->db->where('invoice_id', $id);
+        $debit_note = $this->db->get(db_prefix().'pur_debits')->row();
+
+        $total_payment = $invoice_payment->amount + $debit_note->amount;
+        
+        if($total <= $total_payment){
             return 0;
         }else{
-            return round(($total - $totalPayments), 2);
+            return round(($total - $total_payment), 2);
         }
     }
 
@@ -32281,8 +34051,8 @@ class Accounting_model extends App_Model
     public function match_transaction_save($data){
         $this->db->where('id', $data['transaction']);
         $account_history = $this->db->get(db_prefix().'acc_account_history')->row();
-        $withdrawal = str_replace(',', '', $data['withdrawal']);
-        $deposit = str_replace(',', '', $data['deposit']);
+        $withdrawal = acc_unformat_number($data['withdrawal']);
+        $deposit = acc_unformat_number($data['deposit']);
         if($withdrawal > 0){
             $amount = $withdrawal;
         }else{
@@ -32313,6 +34083,107 @@ class Accounting_model extends App_Model
         }
 
         return false;
+    }
+
+    public function bulk_add_transaction_save($data) {
+        $ids = isset($data['ids']) ? $data['ids'] : [];
+        $success_count = 0;
+        foreach ($ids as $id) {
+            $item_data = [
+                'transaction_bank_id' => $id,
+                'account' => $data['account'],
+                'vendor' => isset($data['vendor']) ? $data['vendor'] : '',
+                'customer' => isset($data['customer']) ? $data['customer'] : '',
+            ];
+            if ($this->add_transaction_save($item_data)) {
+                $success_count++;
+            }
+        }
+        return $success_count > 0;
+    }
+
+    public function bulk_match_transaction_save($data) {
+        $ids = isset($data['ids']) ? $data['ids'] : [];
+        $success_count = 0;
+        $total_count = count($ids);
+
+        foreach ($ids as $bank_feed_id) {
+            $transaction_banking = $this->get_transaction_banking($bank_feed_id);
+            if (!$transaction_banking) continue;
+
+            // 1. Query uncleared system account history records
+            $this->db->where('account', $transaction_banking->bank_id);
+            $this->db->where('cleared', 0);
+            $this->db->group_start();
+            $this->db->where('bank_reconcile', 0);
+            $this->db->or_where('bank_reconcile IS NULL');
+            $this->db->group_end();
+            
+            if ($transaction_banking->withdrawals > 0) {
+                $this->db->where('credit', $transaction_banking->withdrawals);
+            } else {
+                $this->db->where('debit', $transaction_banking->deposits);
+            }
+            
+            // Find system matches with exact date matching the bank feed date
+            $this->db->where('date', $transaction_banking->date);
+            
+            $candidates = $this->db->get(db_prefix().'acc_account_history')->result_array();
+            
+            if (!empty($candidates)) {
+                $matched_system_trans = $candidates[0];
+                $system_trans_id = $matched_system_trans['id'];
+
+                // Update target system transaction record
+                $this->db->where('id', $system_trans_id);
+                $this->db->update(db_prefix().'acc_account_history', [
+                    'bank_reconcile' => $bank_feed_id,
+                    'cleared' => 1,
+                    'date' => $transaction_banking->date,
+                    'credit' => $transaction_banking->withdrawals,
+                    'debit' => $transaction_banking->deposits,
+                ]);
+
+                // Link bank feed transaction
+                $this->db->where('id', $bank_feed_id);
+                $this->db->update(db_prefix().'acc_transaction_bankings', [
+                    'adjusted' => 1,
+                    'matched' => 1,
+                    'reconcile' => 1,
+                ]);
+
+                $success_count++;
+            }
+        }
+
+        return [
+            'success_count' => $success_count,
+            'total_count' => $total_count
+        ];
+    }
+
+    public function bulk_ignore_transaction($ids) {
+        $success_count = 0;
+        if (is_array($ids)) {
+            foreach ($ids as $id) {
+                if ($this->leave_it_uncleared($id)) {
+                    $success_count++;
+                }
+            }
+        }
+        return $success_count > 0;
+    }
+
+    public function bulk_delete_transaction($ids) {
+        $success_count = 0;
+        if (is_array($ids)) {
+            foreach ($ids as $id) {
+                if ($this->delete_banking($id)) {
+                    $success_count++;
+                }
+            }
+        }
+        return $success_count > 0;
     }
 
 
@@ -32384,13 +34255,41 @@ class Accounting_model extends App_Model
             $where = ' AND '.$where;
         }
 
-        $this->db->join(db_prefix().'creditnotes', db_prefix() . 'credits.credit_id = ' . db_prefix() . 'creditnotes.id', 'left');
+        $this->db->where('status != 3');
+        $creditnote_total = $this->db->count_all_results(db_prefix().'creditnotes');
+
+        $count = $this->db->query('
+            SELECT COUNT(1) as total FROM (select count(*) from ' . db_prefix() . 'acc_account_history 
+            LEFT JOIN ' . db_prefix() . 'creditnotes ON ' . db_prefix() . 'acc_account_history.rel_id = ' . db_prefix() . 'creditnotes.id  
+            WHERE ' . db_prefix() . 'acc_account_history.rel_type = "credit_note" '.$where_currency. $where.' GROUP BY rel_id) a')->row()->total;
+
+        return $creditnote_total-$count;
+
+    }
+
+    /**
+     * count credit_note apply not convert yet
+     * @param  integer $currency
+     * @param  string $where
+     * @return object
+     */
+    public function count_credit_note_apply_not_convert_yet($currency = '', $where = ''){
+        $where_currency = '';
+        if($currency != ''){
+            $where_currency = 'and currency = '.$currency;
+            $this->db->where('currency', $currency);
+        }
+
+        if($where != ''){
+            $this->db->where($where);
+            $where = ' AND '.$where;
+        }
+
         $creditnote_total = $this->db->count_all_results(db_prefix().'credits');
 
         $count = $this->db->query('
             SELECT COUNT(1) as total FROM (select count(*) from ' . db_prefix() . 'acc_account_history 
             LEFT JOIN ' . db_prefix() . 'credits ON ' . db_prefix() . 'acc_account_history.rel_id = ' . db_prefix() . 'credits.id  
-            LEFT JOIN ' . db_prefix() . 'creditnotes ON ' . db_prefix() . 'credits.credit_id = ' . db_prefix() . 'creditnotes.id  
             WHERE ' . db_prefix() . 'acc_account_history.rel_type = "credit_note" '.$where_currency. $where.' GROUP BY rel_id) a')->row()->total;
 
         return $creditnote_total-$count;
@@ -32415,23 +34314,21 @@ class Accounting_model extends App_Model
             $where = ' AND '.$where;
         }
 
-        $this->db->join(db_prefix().'creditnotes', db_prefix() . 'creditnote_refunds.credit_note_id = ' . db_prefix() . 'creditnotes.id', 'left');
         $creditnote_total = $this->db->count_all_results(db_prefix().'creditnote_refunds');
 
         $count = $this->db->query('
             SELECT COUNT(1) as total FROM (select count(*) from ' . db_prefix() . 'acc_account_history 
-            LEFT JOIN ' . db_prefix() . 'credits ON ' . db_prefix() . 'acc_account_history.rel_id = ' . db_prefix() . 'credits.id  
-            LEFT JOIN ' . db_prefix() . 'creditnotes ON ' . db_prefix() . 'credits.credit_id = ' . db_prefix() . 'creditnotes.id  
-            WHERE ' . db_prefix() . 'acc_account_history.rel_type = "credit_note" '.$where_currency. $where.' GROUP BY rel_id) a')->row()->total;
+            LEFT JOIN ' . db_prefix() . 'creditnote_refunds ON ' . db_prefix() . 'acc_account_history.rel_id = ' . db_prefix() . 'creditnote_refunds.id  
+            WHERE ' . db_prefix() . 'acc_account_history.rel_type = "credit_note_refund" '.$where_currency. $where.' GROUP BY rel_id) a')->row()->total;
 
         return $creditnote_total-$count;
     }
 
-    public function get_credit_note_data_convert($id, $type){
+    public function get_credit_note_applied_data_convert($id, $type){
 
-        $this->db->select('*, '.db_prefix().'currencies.name as currency_name');
+        $this->db->select('*, '.db_prefix().'credits.id as id, '.db_prefix().'currencies.name as currency_name');
         $this->db->where(db_prefix().'credits.id', $id);
-        $this->db->join(db_prefix().'creditnotes', db_prefix() . 'credits.credit_id = ' . db_prefix() . 'creditnotes.id', 'left');
+        $this->db->join(db_prefix().'creditnotes', db_prefix() . 'creditnotes.id = ' . db_prefix() . 'credits.credit_id', 'left');
         $this->db->join(db_prefix().'currencies', db_prefix() . 'currencies.id = ' . db_prefix() . 'creditnotes.currency', 'left');
         $credit_note = $this->db->get(db_prefix().'credits')->row();
 
@@ -32446,12 +34343,12 @@ class Accounting_model extends App_Model
                         <td></td>
                      </tr>
                      <tr class="project-overview">
-                        <td class="bold" width="30%">'. _l('credit_invoice_number').'</td>
+                        <td class="bold" width="30%">'. _l('invoice').'</td>
                         <td>'.'<a href="'.admin_url('invoices/list_invoices/'.$credit_note->invoice_id).'">'. format_invoice_number($credit_note->invoice_id) .'</a>' .'</td>
                         <td></td>
                      </tr>
                      <tr class="project-overview">
-                        <td class="bold">'. _l('credit_date').'</td>
+                        <td class="bold">'. _l('date').'</td>
                         <td>'. _d($credit_note->date) .'</td>
                         <td></td>
                      </tr>
@@ -32487,6 +34384,93 @@ class Accounting_model extends App_Model
             $html .=   '<tr class="project-overview">
                             <td class="bold">'. _l('amount_after_convert').'('._l('acc_new').')</td>
                             <td class="amount_after_convert">'.app_format_money(round($amount*$credit_note->amount, 4), $currency->name).'</td>
+                            <td>'.$_html.'</td>
+                         </tr>';
+        }
+        $html .=   '</tbody>
+              </table>';
+                  
+        $html .=   '</tbody>
+              </table>';
+
+        return ['html' => $html];
+    }
+
+    public function get_credit_note_data_convert($id, $type){
+
+        $this->db->select('*, '.db_prefix().'creditnotes.id as id, '.db_prefix().'currencies.name as currency_name');
+        $this->db->where(db_prefix().'creditnotes.id', $id);
+        $this->db->join(db_prefix().'currencies', db_prefix() . 'currencies.id = ' . db_prefix() . 'creditnotes.currency', 'left');
+        $credit_note = $this->db->get(db_prefix().'creditnotes')->row();
+
+        $this->load->model('currencies_model');
+        $currency = $this->currencies_model->get_base_currency();
+
+        $html = '<table class="table border table-striped no-margin">
+                  <tbody>
+                    <tr class="project-overview">
+                        <td class="bold">'. _l('credit_note_number').'</td>
+                        <td><a href="'.admin_url('credit_notes/list_credit_notes/'.$credit_note->id).'" target="_blank">'. format_credit_note_number($credit_note->id) .'</a></td>
+                        <td></td>
+                     </tr>
+                     <tr class="project-overview">
+                        <td class="bold">'. _l('credit_date').'</td>
+                        <td>'. _d($credit_note->date) .'</td>
+                        <td></td>
+                     </tr>
+                     <tr class="project-overview">
+                        <td class="bold" width="30%">'. _l('client').'</td>
+                        <td>'.'<a href="'.admin_url('clients/client/' . $credit_note->clientid).'" target="_blank">'. get_company_name($credit_note->clientid) .'</a>' .'</td>
+                        <td></td>
+                     </tr>
+                     <tr class="project-overview">
+                        <td class="bold" width="30%">'. _l('project').'</td>
+                        <td>'.'<a href="'.admin_url('projects/view/' . $credit_note->project_id).'" target="_blank">'. get_project_name_by_id($credit_note->project_id) .'</a>' .'</td>
+                        <td></td>
+                     </tr>
+                     <tr class="project-overview">
+                        <td class="bold">'. _l('credit_note_status').'</td>
+                        <td>'. format_credit_note_status($credit_note->status) .'</td>
+                        <td></td>
+                     </tr>
+                     <tr class="project-overview">
+                        <td class="bold">'. _l('reference_no').'</td>
+                        <td>'. e($credit_note->reference_no) .'</td>
+                        <td></td>
+                     </tr>
+                     <tr class="project-overview">
+                        <td class="bold">'. _l('credit_note_amount').'</td>
+                        <td>'. app_format_money($credit_note->total, $credit_note->currency_name) .'</td>
+                        <td></td>
+                     </tr>';
+        $amount = 1;
+
+
+        $_html = '';
+        if($credit_note->currency_name != $currency->name){
+            $amount = acc_get_currency_rate($credit_note->currency_name, $currency->name);
+
+            $edit_template = "";
+            $edit_template .= render_input('edit_exchange_rate','exchange_rate', $amount, 'number');
+            $edit_template .= "<div class='text-center mtop10'>";
+            $edit_template .= "<button type='button' class='btn btn-success edit_conversion_rate_action'>"._l('copy_task_confirm')."</button>";
+            $edit_template .= "</div>";
+            $_html .= form_hidden('currency_from', $credit_note->currency_name);
+            $_html .= form_hidden('currency_to', $currency->name);
+            $_html .= form_hidden('exchange_rate', $amount);
+            $_html .= form_hidden('payment_amount', $credit_note->total);
+            $_html .= '<div class="row"><div class="col-md-12"><label class="currency_converter_label th font-medium mbot15 pull-left">1 '.$credit_note->currency_name.' = '.$amount.' '.$currency->name.'</label><a href="#" onclick="return false;" data-placement="bottom" data-toggle="popover" data-content="'. htmlspecialchars($edit_template) .'" data-html="true" data-original-title class="pull-left mleft5 font-medium-xs"><i class="fa fa-pencil-square"></i></a><br></div></div>';
+            $old_currency_rate = $this->get_old_currency_rate($id, $type);
+            if($old_currency_rate != 0){
+                $html .=   '<tr class="project-overview">
+                            <td class="bold">'. _l('amount_after_convert').'</td>
+                            <td>'.app_format_money(round($old_currency_rate*$credit_note->total, 4), $currency->name).'</td>
+                            <td>1 '.$credit_note->currency_name.' = '.$old_currency_rate.' '.$currency->name.'</td>
+                         </tr>';
+            }
+            $html .=   '<tr class="project-overview">
+                            <td class="bold">'. _l('amount_after_convert').'('._l('acc_new').')</td>
+                            <td class="amount_after_convert">'.app_format_money(round($amount*$credit_note->total, 4), $currency->name).'</td>
                             <td>'.$_html.'</td>
                          </tr>';
         }
@@ -32610,4 +34594,3323 @@ class Accounting_model extends App_Model
         }
         return false;
     }
+
+    /**
+     * Add new class
+     * @param mixed $data All $_POST data
+     * @return boolean
+     */
+    public function add_class($data)
+    {
+        $data['description'] = nl2br($data['description']);
+        $data['addedfrom'] = get_staff_user_id();
+        $data['dateadded'] = date('Y-m-d H:i:s');
+        $this->db->insert(db_prefix() . 'acc_class', $data);
+        $insert_id = $this->db->insert_id();
+        if ($insert_id) {
+            return $insert_id;
+        }
+
+        return false;
+    }
+
+    /**
+     * update new class
+     * @param mixed $data All $_POST data
+     * @return boolean
+     */
+    public function update_class($data, $id)
+    {
+        $data['description'] = nl2br($data['description']);
+        $this->db->where('id', $id);
+        $this->db->update(db_prefix() . 'acc_class', $data);
+        if ($this->db->affected_rows() > 0) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  integer ID
+     * @return mixed
+     * Delete class from database, if used return array with key referenced
+     */
+    public function delete_class($id)
+    {
+        $this->db->where('id', $id);
+        $this->db->delete(db_prefix() . 'acc_class');
+        if ($this->db->affected_rows() > 0) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Get class
+     * @param  mixed $id class id (Optional)
+     * @return mixed     object or array
+     */
+    public function get_class($id = '', $type = '')
+    {
+        if (is_numeric($id)) {
+            $this->db->where('id', $id);
+
+            return $this->db->get(db_prefix() . 'acc_class')->row();
+        }
+
+        if ($type != '') {
+            $this->db->where('type', $type);
+        }
+
+        $this->db->order_by('name', 'asc');
+
+        return $this->db->get(db_prefix() . 'acc_class')->result_array();
+    }
+
+    /**
+     * Automatic credit note conversion
+     * @param  integer $payment_id 
+     * @return boolean
+     */
+    public function automatic_credit_note_conversion($id){
+        $this->delete_convert($id, 'credit_note');
+
+        $payment_account = get_option('acc_credit_note_payment_account');
+        $deposit_to = get_option('acc_credit_note_deposit_to');
+        $affectedRows = 0;
+
+        $this->load->model('credit_notes_model');
+        $credit_note = $this->credit_notes_model->get($id);
+
+        if ($credit_note->status == 3) {
+                return false;
+        }
+
+        if(get_option('acc_close_the_books') == 1){
+            if(strtotime($credit_note->date) <= strtotime(get_option('acc_closing_date')) && strtotime(date('Y-m-d')) > strtotime(get_option('acc_closing_date'))){
+                return false;
+            }
+        }
+
+
+        $this->load->model('currencies_model');
+        $currency = $this->currencies_model->get_base_currency();
+
+        $payment_total = $credit_note->total;
+        $currency_rate = 0;
+        if($credit_note->currency_name != $currency->name){
+            $currency_rate = acc_get_currency_rate($credit_note->currency_name, $currency->name);
+            $payment_total = round($currency_rate * $credit_note->total, 2);
+        }
+
+        if(get_option('acc_credit_note_automatic_conversion') == 1){
+            $node = [];
+            $node['split'] = $payment_account;
+            $node['account'] = $deposit_to;
+            $node['customer'] = $credit_note->clientid;
+            $node['debit'] = $payment_total;
+            $node['credit'] = 0;
+            $node['date'] = $credit_note->date;
+            $node['description'] = '';
+            $node['rel_id'] = $id;
+            $node['rel_type'] = 'credit_note';
+            $node['datecreated'] = date('Y-m-d H:i:s');
+            $node['addedfrom'] = get_staff_user_id();
+            $node['currency_rate'] = $currency_rate;
+            $data_insert[] = $node;
+
+            $node = [];
+            $node['split'] = $deposit_to;
+            $node['customer'] = $credit_note->clientid;
+            $node['account'] = $payment_account;
+            $node['date'] = $credit_note->date;
+            $node['debit'] = 0;
+            $node['credit'] = $payment_total;
+            $node['description'] = '';
+            $node['rel_id'] = $id;
+            $node['rel_type'] = 'credit_note';
+            $node['datecreated'] = date('Y-m-d H:i:s');
+            $node['addedfrom'] = get_staff_user_id();
+            $node['currency_rate'] = $currency_rate;
+            $data_insert[] = $node;
+        }
+
+        if($data_insert != []){
+            $affectedRows = $this->db->insert_batch(db_prefix().'acc_account_history', $data_insert);
+        }
+            
+        if ($affectedRows > 0) {
+            $this->db->where('id', $id);
+            $this->db->update(db_prefix().'creditnotes', ['acc_mapping' => 1]);
+            return true;
+        }
+
+        return false;
+    }
+
+    
+    public function acc_get_subtotal_tax_by_invoice($invoice_id, $tax_id)
+    {
+        $this->db->where('id', $tax_id);
+        $tax = $this->db->get(db_prefix().'taxes')->row();
+        $subtotal = 0;
+
+        if ($tax) {
+            $this->db->from(db_prefix() . 'itemable');
+            $this->db->where(db_prefix() . 'itemable.rel_id', $invoice_id);
+            $this->db->where(db_prefix() . 'itemable.rel_type', 'invoice');
+            $this->db->where('taxname', $tax->name);
+            $this->db->where('taxrate', $tax->taxrate);
+            $this->db->order_by('item_order', 'asc');
+            $this->db->join(db_prefix().'item_tax', db_prefix() . 'item_tax.itemid = ' . db_prefix() . 'itemable.id and '.db_prefix() . 'item_tax.rel_type = "invoice"');
+            $itemable = $this->db->get()->result_array();
+            
+            foreach ($itemable as $key => $value) {
+                $subtotal += $value['qty'] * $value['rate'];
+            }
+        }
+
+
+        return $subtotal;
+    }
+
+    /**
+     * Automatic debit note conversion
+     * @param  integer $payment_id 
+     * @return boolean
+     */
+    public function automatic_debit_note_conversion($id){
+        $this->delete_convert($id, 'debit_note');
+
+        $payment_account = get_option('acc_debit_note_payment_account');
+        $deposit_to = get_option('acc_debit_note_deposit_to');
+        $affectedRows = 0;
+
+        if(get_option('acc_close_the_books') == 1){
+            if(strtotime(date('Y-m-d')) <= strtotime(get_option('acc_closing_date')) && strtotime(date('Y-m-d')) > strtotime(get_option('acc_closing_date'))){
+                return false;
+            }
+        }
+
+        $this->load->model('purchase/purchase_model');
+        $debit_note = $this->purchase_model->get_debit_note($id);
+
+        if ($debit_note->status == 3) {
+                return false;
+        }
+
+        $this->load->model('currencies_model');
+        $currency = $this->currencies_model->get_base_currency();
+
+        $debit_note_total = $debit_note->total;
+        $currency_rate = 0;
+        if($debit_note->currency_name != $currency->name){
+            $currency_rate = acc_get_currency_rate($debit_note->currency_name, $currency->name);
+            $debit_note_total = round($currency_rate * $debit_note->total, 2);
+        }
+
+        if(get_option('acc_debit_note_automatic_conversion') == 1){
+            $node = [];
+            $node['split'] = $payment_account;
+            $node['account'] = $deposit_to;
+            $node['vendor'] = $debit_note->vendorid;
+            $node['debit'] = $debit_note_total;
+            $node['credit'] = 0;
+            $node['date'] = $debit_note->date;
+            $node['description'] = '';
+            $node['rel_id'] = $id;
+            $node['rel_type'] = 'debit_note';
+            $node['datecreated'] = date('Y-m-d H:i:s');
+            $node['addedfrom'] = get_staff_user_id();
+            $node['currency_rate'] = $currency_rate;
+            $data_insert[] = $node;
+
+            $node = [];
+            $node['split'] = $deposit_to;
+            $node['vendor'] = $debit_note->vendorid;
+            $node['account'] = $payment_account;
+            $node['date'] = $debit_note->date;
+            $node['debit'] = 0;
+            $node['credit'] = $debit_note_total;
+            $node['description'] = '';
+            $node['rel_id'] = $id;
+            $node['rel_type'] = 'debit_note';
+            $node['datecreated'] = date('Y-m-d H:i:s');
+            $node['addedfrom'] = get_staff_user_id();
+            $node['currency_rate'] = $currency_rate;
+            $data_insert[] = $node;
+        }
+
+        if($data_insert != []){
+            $affectedRows = $this->db->insert_batch(db_prefix().'acc_account_history', $data_insert);
+        }
+            
+        if ($affectedRows > 0) {
+            $this->db->where('id', $id);
+            $this->db->update(db_prefix().'pur_debit_notes', ['acc_mapping' => 1]);
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Automatic debit note apply conversion
+     * @param  integer $payment_id 
+     * @return boolean
+     */
+    public function automatic_debit_note_apply_conversion($id){
+        $this->delete_convert($id, 'debit_note');
+
+        $payment_account = get_option('acc_debit_note_payment_account');
+        $deposit_to = get_option('acc_debit_note_deposit_to');
+        $affectedRows = 0;
+
+        if(get_option('acc_close_the_books') == 1){
+            if(strtotime(date('Y-m-d')) <= strtotime(get_option('acc_closing_date')) && strtotime(date('Y-m-d')) > strtotime(get_option('acc_closing_date'))){
+                return false;
+            }
+        }
+
+        $this->db->where('id', $id);
+        $debit_note_apply = $this->db->get(db_prefix() . 'pur_debits')->row();
+
+        $this->load->model('purchase/purchase_model');
+        $debit_note = $this->purchase_model->get_debit_note($debit_note_apply->debit_id);
+
+        $this->load->model('currencies_model');
+        $currency = $this->currencies_model->get_base_currency();
+
+        $debit_note_total = $debit_note_apply->amount;
+        $currency_rate = 0;
+        if($debit_note->currency_name != $currency->name){
+            $currency_rate = acc_get_currency_rate($debit_note->currency_name, $currency->name);
+            $debit_note_total = round($currency_rate * $debit_note_apply->amount, 2);
+        }
+
+        if(get_option('acc_debit_note_automatic_conversion') == 1){
+            $node = [];
+            $node['split'] = $payment_account;
+            $node['account'] = $deposit_to;
+            $node['vendor'] = $debit_note->vendorid;
+            $node['debit'] = $debit_note_total;
+            $node['credit'] = 0;
+            $node['date'] = $debit_note_apply->date;
+            $node['description'] = '';
+            $node['rel_id'] = $id;
+            $node['rel_type'] = 'debit_note';
+            $node['datecreated'] = date('Y-m-d H:i:s');
+            $node['addedfrom'] = get_staff_user_id();
+            $node['currency_rate'] = $currency_rate;
+            $data_insert[] = $node;
+
+            $node = [];
+            $node['split'] = $deposit_to;
+            $node['vendor'] = $debit_note->vendorid;
+            $node['account'] = $payment_account;
+            $node['date'] = $debit_note_apply->date;
+            $node['debit'] = 0;
+            $node['credit'] = $debit_note_total;
+            $node['description'] = '';
+            $node['rel_id'] = $id;
+            $node['rel_type'] = 'debit_note';
+            $node['datecreated'] = date('Y-m-d H:i:s');
+            $node['addedfrom'] = get_staff_user_id();
+            $node['currency_rate'] = $currency_rate;
+            $data_insert[] = $node;
+        }
+
+        if($data_insert != []){
+            $affectedRows = $this->db->insert_batch(db_prefix().'acc_account_history', $data_insert);
+        }
+            
+        if ($affectedRows > 0) {
+            $this->db->where('id', $id);
+            $this->db->update(db_prefix().'pur_debits', ['acc_mapping' => 1]);
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Automatic debit note conversion
+     * @param  integer $payment_id 
+     * @return boolean
+     */
+    public function automatic_debit_note_refund_conversion($id){
+
+        if(get_option('acc_debit_note_refund_automatic_conversion') != 1){
+            return false;
+        }
+
+        $this->delete_convert($id, 'debit_note_refund');
+
+        $this->load->model('purchase/purchase_model');
+        $debit_note_refund = $this->purchase_model->get_refund($id);
+
+        $payment_account = get_option('acc_debit_note_refund_payment_account');
+        $deposit_to = get_option('acc_debit_note_refund_deposit_to');
+        $affectedRows = 0;
+
+        if(get_option('acc_close_the_books') == 1){
+            if(strtotime($debit_note_refund->refunded_on) <= strtotime(get_option('acc_closing_date')) && strtotime(date('Y-m-d')) > strtotime(get_option('acc_closing_date'))){
+                return false;
+            }
+        }
+
+        $debit_note = $this->purchase_model->get_debit_note($debit_note_refund->debit_note_id);
+
+        $this->load->model('currencies_model');
+        $currency = $this->currencies_model->get_base_currency();
+
+        $total = $debit_note_refund->amount;
+        $currency_rate = 0;
+        if($debit_note->currency_name != $currency->name){
+            $currency_rate = acc_get_currency_rate($debit_note->currency_name, $currency->name);
+            $total = round($currency_rate * $debit_note_refund->amount, 2);
+        }
+
+        $data_insert = [];
+        if(get_option('acc_active_payment_mode_mapping') == 1 && $debit_note_refund->payment_mode != ''){
+            $payment_mode_mapping = $this->get_payment_mode_mapping($debit_note_refund->payment_mode);
+
+            if($payment_mode_mapping){
+                $node = [];
+                $node['split'] = $payment_mode_mapping->debit_note_refund_payment_account;
+                $node['account'] = $payment_mode_mapping->debit_note_refund_deposit_to;
+                $node['debit'] = $total;
+                $node['credit'] = 0;
+                $node['vendor'] = $debit_note->vendorid;
+                $node['date'] = $debit_note_refund->refunded_on;
+                $node['description'] = '';
+                $node['rel_id'] = $id;
+                $node['rel_type'] = 'debit_note_refund';
+                $node['datecreated'] = date('Y-m-d H:i:s');
+                $node['addedfrom'] = get_staff_user_id();
+                $node['currency_rate'] = $currency_rate;
+                $data_insert[] = $node;
+
+                $node = [];
+                $node['split'] = $payment_mode_mapping->debit_note_refund_deposit_to;
+                $node['vendor'] = $debit_note->vendorid;
+                $node['account'] = $payment_mode_mapping->debit_note_refund_payment_account;
+                $node['date'] = $debit_note_refund->refunded_on;
+                $node['debit'] = 0;
+                $node['credit'] = $total;
+                $node['description'] = '';
+                $node['rel_id'] = $id;
+                $node['rel_type'] = 'debit_note_refund';
+                $node['datecreated'] = date('Y-m-d H:i:s');
+                $node['addedfrom'] = get_staff_user_id();
+                $node['currency_rate'] = $currency_rate;
+                $data_insert[] = $node;
+            }
+        }
+           
+        if(count($data_insert) == 0){
+            $node = [];
+            $node['split'] = $payment_account;
+            $node['account'] = $deposit_to;
+            $node['vendor'] = $debit_note->vendorid;
+            $node['debit'] = $total;
+            $node['credit'] = 0;
+            $node['date'] = $debit_note_refund->refunded_on;
+            $node['description'] = '';
+            $node['rel_id'] = $id;
+            $node['rel_type'] = 'debit_note_refund';
+            $node['datecreated'] = date('Y-m-d H:i:s');
+            $node['addedfrom'] = get_staff_user_id();
+            $node['currency_rate'] = $currency_rate;
+            $data_insert[] = $node;
+
+            $node = [];
+            $node['split'] = $deposit_to;
+            $node['vendor'] = $debit_note->vendorid;
+            $node['account'] = $payment_account;
+            $node['date'] = $debit_note_refund->refunded_on;
+            $node['debit'] = 0;
+            $node['credit'] = $total;
+            $node['description'] = '';
+            $node['rel_id'] = $id;
+            $node['rel_type'] = 'debit_note_refund';
+            $node['datecreated'] = date('Y-m-d H:i:s');
+            $node['addedfrom'] = get_staff_user_id();
+            $node['currency_rate'] = $currency_rate;
+            $data_insert[] = $node;
+        }
+
+        if($data_insert != []){
+            $affectedRows = $this->db->insert_batch(db_prefix().'acc_account_history', $data_insert);
+        }
+            
+        if ($affectedRows > 0) {
+            $this->db->where('id', $id);
+            $this->db->update(db_prefix().'pur_debits_refunds', ['acc_mapping' => 1]);
+            return true;
+        }
+
+        return false;
+    }
+
+    public function get_credit_note_refund_data_convert($id, $type){
+                
+
+        $this->db->select('*, '.db_prefix().'creditnote_refunds.id as id,'.db_prefix().'currencies.name as currency_name, '.db_prefix() . 'payment_modes.name as payment_mode_name',);
+        $this->db->where(db_prefix().'creditnote_refunds.id', $id);
+        $this->db->join(db_prefix().'creditnotes', db_prefix() . 'creditnotes.id = ' . db_prefix() . 'creditnote_refunds.credit_note_id', 'left');
+        $this->db->join(db_prefix().'currencies', db_prefix() . 'currencies.id = ' . db_prefix() . 'creditnotes.currency', 'left');
+        $this->db->join(db_prefix().'payment_modes', db_prefix() . 'payment_modes.id = ' . db_prefix() . 'creditnote_refunds.payment_mode', 'left');
+        $credit_note = $this->db->get(db_prefix().'creditnote_refunds')->row();
+
+        $this->load->model('currencies_model');
+        $currency = $this->currencies_model->get_base_currency();
+
+        $html = '<table class="table border table-striped no-margin">
+                  <tbody>
+                    <tr class="project-overview">
+                        <td class="bold">'. _l('credit_note_number').'</td>
+                        <td><a href="'.admin_url('credit_notes/list_credit_notes/'.$credit_note->id).'" target="_blank">'. format_credit_note_number($credit_note->credit_note_id) .'</a></td>
+                        <td></td>
+                     </tr>
+                     <tr class="project-overview">
+                        <td class="bold">'. _l('date').'</td>
+                        <td>'. _d($credit_note->refunded_on) .'</td>
+                        <td></td>
+                     </tr>
+                     <tr class="project-overview">
+                        <td class="bold" width="30%">'. _l('payment_mode').'</td>
+                        <td>'.e($credit_note->payment_mode_name) .'</td>
+                        <td></td>
+                     </tr>
+                     <tr class="project-overview">
+                        <td class="bold">'. _l('credit_note_amount').'</td>
+                        <td>'. app_format_money($credit_note->amount, $credit_note->currency_name) .'</td>
+                        <td></td>
+                     </tr>';
+        $amount = 1;
+
+
+        $_html = '';
+        if($credit_note->currency_name != $currency->name){
+            $amount = acc_get_currency_rate($credit_note->currency_name, $currency->name);
+
+            $edit_template = "";
+            $edit_template .= render_input('edit_exchange_rate','exchange_rate', $amount, 'number');
+            $edit_template .= "<div class='text-center mtop10'>";
+            $edit_template .= "<button type='button' class='btn btn-success edit_conversion_rate_action'>"._l('copy_task_confirm')."</button>";
+            $edit_template .= "</div>";
+            $_html .= form_hidden('currency_from', $credit_note->currency_name);
+            $_html .= form_hidden('currency_to', $currency->name);
+            $_html .= form_hidden('exchange_rate', $amount);
+            $_html .= form_hidden('payment_amount', $credit_note->amount);
+            $_html .= '<div class="row"><div class="col-md-12"><label class="currency_converter_label th font-medium mbot15 pull-left">1 '.$credit_note->currency_name.' = '.$amount.' '.$currency->name.'</label><a href="#" onclick="return false;" data-placement="bottom" data-toggle="popover" data-content="'. htmlspecialchars($edit_template) .'" data-html="true" data-original-title class="pull-left mleft5 font-medium-xs"><i class="fa fa-pencil-square"></i></a><br></div></div>';
+            $old_currency_rate = $this->get_old_currency_rate($id, $type);
+            if($old_currency_rate != 0){
+                $html .=   '<tr class="project-overview">
+                            <td class="bold">'. _l('amount_after_convert').'</td>
+                            <td>'.app_format_money(round($old_currency_rate*$credit_note->amount, 4), $currency->name).'</td>
+                            <td>1 '.$credit_note->currency_name.' = '.$old_currency_rate.' '.$currency->name.'</td>
+                         </tr>';
+            }
+            $html .=   '<tr class="project-overview">
+                            <td class="bold">'. _l('amount_after_convert').'('._l('acc_new').')</td>
+                            <td class="amount_after_convert">'.app_format_money(round($amount*$credit_note->amount, 4), $currency->name).'</td>
+                            <td>'.$_html.'</td>
+                         </tr>';
+        }
+        $html .=   '</tbody>
+              </table>';
+                  
+        $html .=   '</tbody>
+              </table>';
+
+        return ['html' => $html];
+    }
+
+    /**
+     * count debit_note not convert yet
+     * @param  integer $currency
+     * @param  string $where
+     * @return object
+     */
+    public function count_debit_note_not_convert_yet($currency = '', $where = ''){
+        $where_currency = '';
+        if($currency != ''){
+            $where_currency = 'and currency = '.$currency;
+            $this->db->where('currency', $currency);
+        }
+
+        if($where != ''){
+            $this->db->where($where);
+            $where = ' AND '.$where;
+        }
+
+        $this->db->where('status != 3');
+        $debitnote_total = $this->db->count_all_results(db_prefix().'pur_debit_notes');
+
+        $count = $this->db->query('
+            SELECT COUNT(1) as total FROM (select count(*) from ' . db_prefix() . 'acc_account_history 
+            LEFT JOIN ' . db_prefix() . 'pur_debit_notes ON ' . db_prefix() . 'acc_account_history.rel_id = ' . db_prefix() . 'pur_debit_notes.id  
+            WHERE ' . db_prefix() . 'acc_account_history.rel_type = "debit_note" '.$where_currency. $where.' GROUP BY rel_id) a')->row()->total;
+
+        return $debitnote_total-$count;
+
+    }
+
+    /**
+     * count debit_note apply not convert yet
+     * @param  integer $currency
+     * @param  string $where
+     * @return object
+     */
+    public function count_debit_note_apply_not_convert_yet($currency = '', $where = ''){
+        $where_currency = '';
+        if($currency != ''){
+            $where_currency = 'and currency = '.$currency;
+            $this->db->where('currency', $currency);
+        }
+
+        if($where != ''){
+            $this->db->where($where);
+            $where = ' AND '.$where;
+        }
+
+        $debitnote_total = $this->db->count_all_results(db_prefix().'pur_debits');
+
+        $count = $this->db->query('
+            SELECT COUNT(1) as total FROM (select count(*) from ' . db_prefix() . 'acc_account_history 
+            LEFT JOIN ' . db_prefix() . 'pur_debits ON ' . db_prefix() . 'acc_account_history.rel_id = ' . db_prefix() . 'pur_debits.id  
+            WHERE ' . db_prefix() . 'acc_account_history.rel_type = "debit_note" '.$where_currency. $where.' GROUP BY rel_id) a')->row()->total;
+
+        return $debitnote_total-$count;
+
+    }
+
+    /**
+     * count debit note refund not convert yet
+     * @param  integer $currency
+     * @param  string $where
+     * @return object
+     */
+    public function count_debit_note_refund_not_convert_yet($currency = '', $where = ''){
+        $where_currency = '';
+        if($currency != ''){
+            $where_currency = 'and currency = '.$currency;
+            $this->db->where('currency', $currency);
+        }
+
+        if($where != ''){
+            $this->db->where($where);
+            $where = ' AND '.$where;
+        }
+
+        $this->db->join(db_prefix().'pur_debit_notes', db_prefix() . 'pur_debits_refunds.debit_note_id = ' . db_prefix() . 'pur_debit_notes.id', 'left');
+        $debitnote_total = $this->db->count_all_results(db_prefix().'pur_debits_refunds');
+
+        $count = $this->db->query('
+            SELECT COUNT(1) as total FROM (select count(*) from ' . db_prefix() . 'acc_account_history 
+            LEFT JOIN ' . db_prefix() . 'pur_debits_refunds ON ' . db_prefix() . 'acc_account_history.rel_id = ' . db_prefix() . 'pur_debits_refunds.id  
+            WHERE ' . db_prefix() . 'acc_account_history.rel_type = "debit_note_refund" '.$where_currency. $where.' GROUP BY rel_id) a')->row()->total;
+
+        return $debitnote_total-$count;
+    }
+
+    public function get_debit_note_applied_data_convert($id, $type){
+
+        $this->db->select('*, '.db_prefix().'pur_debits.id as id, '.db_prefix().'currencies.name as currency_name');
+        $this->db->where(db_prefix().'pur_debits.id', $id);
+        $this->db->join(db_prefix().'pur_debit_notes', db_prefix() . 'pur_debit_notes.id = ' . db_prefix() . 'pur_debits.debit_id', 'left');
+        $this->db->join(db_prefix().'currencies', db_prefix() . 'currencies.id = ' . db_prefix() . 'pur_debit_notes.currency', 'left');
+        $debit_note = $this->db->get(db_prefix().'pur_debits')->row();
+
+        $this->load->model('currencies_model');
+        $currency = $this->currencies_model->get_base_currency();
+
+        $html = '<table class="table border table-striped no-margin">
+                  <tbody>
+                    <tr class="project-overview">
+                        <td class="bold">'. _l('debit_note_number').'</td>
+                        <td><a href="'.admin_url('debit_notes/list_debit_notes/'.$debit_note->debit_id).'">'. format_debit_note_number($debit_note->debit_id) .'</a></td>
+                        <td></td>
+                     </tr>
+                     <tr class="project-overview">
+                        <td class="bold" width="30%">'. _l('invoice').'</td>
+                        <td>'.'<a href="'.admin_url('invoices/list_invoices/'.$debit_note->invoice_id).'">'. get_pur_invoice_number($debit_note->invoice_id) .'</a>' .'</td>
+                        <td></td>
+                     </tr>
+                     <tr class="project-overview">
+                        <td class="bold">'. _l('date').'</td>
+                        <td>'. _d($debit_note->date) .'</td>
+                        <td></td>
+                     </tr>
+                     <tr class="project-overview">
+                        <td class="bold">'. _l('amount_debited').'</td>
+                        <td>'. app_format_money($debit_note->amount, $debit_note->currency_name) .'</td>
+                        <td></td>
+                     </tr>';
+        $amount = 1;
+            
+        $_html = '';
+        if($debit_note->currency_name != $currency->name){
+            $amount = acc_get_currency_rate($debit_note->currency_name, $currency->name);
+
+            $edit_template = "";
+            $edit_template .= render_input('edit_exchange_rate','exchange_rate', $amount, 'number');
+            $edit_template .= "<div class='text-center mtop10'>";
+            $edit_template .= "<button type='button' class='btn btn-success edit_conversion_rate_action'>"._l('copy_task_confirm')."</button>";
+            $edit_template .= "</div>";
+            $_html .= form_hidden('currency_from', $debit_note->currency_name);
+            $_html .= form_hidden('currency_to', $currency->name);
+            $_html .= form_hidden('exchange_rate', $amount);
+            $_html .= form_hidden('payment_amount', $debit_note->amount);
+            $_html .= '<div class="row"><div class="col-md-12"><label class="currency_converter_label th font-medium mbot15 pull-left">1 '.$debit_note->currency_name.' = '.$amount.' '.$currency->name.'</label><a href="#" onclick="return false;" data-placement="bottom" data-toggle="popover" data-content="'. htmlspecialchars($edit_template) .'" data-html="true" data-original-title class="pull-left mleft5 font-medium-xs"><i class="fa fa-pencil-square"></i></a><br></div></div>';
+            $old_currency_rate = $this->get_old_currency_rate($id, $type);
+            if($old_currency_rate != 0){
+                $html .=   '<tr class="project-overview">
+                            <td class="bold">'. _l('amount_after_convert').'</td>
+                            <td>'.app_format_money(round($old_currency_rate*$debit_note->amount, 4), $currency->name).'</td>
+                            <td>1 '.$debit_note->currency_name.' = '.$old_currency_rate.' '.$currency->name.'</td>
+                         </tr>';
+            }
+            $html .=   '<tr class="project-overview">
+                            <td class="bold">'. _l('amount_after_convert').'('._l('acc_new').')</td>
+                            <td class="amount_after_convert">'.app_format_money(round($amount*$debit_note->amount, 4), $currency->name).'</td>
+                            <td>'.$_html.'</td>
+                         </tr>';
+        }
+        $html .=   '</tbody>
+              </table>';
+                  
+        $html .=   '</tbody>
+              </table>';
+
+        return ['html' => $html];
+    }
+
+    public function get_debit_note_data_convert($id, $type){
+
+        $this->db->select('*, '.db_prefix().'pur_debit_notes.id as id, '.db_prefix().'currencies.name as currency_name');
+        $this->db->where(db_prefix().'pur_debit_notes.id', $id);
+        $this->db->join(db_prefix().'currencies', db_prefix() . 'currencies.id = ' . db_prefix() . 'pur_debit_notes.currency', 'left');
+        $debit_note = $this->db->get(db_prefix().'pur_debit_notes')->row();
+
+        $this->load->model('currencies_model');
+        $currency = $this->currencies_model->get_base_currency();
+
+        $html = '<table class="table border table-striped no-margin">
+                  <tbody>
+                    <tr class="project-overview">
+                        <td class="bold">'. _l('debit_note_number').'</td>
+                        <td><a href="'.admin_url('debit_notes/list_debit_notes/'.$debit_note->id).'" target="_blank">'. format_debit_note_number($debit_note->id) .'</a></td>
+                        <td></td>
+                     </tr>
+                     <tr class="project-overview">
+                        <td class="bold">'. _l('debit_date').'</td>
+                        <td>'. _d($debit_note->date) .'</td>
+                        <td></td>
+                     </tr>
+                     <tr class="project-overview">
+                        <td class="bold" width="30%">'. _l('vendor').'</td>
+                        <td>'.'<a href="'.admin_url('purchase/vendor/' . $debit_note->vendorid).'" target="_blank">'. get_vendor_company_name($debit_note->vendorid) .'</a>' .'</td>
+                        <td></td>
+                     </tr>
+                    
+                     <tr class="project-overview">
+                        <td class="bold">'. _l('debit_note_status').'</td>
+                        <td>'. format_debit_note_status($debit_note->status) .'</td>
+                        <td></td>
+                     </tr>
+                     <tr class="project-overview">
+                        <td class="bold">'. _l('reference_no').'</td>
+                        <td>'. e($debit_note->reference_no) .'</td>
+                        <td></td>
+                     </tr>
+                     <tr class="project-overview">
+                        <td class="bold">'. _l('debit_note_amount').'</td>
+                        <td>'. app_format_money($debit_note->total, $debit_note->currency_name) .'</td>
+                        <td></td>
+                     </tr>';
+        $amount = 1;
+
+
+        $_html = '';
+        if($debit_note->currency_name != $currency->name){
+            $amount = acc_get_currency_rate($debit_note->currency_name, $currency->name);
+
+            $edit_template = "";
+            $edit_template .= render_input('edit_exchange_rate','exchange_rate', $amount, 'number');
+            $edit_template .= "<div class='text-center mtop10'>";
+            $edit_template .= "<button type='button' class='btn btn-success edit_conversion_rate_action'>"._l('copy_task_confirm')."</button>";
+            $edit_template .= "</div>";
+            $_html .= form_hidden('currency_from', $debit_note->currency_name);
+            $_html .= form_hidden('currency_to', $currency->name);
+            $_html .= form_hidden('exchange_rate', $amount);
+            $_html .= form_hidden('payment_amount', $debit_note->total);
+            $_html .= '<div class="row"><div class="col-md-12"><label class="currency_converter_label th font-medium mbot15 pull-left">1 '.$debit_note->currency_name.' = '.$amount.' '.$currency->name.'</label><a href="#" onclick="return false;" data-placement="bottom" data-toggle="popover" data-content="'. htmlspecialchars($edit_template) .'" data-html="true" data-original-title class="pull-left mleft5 font-medium-xs"><i class="fa fa-pencil-square"></i></a><br></div></div>';
+            $old_currency_rate = $this->get_old_currency_rate($id, $type);
+            if($old_currency_rate != 0){
+                $html .=   '<tr class="project-overview">
+                            <td class="bold">'. _l('amount_after_convert').'</td>
+                            <td>'.app_format_money(round($old_currency_rate*$debit_note->total, 4), $currency->name).'</td>
+                            <td>1 '.$debit_note->currency_name.' = '.$old_currency_rate.' '.$currency->name.'</td>
+                         </tr>';
+            }
+            $html .=   '<tr class="project-overview">
+                            <td class="bold">'. _l('amount_after_convert').'('._l('acc_new').')</td>
+                            <td class="amount_after_convert">'.app_format_money(round($amount*$debit_note->total, 4), $currency->name).'</td>
+                            <td>'.$_html.'</td>
+                         </tr>';
+        }
+        $html .=   '</tbody>
+              </table>';
+                  
+        $html .=   '</tbody>
+              </table>';
+
+        return ['html' => $html];
+    }
+
+    public function get_debit_note_refund_data_convert($id, $type){
+                
+
+        $this->db->select('*, '.db_prefix().'pur_debits_refunds.id as id,'.db_prefix().'currencies.name as currency_name, '.db_prefix() . 'payment_modes.name as payment_mode_name',);
+        $this->db->where(db_prefix().'pur_debits_refunds.id', $id);
+        $this->db->join(db_prefix().'pur_debit_notes', db_prefix() . 'pur_debit_notes.id = ' . db_prefix() . 'pur_debits_refunds.debit_note_id', 'left');
+        $this->db->join(db_prefix().'currencies', db_prefix() . 'currencies.id = ' . db_prefix() . 'pur_debit_notes.currency', 'left');
+        $this->db->join(db_prefix().'payment_modes', db_prefix() . 'payment_modes.id = ' . db_prefix() . 'pur_debits_refunds.payment_mode', 'left');
+        $debit_note = $this->db->get(db_prefix().'pur_debits_refunds')->row();
+
+        $this->load->model('currencies_model');
+        $currency = $this->currencies_model->get_base_currency();
+
+        $html = '<table class="table border table-striped no-margin">
+                  <tbody>
+                    <tr class="project-overview">
+                        <td class="bold">'. _l('debit_note_number').'</td>
+                        <td><a href="'.admin_url('debit_notes/list_debit_notes/'.$debit_note->id).'" target="_blank">'. format_debit_note_number($debit_note->debit_note_id) .'</a></td>
+                        <td></td>
+                     </tr>
+                     <tr class="project-overview">
+                        <td class="bold">'. _l('date').'</td>
+                        <td>'. _d($debit_note->refunded_on) .'</td>
+                        <td></td>
+                     </tr>
+                     <tr class="project-overview">
+                        <td class="bold" width="30%">'. _l('payment_mode').'</td>
+                        <td>'.e($debit_note->payment_mode_name) .'</td>
+                        <td></td>
+                     </tr>
+                     <tr class="project-overview">
+                        <td class="bold">'. _l('debit_note_amount').'</td>
+                        <td>'. app_format_money($debit_note->amount, $debit_note->currency_name) .'</td>
+                        <td></td>
+                     </tr>';
+        $amount = 1;
+
+
+        $_html = '';
+        if($debit_note->currency_name != $currency->name){
+            $amount = acc_get_currency_rate($debit_note->currency_name, $currency->name);
+
+            $edit_template = "";
+            $edit_template .= render_input('edit_exchange_rate','exchange_rate', $amount, 'number');
+            $edit_template .= "<div class='text-center mtop10'>";
+            $edit_template .= "<button type='button' class='btn btn-success edit_conversion_rate_action'>"._l('copy_task_confirm')."</button>";
+            $edit_template .= "</div>";
+            $_html .= form_hidden('currency_from', $debit_note->currency_name);
+            $_html .= form_hidden('currency_to', $currency->name);
+            $_html .= form_hidden('exchange_rate', $amount);
+            $_html .= form_hidden('payment_amount', $debit_note->amount);
+            $_html .= '<div class="row"><div class="col-md-12"><label class="currency_converter_label th font-medium mbot15 pull-left">1 '.$debit_note->currency_name.' = '.$amount.' '.$currency->name.'</label><a href="#" onclick="return false;" data-placement="bottom" data-toggle="popover" data-content="'. htmlspecialchars($edit_template) .'" data-html="true" data-original-title class="pull-left mleft5 font-medium-xs"><i class="fa fa-pencil-square"></i></a><br></div></div>';
+            $old_currency_rate = $this->get_old_currency_rate($id, $type);
+            if($old_currency_rate != 0){
+                $html .=   '<tr class="project-overview">
+                            <td class="bold">'. _l('amount_after_convert').'</td>
+                            <td>'.app_format_money(round($old_currency_rate*$debit_note->amount, 4), $currency->name).'</td>
+                            <td>1 '.$debit_note->currency_name.' = '.$old_currency_rate.' '.$currency->name.'</td>
+                         </tr>';
+            }
+            $html .=   '<tr class="project-overview">
+                            <td class="bold">'. _l('amount_after_convert').'('._l('acc_new').')</td>
+                            <td class="amount_after_convert">'.app_format_money(round($amount*$debit_note->amount, 4), $currency->name).'</td>
+                            <td>'.$_html.'</td>
+                         </tr>';
+        }
+        $html .=   '</tbody>
+              </table>';
+                  
+        $html .=   '</tbody>
+              </table>';
+
+        return ['html' => $html];
+    }
+
+    /**
+     * get item_groups are not yet auto
+     * @return array
+     */
+    public function get_item_groups_not_yet_auto(){
+        $this->db->where('((select count(*) from ' . db_prefix() . 'acc_item_group_automatics where ' . db_prefix() . 'acc_item_group_automatics.item_group_id = ' . db_prefix() . 'items_groups.id) = 0)');
+        return $this->db->get(db_prefix().'items_groups')->result_array();
+    }
+
+    /**
+     * get item_groups
+     * @param  string $id
+     * @param  array  $where
+     * @return array or object
+     */
+    public function get_item_groups($id = '', $where = [])
+    {
+        if (is_numeric($id)) {
+            $this->db->where('id', $id);
+            return $this->db->get(db_prefix() . 'items_groups')->row();
+        }
+
+        $this->db->where($where);
+        $this->db->order_by('id', 'desc');
+        return $this->db->get(db_prefix() . 'items_groups')->result_array();
+    }
+
+    /**
+     * add item automatic
+     * @param array $data
+     * @return boolean
+     */
+    public function add_item_group_automatic($data){
+        if(isset($data['id'])){
+            unset($data['id']);
+        }
+        $item_groups = [];
+        if(isset($data['item_group'])){
+            $item_groups = $data['item_group'];
+            unset($data['item_group']);
+        }
+        $data_insert = [];
+        foreach ($item_groups as $value) {
+            $this->db->where('item_group_id', $value);
+            $count = $this->db->count_all_results(db_prefix() . 'acc_item_group_automatics');
+
+            if($count == 0){
+                $node = [];
+                $node['item_group_id'] = $value;
+                $node['inventory_asset_account'] = $data['inventory_asset_account'];
+                $node['income_account'] = $data['income_account'];
+                $node['expense_account'] = $data['expense_account'];
+
+                $data_insert[] = $node;
+            }
+
+        }
+
+        $affectedRows = $this->db->insert_batch(db_prefix().'acc_item_group_automatics',  $data_insert);
+
+        if ($affectedRows > 0) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * update item automatic
+     * @param array $data
+     * @param  integer $id 
+     * @return boolean
+     */
+    public function update_item_group_automatic($data, $id){
+        $this->db->where('id', $id);
+        $this->db->update(db_prefix().'acc_item_group_automatics', $data);
+       
+        if ($this->db->affected_rows() > 0) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * delete item automatic
+     * @param integer $id
+     * @return boolean
+     */
+
+    public function delete_item_group_automatic($id)
+    {
+        $this->db->where('id', $id);
+        $this->db->delete(db_prefix() . 'acc_item_group_automatics');
+        if ($this->db->affected_rows() > 0) {
+            return true;
+        }
+        return false;
+    }
+    
+    /**
+     * Gets the item_group automatic
+     *
+     * @param      string  $item_group_id  The item_groupid
+     *
+     * @return     object  The item_group automatic.
+     */
+    public function get_item_group_automatic($item_group_id) {
+
+        $this->db->where('item_group_id', $item_group_id);
+        return $this->db->get(db_prefix() . 'acc_item_group_automatics')->row();
+    }
+
+    public function recurring_bills()
+    {
+        $auto_operation_hour = 9;
+        $hour_now            = date('G');
+        if ($hour_now != $auto_operation_hour) {
+            return;
+        }
+
+        $this->db->from(db_prefix() . 'expenses');
+        $this->db->where('is_bill', 1);
+        $this->db->where('acc_recurring !=', 0);
+        $this->db->where('(acc_cycles != acc_total_cycles OR acc_cycles=0)');
+        $bills = $this->db->get()->result_array();
+
+        foreach ($bills as $bill) {
+            $date = new DateTime(date('Y-m-d'));
+            // Check if is first recurring
+            if (!$bill['acc_last_recurring_date']) {
+                $last_recurring_date = date('Y-m-d', strtotime($bill['date']));
+            } else {
+                $last_recurring_date = date('Y-m-d', strtotime($bill['acc_last_recurring_date']));
+            }
+            if ($bill['acc_custom_recurring'] == 0) {
+                $bill['acc_recurring_type'] = 'MONTH';
+            }
+
+            $re_create_at = date('Y-m-d', strtotime('+' . $bill['acc_recurring'] . ' ' . strtoupper($bill['acc_recurring_type']), strtotime($last_recurring_date)));
+
+            if (date('Y-m-d') >= $re_create_at) {
+                $this->duplicate_bill($bill['id'], $re_create_at);
+            }
+        }
+    }
+
+    public function recurring_bill_by_id($id)
+    {
+        $this->db->from(db_prefix() . 'expenses');
+        $this->db->where('id', $id);
+        $this->db->where('is_bill', 1);
+        $this->db->where('acc_recurring !=', 0);
+        $this->db->where('(acc_cycles != acc_total_cycles OR acc_cycles=0)');
+        $bill = $this->db->get()->row_array();
+
+        if ($bill) {
+            // Check if is first recurring
+            if (!$bill['acc_last_recurring_date']) {
+                $last_recurring_date = date('Y-m-d', strtotime($bill['date']));
+            } else {
+                $last_recurring_date = date('Y-m-d', strtotime($bill['acc_last_recurring_date']));
+            }
+            if ($bill['acc_custom_recurring'] == 0) {
+                $bill['acc_recurring_type'] = 'MONTH';
+            }
+
+            $re_create_at = date('Y-m-d', strtotime('+' . $bill['acc_recurring'] . ' ' . strtoupper($bill['acc_recurring_type']), strtotime($last_recurring_date)));
+
+            if (date('Y-m-d') >= $re_create_at) {
+                $this->duplicate_bill($bill['id'], $re_create_at);
+                $this->recurring_bill_by_id($id);
+            }
+        }
+    }
+
+    private function duplicate_bill($id, $re_create_at)
+    {
+        $_bill = $this->get_bill($id);
+        if (!$_bill) {
+            return false;
+        }
+
+        $new_bill_data = [];
+        $new_bill_data['vendor'] = $_bill->vendor;
+        $new_bill_data['amount'] = $_bill->amount;
+        $new_bill_data['reference_no'] = $_bill->reference_no;
+        $new_bill_data['expense_name'] = $_bill->expense_name;
+        $new_bill_data['note'] = $_bill->note;
+        $new_bill_data['date'] = $re_create_at;
+        $new_bill_data['due_date'] = $re_create_at;
+        $new_bill_data['tax'] = $_bill->tax;
+        $new_bill_data['tax2'] = $_bill->tax2;
+        $new_bill_data['currency'] = $_bill->currency;
+        $new_bill_data['is_bill'] = 1;
+        $new_bill_data['status'] = 0;
+        $new_bill_data['addedfrom'] = $_bill->addedfrom;
+        $new_bill_data['dateadded'] = date('Y-m-d H:i:s');
+        $new_bill_data['acc_is_recurring_from'] = $_bill->id;
+        $new_bill_data['acc_recurring'] = 0;
+        $new_bill_data['acc_recurring_type'] = null;
+        $new_bill_data['acc_custom_recurring'] = 0;
+        $new_bill_data['acc_repeat_every'] = 0;
+        $new_bill_data['acc_cycles'] = 0;
+        $new_bill_data['acc_total_cycles'] = 0;
+        $new_bill_data['acc_last_recurring_date'] = null;
+        $new_bill_data['acc_class'] = $_bill->acc_class;
+
+        $this->db->insert(db_prefix() . 'expenses', $new_bill_data);
+        $insert_id = $this->db->insert_id();
+
+        if ($insert_id) {
+            $data_insert = [];
+
+            // Debit mappings
+            foreach ($_bill->debit_account as $acc) {
+                $data_insert[] = [
+                    'bill_id' => $insert_id,
+                    'type' => 'debit',
+                    'account' => $acc['account'],
+                    'amount' => $acc['amount'],
+                    'item_id' => 0,
+                    'qty' => 0,
+                    'cost' => 0,
+                    'description' => ''
+                ];
+            }
+
+            // Credit mappings
+            foreach ($_bill->credit_account as $acc) {
+                $data_insert[] = [
+                    'bill_id' => $insert_id,
+                    'type' => 'credit',
+                    'account' => $acc['account'],
+                    'amount' => $acc['amount'],
+                    'item_id' => 0,
+                    'qty' => 0,
+                    'cost' => 0,
+                    'description' => ''
+                ];
+            }
+
+            // Items mappings
+            foreach ($_bill->bill_items as $item) {
+                $data_insert[] = [
+                    'bill_id' => $insert_id,
+                    'type' => 'item',
+                    'account' => 0,
+                    'amount' => $item['amount'],
+                    'item_id' => $item['item_id'],
+                    'qty' => $item['qty'],
+                    'cost' => $item['cost'],
+                    'description' => $item['description']
+                ];
+            }
+
+            if ($data_insert != []) {
+                $this->db->insert_batch(db_prefix() . 'acc_bill_mappings', $data_insert);
+            }
+
+            // Update last recurring date to this bill
+            $this->db->where('id', $id);
+            $this->db->update(db_prefix() . 'expenses', [
+                'acc_last_recurring_date' => $re_create_at,
+            ]);
+
+            $this->db->where('id', $id);
+            $this->db->set('acc_total_cycles', 'acc_total_cycles+1', false);
+            $this->db->update(db_prefix() . 'expenses');
+
+            return $insert_id;
+        }
+
+        return false;
+    }
+
+    /**
+     * Get project budget by ID
+     */
+    public function get_project_budget($id = '')
+    {
+        if (is_numeric($id)) {
+            $this->db->where('id', $id);
+            return $this->db->get(db_prefix() . 'acc_project_budgets')->row();
+        }
+        return $this->db->get(db_prefix() . 'acc_project_budgets')->result_array();
+    }
+
+    /**
+     * Get budget details by budget ID
+     */
+    public function get_project_budget_details($budget_id)
+    {
+        $this->db->where('budget_id', $budget_id);
+        return $this->db->get(db_prefix() . 'acc_project_budget_details')->result_array();
+    }
+
+    /**
+     * Calculate summary budget for a project
+     */
+    public function get_project_budget_summary($project_id, $budget_id = null)
+    {
+        $breakdown = $this->get_project_budget_details_breakdown($project_id, $budget_id);
+
+        if ($budget_id) {
+            $budget = $this->db->where('id', $budget_id)->get(db_prefix() . 'acc_project_budgets')->row();
+        } else {
+            $this->db->where('project_id', $project_id);
+            $budget = $this->db->get(db_prefix() . 'acc_project_budgets')->row();
+        }
+
+        return [
+            'allocated' => $breakdown['total']['budget_amount'],
+            'spent' => $breakdown['total']['spent'],
+            'remaining' => $breakdown['total']['remaining'],
+            'budget_id' => $budget ? $budget->id : 0
+        ];
+    }
+
+    public function ensure_project_budget_enforcement_schema()
+    {
+        if ($this->db->table_exists(db_prefix() . 'acc_project_budget_mappings')) {
+            if (!$this->db->field_exists('budget_approval_status', db_prefix() . 'acc_project_budget_mappings')) {
+                $this->db->query('ALTER TABLE `' . db_prefix() . "acc_project_budget_mappings` ADD COLUMN `budget_approval_status` VARCHAR(30) NOT NULL DEFAULT 'approved'");
+            }
+            if (!$this->db->field_exists('budget_approval_note', db_prefix() . 'acc_project_budget_mappings')) {
+                $this->db->query('ALTER TABLE `' . db_prefix() . 'acc_project_budget_mappings` ADD COLUMN `budget_approval_note` TEXT NULL');
+            }
+            if (!$this->db->field_exists('budget_approved_by', db_prefix() . 'acc_project_budget_mappings')) {
+                $this->db->query('ALTER TABLE `' . db_prefix() . 'acc_project_budget_mappings` ADD COLUMN `budget_approved_by` INT(11) NULL');
+            }
+            if (!$this->db->field_exists('budget_approved_at', db_prefix() . 'acc_project_budget_mappings')) {
+                $this->db->query('ALTER TABLE `' . db_prefix() . 'acc_project_budget_mappings` ADD COLUMN `budget_approved_at` DATETIME NULL');
+            }
+        }
+
+        foreach (['acc_claims', 'acc_imprest_requests'] as $table) {
+            if ($this->db->table_exists(db_prefix() . $table) && !$this->db->field_exists('budget_approval_status', db_prefix() . $table)) {
+                $this->db->query('ALTER TABLE `' . db_prefix() . $table . "` ADD COLUMN `budget_approval_status` VARCHAR(30) NOT NULL DEFAULT 'approved'");
+            }
+        }
+    }
+
+    public function update_project_budget_mapping($rel_id, $rel_type, $project_id, $category_id, $amount, $budget_approval_status = 'approved') {
+        $this->ensure_project_budget_enforcement_schema();
+
+        $this->db->where('rel_id', $rel_id);
+        $this->db->where('rel_type', $rel_type);
+        $this->db->delete(db_prefix() . 'acc_project_budget_mappings');
+
+        if ($project_id > 0 && $category_id > 0) {
+            $this->db->insert(db_prefix() . 'acc_project_budget_mappings', [
+                'rel_id' => $rel_id,
+                'rel_type' => $rel_type,
+                'project_id' => $project_id,
+                'category_id' => $category_id,
+                'amount' => max(0, floatval($amount)),
+                'budget_approval_status' => $budget_approval_status
+            ]);
+        }
+    }
+
+    public function get_project_budget_enforcement_result($project_id, $category_id, $amount, $exclude_transaction_id = null, $type = 'po', $date = null)
+    {
+        $check = $this->check_project_budget($project_id, $category_id, $amount, $exclude_transaction_id, $type, $date);
+        $has_budget = isset($check['has_budget']) ? $check['has_budget'] : true;
+        $exceeded = $has_budget && floatval($amount) > floatval($check['remaining']);
+        $status = 'approved';
+
+        if ($exceeded && $check['enforcement'] == 'approval') {
+            $status = 'pending';
+        }
+
+        return [
+            'check' => $check,
+            'exceeded' => $exceeded,
+            'status' => $status,
+            'blocked' => $exceeded && $check['enforcement'] == 'disable',
+        ];
+    }
+
+    public function notify_project_budget_manager($project_id, $message, $link = '')
+    {
+        $budget = $this->db->where('project_id', $project_id)->order_by('id', 'DESC')->get(db_prefix() . 'acc_project_budgets')->row();
+        if (!$budget || empty($budget->owner_id)) {
+            return false;
+        }
+
+        $notified = add_notification([
+            'description' => $message,
+            'touserid' => $budget->owner_id,
+            'link' => $link,
+            'additional_data' => serialize([$message]),
+        ]);
+
+        if ($notified) {
+            pusher_trigger_notification([$budget->owner_id]);
+        }
+
+        return $notified;
+    }
+
+    public function get_project_budget_detail_link($project_id, $date = null)
+    {
+        if (empty($project_id)) {
+            return '';
+        }
+
+        $this->db->where('project_id', $project_id);
+        $this->db->where('status', 'approved');
+        $this->db->order_by('id', 'DESC');
+        $budgets = $this->db->get(db_prefix() . 'acc_project_budgets')->result_array();
+
+        if (empty($budgets)) {
+            return '';
+        }
+
+        if (!empty($date)) {
+            $date = to_sql_date($date);
+            foreach ($budgets as $budget) {
+                $start = $budget['start_date'];
+                $end = $budget['end_date'];
+                $match_start = empty($start) || strtotime($date) >= strtotime($start);
+                $match_end = empty($end) || strtotime($date) <= strtotime($end);
+
+                if ($match_start && $match_end) {
+                    return 'accounting/project_budget_detail/' . $budget['id'];
+                }
+            }
+        }
+
+        return 'accounting/project_budget_detail/' . $budgets[0]['id'];
+    }
+
+    private function get_budget_approval_notification_data($rel_type, $rel_id)
+    {
+        $data = [
+            'type' => ucfirst($rel_type),
+            'reference' => '#' . $rel_id,
+            'link' => '',
+            'project_id' => 0,
+        ];
+
+        if ($rel_type == 'expense') {
+            $expense = $this->db->select('id, project_id')->where('id', $rel_id)->get(db_prefix() . 'expenses')->row();
+            $data['type'] = _l('expense');
+            $data['reference'] = 'EXP-' . $rel_id;
+            $data['link'] = 'expenses/list_expenses/' . $rel_id;
+            $data['project_id'] = $expense ? intval($expense->project_id) : 0;
+        } elseif ($rel_type == 'po') {
+            $po = $this->db->select('id, project, pur_order_number, order_date')->where('id', $rel_id)->get(db_prefix() . 'pur_orders')->row();
+            $data['type'] = _l('purchase_order');
+            $data['reference'] = $po && !empty($po->pur_order_number) ? $po->pur_order_number : 'PO-' . $rel_id;
+            $data['link'] = 'purchase/purchase_order/' . $rel_id;
+            $data['project_id'] = $po ? intval($po->project) : 0;
+            if ($po) {
+                $budget_detail_link = $this->get_project_budget_detail_link($po->project, $po->order_date);
+                if ($budget_detail_link != '') {
+                    $data['link'] = $budget_detail_link;
+                }
+            }
+        } elseif ($rel_type == 'imprest') {
+            $imprest = $this->get_imprests($rel_id);
+            $data['type'] = _l('imprests');
+            $data['reference'] = $imprest && !empty($imprest->reference_no) ? $imprest->reference_no : 'IMP-' . $rel_id;
+            $data['link'] = 'accounting/view_imprest/' . $rel_id;
+            $data['project_id'] = $imprest ? intval($imprest->project_id) : 0;
+        } elseif ($rel_type == 'claim') {
+            $claim = $this->get_claims($rel_id);
+            $data['type'] = _l('claims');
+            $data['reference'] = 'CLM-' . $rel_id;
+            $data['link'] = 'accounting/view_claim/' . $rel_id;
+            $data['project_id'] = $claim ? intval($claim->project_id) : 0;
+        }
+
+        return $data;
+    }
+
+    public function send_budget_approval_required_notifications($rel_type, $rel_id)
+    {
+        $notification_data = $this->get_budget_approval_notification_data($rel_type, $rel_id);
+        $staff_ids = [];
+
+        $approver_id = intval(get_option('acc_budget_approver_id'));
+        if ($approver_id > 0) {
+            $staff_ids[] = $approver_id;
+        }
+
+        if (!empty($notification_data['project_id'])) {
+            $budget = $this->db->where('project_id', $notification_data['project_id'])
+                ->where('status', 'approved')
+                ->order_by('id', 'DESC')
+                ->get(db_prefix() . 'acc_project_budgets')
+                ->row();
+            if ($budget && intval($budget->owner_id) > 0) {
+                $staff_ids[] = intval($budget->owner_id);
+            }
+        }
+
+        $staff_ids = array_values(array_unique(array_filter($staff_ids)));
+        if (empty($staff_ids)) {
+            return false;
+        }
+
+        $this->load->model('staff_model');
+        $this->load->model('emails_model');
+
+        $sent = false;
+        $subject = _l('request_approval');
+        $message_text = 'Project Budget approval required for ' . $notification_data['type'] . ' ' . $notification_data['reference'];
+
+        foreach ($staff_ids as $staff_id) {
+            $staff = $this->staff_model->get($staff_id);
+            if (!$staff) {
+                continue;
+            }
+
+            $notified = add_notification([
+                'description' => 'acc_project_budget_approval_required',
+                'touserid' => $staff->staffid,
+                'link' => $notification_data['link'],
+                'additional_data' => serialize([$notification_data['type'] . ' ' . $notification_data['reference']]),
+            ]);
+
+            if ($notified) {
+                pusher_trigger_notification([$staff->staffid]);
+                $sent = true;
+            }
+
+            if (!empty($staff->email)) {
+                $message = $message_text . ': <a href="' . admin_url($notification_data['link']) . '">' . $notification_data['reference'] . '</a>';
+                $this->emails_model->send_simple_email($staff->email, $subject, $message);
+                $sent = true;
+            }
+        }
+
+        return $sent;
+    }
+
+    private function po_budget_base_amount_sql($amount_field = 'm.amount', $po_alias = 'p')
+    {
+        return '(CASE WHEN ' . $po_alias . '.currency_rate IS NOT NULL AND ' . $po_alias . '.currency_rate > 0 THEN ' . $amount_field . ' / ' . $po_alias . '.currency_rate ELSE ' . $amount_field . ' END)';
+    }
+
+    private function apply_project_budget_po_not_rejected_filter($po_alias = 'p')
+    {
+        $this->db->where($po_alias . '.approve_status !=', 3);
+        $this->db->group_start();
+        $this->db->where($po_alias . '.order_status !=', 'rejected');
+        $this->db->or_where($po_alias . '.order_status IS NULL', null, false);
+        $this->db->group_end();
+    }
+
+    public function set_budget_transaction_approval_status($rel_type, $rel_id, $status)
+    {
+        $this->ensure_project_budget_enforcement_schema();
+        $data = [
+            'budget_approval_status' => $status,
+        ];
+
+        if ($status == 'approved' || $status == 'rejected') {
+            $data['budget_approved_by'] = get_staff_user_id();
+            $data['budget_approved_at'] = date('Y-m-d H:i:s');
+        }
+
+        if (in_array($rel_type, ['po', 'expense'])) {
+            $this->db->where('rel_type', $rel_type);
+            $this->db->where('rel_id', $rel_id);
+            return $this->db->update(db_prefix() . 'acc_project_budget_mappings', $data);
+        }
+
+        if ($rel_type == 'claim') {
+            $this->db->where('id', $rel_id);
+            return $this->db->update(db_prefix() . 'acc_claims', ['budget_approval_status' => $status]);
+        }
+
+        if ($rel_type == 'imprest') {
+            $this->db->where('id', $rel_id);
+            return $this->db->update(db_prefix() . 'acc_imprest_requests', ['budget_approval_status' => $status]);
+        }
+
+        return false;
+    }
+
+    public function check_project_budget($project_id, $category_id, $amount, $exclude_transaction_id = null, $type = 'po', $date = null) {
+        $this->ensure_project_budget_enforcement_schema();
+
+        if (empty($date)) {
+            // Try to resolve date from DB if we are editing an existing transaction
+            if ($exclude_transaction_id > 0) {
+                if ($type == 'expense') {
+                    $exp = $this->db->select('date')->where('id', $exclude_transaction_id)->get(db_prefix() . 'expenses')->row();
+                    if ($exp) { $date = $exp->date; }
+                } elseif ($type == 'po') {
+                    $po = $this->db->select('order_date')->where('id', $exclude_transaction_id)->get(db_prefix() . 'pur_orders')->row();
+                    if ($po) { $date = $po->order_date; }
+                } elseif ($type == 'imprest') {
+                    $imp = $this->db->select('request_date')->where('id', $exclude_transaction_id)->get(db_prefix() . 'acc_imprest_requests')->row();
+                    if ($imp) { $date = $imp->request_date; }
+                } elseif ($type == 'claim') {
+                    $clm = $this->db->select('expense_date')->where('id', $exclude_transaction_id)->get(db_prefix() . 'acc_claims')->row();
+                    if ($clm) { $date = $clm->expense_date; }
+                }
+            }
+            if (empty($date)) {
+                $date = date('Y-m-d');
+            }
+        }
+        $date = to_sql_date($date);
+
+        // Find approved budget for this project that covers the transaction date
+        $this->db->where('project_id', $project_id);
+        $this->db->where('status', 'approved');
+        $budgets = $this->db->get(db_prefix() . 'acc_project_budgets')->result_array();
+        
+        $matched_budget_id = 0;
+        foreach ($budgets as $b) {
+            $start = $b['start_date'];
+            $end = $b['end_date'];
+            
+            $match_start = empty($start) || (strtotime($date) >= strtotime($start));
+            $match_end = empty($end) || (strtotime($date) <= strtotime($end));
+            
+            if ($match_start && $match_end) {
+                $matched_budget_id = $b['id'];
+                break;
+            }
+        }
+        
+        // If no approved budget covers the transaction date, project budget should not affect the transaction.
+        if ($matched_budget_id == 0) {
+            return [
+                'budget' => 0.0,
+                'allocated' => 0.0,
+                'remaining' => 0.0,
+                'enforcement' => 'none',
+                'approver_id' => get_option('acc_budget_approver_id'),
+                'has_budget' => false,
+                'budget_id' => 0
+            ];
+        }
+
+        $budget_val = 0.0;
+        $budget_start = null;
+        $budget_end = null;
+        if ($matched_budget_id > 0) {
+            $budget_val = $this->db->select('SUM(amount) as amount')
+                ->from(db_prefix() . 'acc_project_budget_details')
+                ->where('budget_id', $matched_budget_id)
+                ->where('category_id', $category_id)
+                ->get()->row()->amount;
+            $budget_val = $budget_val ? floatval($budget_val) : 0.0;
+
+            // Get budget dates for filtering spent amount
+            $budget_row = $this->db->where('id', $matched_budget_id)->get(db_prefix() . 'acc_project_budgets')->row();
+            if ($budget_row) {
+                $budget_start = $budget_row->start_date;
+                $budget_end = $budget_row->end_date;
+            }
+        }
+
+        $spent_val = 0.0;
+        
+        // PO spent
+        $spent_po = $this->db->select('SUM(' . $this->po_budget_base_amount_sql() . ') as amount', false)
+            ->from(db_prefix() . 'acc_project_budget_mappings m')
+            ->join(db_prefix() . 'pur_orders p', 'p.id = m.rel_id')
+            ->where('m.project_id', $project_id)
+            ->where('m.category_id', $category_id)
+            ->where('m.rel_type', 'po')
+            ->where('m.budget_approval_status', 'approved');
+        $this->apply_project_budget_po_not_rejected_filter();
+        if (!empty($budget_start)) {
+            $spent_po->where('p.order_date >=', $budget_start);
+        }
+        if (!empty($budget_end)) {
+            $spent_po->where('p.order_date <=', $budget_end);
+        }
+        if ($exclude_transaction_id && $type == 'po') {
+            $spent_po->where('p.id !=', intval($exclude_transaction_id));
+        }
+        $po_val = $spent_po->get()->row()->amount;
+        $spent_val += $po_val ? floatval($po_val) : 0.0;
+
+        // Expense spent
+        $spent_exp = $this->db->select('SUM(m.amount) as amount')
+            ->from(db_prefix() . 'acc_project_budget_mappings m')
+            ->join(db_prefix() . 'expenses e', 'e.id = m.rel_id')
+            ->where('m.project_id', $project_id)
+            ->where('m.category_id', $category_id)
+            ->where('m.rel_type', 'expense')
+            ->where('m.budget_approval_status', 'approved');
+        if (!empty($budget_start)) {
+            $spent_exp->where('e.date >=', $budget_start);
+        }
+        if (!empty($budget_end)) {
+            $spent_exp->where('e.date <=', $budget_end);
+        }
+        if ($exclude_transaction_id && $type == 'expense') {
+            $spent_exp->where('e.id !=', intval($exclude_transaction_id));
+        }
+        $exp_val = $spent_exp->get()->row()->amount;
+        $spent_val += $exp_val ? floatval($exp_val) : 0.0;
+
+        // 3. Get imprests that match the budget date range.
+        // Non-completed imprests reserve requested amount; completed imprests consume retired amount.
+        $imprests_committed_sum = $this->db->select_sum('amount_requested')
+            ->from(db_prefix() . 'acc_imprest_requests')
+            ->where('project_id', $project_id)
+            ->where('category_id', $category_id)
+            ->where('budget_approval_status', 'approved')
+            ->where('status !=', 'completed')
+            ->where('status !=', 'rejected');
+        if (!empty($budget_start)) {
+            $imprests_committed_sum->where('request_date >=', $budget_start);
+        }
+        if (!empty($budget_end)) {
+            $imprests_committed_sum->where('request_date <=', $budget_end);
+        }
+        if ($exclude_transaction_id && $type == 'imprest') {
+            $imprests_committed_sum->where('id !=', intval($exclude_transaction_id));
+        }
+        $imprests_committed_val = $imprests_committed_sum->get()->row()->amount_requested;
+        $imprests_committed_val = $imprests_committed_val ? floatval($imprests_committed_val) : 0.0;
+
+        $imprests_actual_sum = $this->db->select_sum('amount_retired')
+            ->from(db_prefix() . 'acc_imprest_requests')
+            ->where('project_id', $project_id)
+            ->where('category_id', $category_id)
+            ->where('budget_approval_status', 'approved')
+            ->where('status', 'completed');
+        if (!empty($budget_start)) {
+            $imprests_actual_sum->where('request_date >=', $budget_start);
+        }
+        if (!empty($budget_end)) {
+            $imprests_actual_sum->where('request_date <=', $budget_end);
+        }
+        if ($exclude_transaction_id && $type == 'imprest') {
+            $imprests_actual_sum->where('id !=', intval($exclude_transaction_id));
+        }
+        $imprests_actual_val = $imprests_actual_sum->get()->row()->amount_retired;
+        $imprests_actual_val = $imprests_actual_val ? floatval($imprests_actual_val) : 0.0;
+
+        // 4. Get claims allocated that match the budget date range
+        $claims_sum = $this->db->select_sum('amount')
+            ->from(db_prefix() . 'acc_claims')
+            ->where('project_id', $project_id)
+            ->where('category_id', $category_id)
+            ->where('budget_approval_status', 'approved')
+            ->where('status', 'approved');
+        if (!empty($budget_start)) {
+            $claims_sum->where('expense_date >=', $budget_start);
+        }
+        if (!empty($budget_end)) {
+            $claims_sum->where('expense_date <=', $budget_end);
+        }
+        if ($exclude_transaction_id && $type == 'claim') {
+            $claims_sum->where('id !=', intval($exclude_transaction_id));
+        }
+        $claims_val = $claims_sum->get()->row()->amount;
+        $claims_val = $claims_val ? floatval($claims_val) : 0.0;
+
+        $total_allocated = $spent_val + $imprests_committed_val + $imprests_actual_val + $claims_val;
+        $remaining = $budget_val - $total_allocated;
+
+        // Check settings for enforcement
+        $enforcement = get_option('acc_budget_enforcement'); // 'disable', 'approval', 'notify'
+        $approver_id = get_option('acc_budget_approver_id');
+
+        return [
+            'budget' => $budget_val,
+            'allocated' => $total_allocated,
+            'remaining' => $remaining,
+            'enforcement' => $enforcement,
+            'approver_id' => $approver_id,
+            'has_budget' => true,
+            'budget_id' => $matched_budget_id
+        ];
+    }
+
+    /**
+     * Get detailed breakdown of budget per category for a project
+     */
+    public function get_project_budget_details_breakdown($project_id, $budget_id = null)
+    {
+        $this->ensure_project_budget_enforcement_schema();
+
+        // Get budget header
+        if ($budget_id) {
+            $budget = $this->db->where('id', $budget_id)->get(db_prefix() . 'acc_project_budgets')->row();
+        } else {
+            $this->db->where('project_id', $project_id);
+            $budget = $this->db->get(db_prefix() . 'acc_project_budgets')->row();
+        }
+        
+        $categories = $this->db->get(db_prefix() . 'acc_project_budget_categories')->result_array();
+        $breakdown = [];
+
+        $total_budget = 0.0;
+        $total_allocated = 0.0;
+        $total_spent = 0.0;
+
+        $budget_start = $budget ? $budget->start_date : null;
+        $budget_end = $budget ? $budget->end_date : null;
+
+        foreach ($categories as $cat) {
+            $cat_id = $cat['id'];
+            $budget_amount = 0.0;
+            
+            // 1. Budget Amount
+            if ($budget) {
+                $this->db->where('budget_id', $budget->id);
+                $this->db->where('category_id', $cat_id);
+                $detail = $this->db->get(db_prefix() . 'acc_project_budget_details')->row();
+                if ($detail) {
+                    $budget_amount = floatval($detail->amount);
+                }
+            }
+
+            // 2. Allocated (Committed)
+            // POs mapped to this project + category that are not approved (approve_status = 1)
+            $allocated_po = 0.0;
+            if ($this->db->table_exists(db_prefix() . 'pur_orders')) {
+                $this->db->select('SUM(' . $this->po_budget_base_amount_sql() . ') as amount', false);
+                $this->db->from(db_prefix() . 'acc_project_budget_mappings m');
+                $this->db->join(db_prefix() . 'pur_orders p', 'p.id = m.rel_id AND m.rel_type = "po"');
+                $this->db->where('m.project_id', $project_id);
+                $this->db->where('m.category_id', $cat_id);
+                $this->db->where('m.budget_approval_status', 'approved');
+                $this->db->where('p.approve_status', 1); // Draft / Under Approval
+                $this->apply_project_budget_po_not_rejected_filter();
+                if (!empty($budget_start)) {
+                    $this->db->where('p.order_date >=', $budget_start);
+                }
+                if (!empty($budget_end)) {
+                    $this->db->where('p.order_date <=', $budget_end);
+                }
+                $val = $this->db->get()->row()->amount;
+                if ($val) {
+                    $allocated_po = floatval($val);
+                }
+            }
+
+            // Claims mapped to this project + category with status 'draft'
+            $allocated_claim = 0.0;
+            if ($this->db->table_exists(db_prefix() . 'acc_claims')) {
+                $this->db->select_sum('amount');
+                $this->db->where('project_id', $project_id);
+                $this->db->where('category_id', $cat_id);
+                $this->db->where('budget_approval_status', 'approved');
+                $this->db->where('status', 'draft');
+                if (!empty($budget_start)) {
+                    $this->db->where('expense_date >=', $budget_start);
+                }
+                if (!empty($budget_end)) {
+                    $this->db->where('expense_date <=', $budget_end);
+                }
+                $val = $this->db->get(db_prefix() . 'acc_claims')->row()->amount;
+                if ($val) {
+                    $allocated_claim = floatval($val);
+                }
+            }
+
+            // Imprest requests not completed reserve the requested amount as committed budget.
+            $allocated_imprest = 0.0;
+            if ($this->db->table_exists(db_prefix() . 'acc_imprest_requests')) {
+                $this->db->select_sum('amount_requested');
+                $this->db->where('project_id', $project_id);
+                $this->db->where('category_id', $cat_id);
+                $this->db->where('budget_approval_status', 'approved');
+                $this->db->where('status !=', 'completed');
+                $this->db->where('status !=', 'rejected');
+                if (!empty($budget_start)) {
+                    $this->db->where('request_date >=', $budget_start);
+                }
+                if (!empty($budget_end)) {
+                    $this->db->where('request_date <=', $budget_end);
+                }
+                $val = $this->db->get(db_prefix() . 'acc_imprest_requests')->row()->amount_requested;
+                if ($val) {
+                    $allocated_imprest = floatval($val);
+                }
+            }
+
+            $allocated = $allocated_po + $allocated_claim + $allocated_imprest;
+
+            // 3. Actual Spent
+            // POs approved
+            $spent_po = 0.0;
+            if ($this->db->table_exists(db_prefix() . 'pur_orders')) {
+                $this->db->select('SUM(' . $this->po_budget_base_amount_sql() . ') as amount', false);
+                $this->db->from(db_prefix() . 'acc_project_budget_mappings m');
+                $this->db->join(db_prefix() . 'pur_orders p', 'p.id = m.rel_id AND m.rel_type = "po"');
+                $this->db->where('m.project_id', $project_id);
+                $this->db->where('m.category_id', $cat_id);
+                $this->db->where('m.budget_approval_status', 'approved');
+                $this->db->where_in('p.approve_status', [2, 'approved']); // Approved
+                $this->apply_project_budget_po_not_rejected_filter();
+                if (!empty($budget_start)) {
+                    $this->db->where('p.order_date >=', $budget_start);
+                }
+                if (!empty($budget_end)) {
+                    $this->db->where('p.order_date <=', $budget_end);
+                }
+                $val = $this->db->get()->row()->amount;
+                if ($val) {
+                    $spent_po = floatval($val);
+                }
+            }
+
+            // Expenses mapped
+            $spent_expense = 0.0;
+            $this->db->select('SUM(m.amount) as amount', false);
+            $this->db->from(db_prefix() . 'acc_project_budget_mappings m');
+            $this->db->join(db_prefix() . 'expenses e', 'e.id = m.rel_id AND m.rel_type = "expense"');
+            $this->db->where('m.project_id', $project_id);
+            $this->db->where('m.category_id', $cat_id);
+            $this->db->where('m.budget_approval_status', 'approved');
+            if (!empty($budget_start)) {
+                $this->db->where('e.date >=', $budget_start);
+            }
+            if (!empty($budget_end)) {
+                $this->db->where('e.date <=', $budget_end);
+            }
+            $val = $this->db->get()->row()->amount;
+            if ($val) {
+                $spent_expense = floatval($val);
+            }
+
+            // Claims approved/paid
+            $spent_claim = 0.0;
+            if ($this->db->table_exists(db_prefix() . 'acc_claims')) {
+                $this->db->select_sum('amount');
+                $this->db->where('project_id', $project_id);
+                $this->db->where('category_id', $cat_id);
+                $this->db->where('budget_approval_status', 'approved');
+                $this->db->where_in('status', ['approved', 'paid']);
+                if (!empty($budget_start)) {
+                    $this->db->where('expense_date >=', $budget_start);
+                }
+                if (!empty($budget_end)) {
+                    $this->db->where('expense_date <=', $budget_end);
+                }
+                $val = $this->db->get(db_prefix() . 'acc_claims')->row()->amount;
+                if ($val) {
+                    $spent_claim = floatval($val);
+                }
+            }
+
+            // Imprests retired amount
+            $spent_imprest = 0.0;
+            if ($this->db->table_exists(db_prefix() . 'acc_imprest_requests')) {
+                $this->db->select_sum('amount_retired');
+                $this->db->where('project_id', $project_id);
+                $this->db->where('category_id', $cat_id);
+                $this->db->where('budget_approval_status', 'approved');
+                $this->db->where('status', 'completed');
+                if (!empty($budget_start)) {
+                    $this->db->where('request_date >=', $budget_start);
+                }
+                if (!empty($budget_end)) {
+                    $this->db->where('request_date <=', $budget_end);
+                }
+                $val = $this->db->get(db_prefix() . 'acc_imprest_requests')->row()->amount_retired;
+                if ($val) {
+                    $spent_imprest = floatval($val);
+                }
+            }
+
+            $spent = $spent_po + $spent_expense + $spent_claim + $spent_imprest;
+
+            // 4. Remaining
+            $remaining = $budget_amount - $allocated - $spent;
+
+            // 5. % Used
+            $percent_used = $budget_amount > 0 ? (($allocated + $spent) / $budget_amount) * 100 : 0.0;
+
+            $breakdown[] = [
+                'category_id' => $cat_id,
+                'category_name' => $cat['name'],
+                'budget_amount' => $budget_amount,
+                'allocated' => $allocated,
+                'spent' => $spent,
+                'remaining' => $remaining,
+                'percent_used' => $percent_used
+            ];
+
+            $total_budget += $budget_amount;
+            $total_allocated += $allocated;
+            $total_spent += $spent;
+        }
+
+        $total_remaining = $total_budget - $total_allocated - $total_spent;
+        $total_percent_used = $total_budget > 0 ? (($total_allocated + $total_spent) / $total_budget) * 100 : 0.0;
+
+        return [
+            'categories' => $breakdown,
+            'total' => [
+                'budget_amount' => $total_budget,
+                'allocated' => $total_allocated,
+                'spent' => $total_spent,
+                'remaining' => $total_remaining,
+                'percent_used' => $total_percent_used
+            ]
+        ];
+    }
+
+    /**
+     * Get list of all transactions mapped to a project budget
+     */
+    public function get_project_budget_transactions($project_id, $budget_id = null)
+    {
+        $this->ensure_project_budget_enforcement_schema();
+
+        $transactions = [];
+        $budget_start = null;
+        $budget_end = null;
+        if ($budget_id) {
+            $budget = $this->db->where('id', $budget_id)->get(db_prefix() . 'acc_project_budgets')->row();
+            if ($budget) {
+                $budget_start = $budget->start_date;
+                $budget_end = $budget->end_date;
+            }
+        }
+
+        // 1. Mapped POs & Expenses from mappings
+        $this->db->select('m.*, cat.name as category_name');
+        $this->db->from(db_prefix() . 'acc_project_budget_mappings m');
+        $this->db->join(db_prefix() . 'acc_project_budget_categories cat', 'cat.id = m.category_id', 'left');
+        $this->db->where('m.project_id', $project_id);
+        $mappings = $this->db->get()->result_array();
+
+        foreach ($mappings as $map) {
+            if ($map['rel_type'] == 'po') {
+                if ($this->db->table_exists(db_prefix() . 'pur_orders')) {
+                    $this->db->where('id', $map['rel_id']);
+                    $this->db->where('approve_status !=', 3);
+                    $this->db->group_start();
+                    $this->db->where('order_status !=', 'rejected');
+                    $this->db->or_where('order_status IS NULL', null, false);
+                    $this->db->group_end();
+                    if (!empty($budget_start)) {
+                        $this->db->where('order_date >=', $budget_start);
+                    }
+                    if (!empty($budget_end)) {
+                        $this->db->where('order_date <=', $budget_end);
+                    }
+                    $po = $this->db->get(db_prefix() . 'pur_orders')->row();
+                    if ($po) {
+                        $status_str = 'Draft';
+                        if ($po->approve_status == 2) $status_str = 'Approved';
+                        if ($po->approve_status == 3) $status_str = 'Rejected';
+                        if ($po->approve_status == 4) $status_str = 'Cancelled';
+                        $created_date = isset($po->datecreated) && !empty($po->datecreated) ? date('Y-m-d', strtotime($po->datecreated)) : $po->order_date;
+                        $transaction_link = admin_url('purchase/purchase_order/' . $po->id);
+                        if (isset($map['budget_approval_status']) && $map['budget_approval_status'] == 'pending') {
+                            $budget_detail_link = $budget_id ? 'accounting/project_budget_detail/' . $budget_id : $this->get_project_budget_detail_link($project_id, $po->order_date);
+                            if ($budget_detail_link != '') {
+                                $transaction_link = admin_url($budget_detail_link);
+                            }
+                        }
+
+                        $transactions[] = [
+                            'type' => 'Purchase Order',
+                            'ref_no' => $po->pur_order_number,
+                            'date' => $po->order_date,
+                            'created_date' => $created_date,
+                            'category' => $map['category_name'],
+                            'amount' => floatval($po->currency_rate) > 0 ? floatval($map['amount']) / floatval($po->currency_rate) : floatval($map['amount']),
+                            'status' => $status_str,
+                            'link' => $transaction_link,
+                            'rel_type' => 'po',
+                            'rel_id' => $po->id,
+                            'budget_approval_status' => $map['budget_approval_status']
+                        ];
+                    }
+                }
+            } elseif ($map['rel_type'] == 'expense') {
+                $this->db->where('id', $map['rel_id']);
+                if (!empty($budget_start)) {
+                    $this->db->where('date >=', $budget_start);
+                }
+                if (!empty($budget_end)) {
+                    $this->db->where('date <=', $budget_end);
+                }
+                $exp = $this->db->get(db_prefix() . 'expenses')->row();
+                if ($exp) {
+                    $created_date = isset($exp->dateadded) && !empty($exp->dateadded) ? date('Y-m-d', strtotime($exp->dateadded)) : $exp->date;
+                    $transactions[] = [
+                        'type' => 'Expense',
+                        'ref_no' => 'EXP-' . $exp->id,
+                        'date' => $exp->date,
+                        'created_date' => $created_date,
+                        'category' => $map['category_name'],
+                        'amount' => floatval($map['amount']),
+                        'status' => 'Paid',
+                        'link' => admin_url('expenses/list_expenses/' . $exp->id),
+                        'rel_type' => 'expense',
+                        'rel_id' => $exp->id,
+                        'budget_approval_status' => $map['budget_approval_status']
+                    ];
+                }
+            }
+        }
+
+        // 2. Claims
+        if ($this->db->table_exists(db_prefix() . 'acc_claims')) {
+            $this->db->select('c.*, cat.name as category_name');
+            $this->db->from(db_prefix() . 'acc_claims c');
+            $this->db->join(db_prefix() . 'acc_project_budget_categories cat', 'cat.id = c.category_id', 'left');
+            $this->db->where('c.project_id', $project_id);
+            if (!empty($budget_start)) {
+                $this->db->where('c.expense_date >=', $budget_start);
+            }
+            if (!empty($budget_end)) {
+                $this->db->where('c.expense_date <=', $budget_end);
+            }
+            $claims = $this->db->get()->result_array();
+            foreach ($claims as $c) {
+                $created_date = !empty($c['created_at']) ? date('Y-m-d', strtotime($c['created_at'])) : $c['expense_date'];
+                $transactions[] = [
+                    'type' => 'Claim',
+                    'ref_no' => 'CLM-' . $c['id'],
+                    'date' => $c['expense_date'],
+                    'created_date' => $created_date,
+                    'category' => $c['category_name'],
+                    'amount' => floatval($c['amount']),
+                    'status' => ucfirst($c['status']),
+                    'link' => admin_url('accounting/view_claim/' . $c['id']),
+                    'rel_type' => 'claim',
+                    'rel_id' => $c['id'],
+                    'budget_approval_status' => isset($c['budget_approval_status']) ? $c['budget_approval_status'] : 'approved'
+                ];
+            }
+        }
+
+        // 3. Imprests
+        if ($this->db->table_exists(db_prefix() . 'acc_imprest_requests')) {
+            $this->db->select('i.*, cat.name as category_name');
+            $this->db->from(db_prefix() . 'acc_imprest_requests i');
+            $this->db->join(db_prefix() . 'acc_project_budget_categories cat', 'cat.id = i.category_id', 'left');
+            $this->db->where('i.project_id', $project_id);
+            if (!empty($budget_start)) {
+                $this->db->where('i.request_date >=', $budget_start);
+            }
+            if (!empty($budget_end)) {
+                $this->db->where('i.request_date <=', $budget_end);
+            }
+            $imprests = $this->db->get()->result_array();
+            foreach ($imprests as $imp) {
+                if (isset($imp['status']) && $imp['status'] == 'rejected') {
+                    continue;
+                }
+                if (isset($imp['budget_approval_status']) && $imp['budget_approval_status'] != 'approved') {
+                    continue;
+                }
+
+                $created_date = !empty($imp['created_at']) ? date('Y-m-d', strtotime($imp['created_at'])) : $imp['request_date'];
+                if ($imp['status'] == 'completed' && floatval($imp['amount_retired']) > 0) {
+                    $retirement_created_date = !empty($imp['retire_date']) ? $imp['retire_date'] : $created_date;
+                    $transactions[] = [
+                        'type' => 'Imprest Retirement',
+                        'ref_no' => 'RET-' . $imp['reference_no'],
+                        'date' => $retirement_created_date,
+                        'created_date' => $retirement_created_date,
+                        'category' => $imp['category_name'],
+                        'amount' => floatval($imp['amount_retired']),
+                        'status' => 'Completed',
+                        'link' => admin_url('accounting/view_imprest/' . $imp['id']),
+                        'rel_type' => 'imprest',
+                        'rel_id' => $imp['id'],
+                        'budget_approval_status' => isset($imp['budget_approval_status']) ? $imp['budget_approval_status'] : 'approved'
+                    ];
+                } else {
+                    $transactions[] = [
+                        'type' => 'Imprest Request',
+                        'ref_no' => $imp['reference_no'],
+                        'date' => $imp['request_date'],
+                        'created_date' => $created_date,
+                        'category' => $imp['category_name'],
+                        'amount' => floatval($imp['amount_requested']),
+                        'status' => ucfirst($imp['status']),
+                        'link' => admin_url('accounting/view_imprest/' . $imp['id']),
+                        'rel_type' => 'imprest',
+                        'rel_id' => $imp['id'],
+                        'budget_approval_status' => isset($imp['budget_approval_status']) ? $imp['budget_approval_status'] : 'approved'
+                    ];
+                }
+            }
+        }
+
+        // Sort transactions by date descending
+        usort($transactions, function($a, $b) {
+            return strcmp($b['date'], $a['date']);
+        });
+
+        return $transactions;
+    }
+
+    public function get_imprests($id = '') {
+        $this->db->select('i.*, p.name as project_name, c.name as category_name, CONCAT(s.firstname, " ", s.lastname) as staff_name');
+        $this->db->from(db_prefix() . 'acc_imprest_requests i');
+        $this->db->join(db_prefix() . 'projects p', 'p.id = i.project_id', 'left');
+        $this->db->join(db_prefix() . 'acc_project_budget_categories c', 'c.id = i.category_id', 'left');
+        $this->db->join(db_prefix() . 'staff s', 's.staffid = i.staff_id', 'left');
+        if ($id != '') {
+            $this->db->where('i.id', $id);
+            return $this->db->get()->row();
+        }
+        return $this->db->get()->result_array();
+    }
+
+    public function add_imprest_request($data) {
+        
+        if (!isset($data['reference_no']) || empty($data['reference_no'])) {
+            $data['reference_no'] = 'IMP-' . date('Ymd') . '-' . sprintf('%04d', rand(1, 9999));
+        }
+        
+        $data['request_date'] = to_sql_date($data['request_date']);
+        $data['created_by'] = get_staff_user_id();
+        $data['created_at'] = date('Y-m-d H:i:s');
+        $data['status'] = 'draft';
+
+        $this->db->insert(db_prefix() . 'acc_imprest_requests', $data);
+        $insert_id = $this->db->insert_id();
+
+        if ($insert_id) {
+            $this->db->query("ALTER TABLE " . db_prefix() . "acc_imprest_requests MODIFY COLUMN status VARCHAR(50) DEFAULT 'draft'");
+            if (!$this->get_approve_setting('imprest')) {
+                $this->approve_imprest($insert_id);
+            }
+            return $insert_id;
+        }
+        return false;
+    }
+
+    public function update_imprest_request($id, $data) {
+        $imprest = $this->get_imprests($id);
+        if (!$imprest) {
+            return false;
+        }
+        if (!in_array($imprest->status, ['draft', 'pending_approval', 'rejected'])) {
+            return false;
+        }
+        
+        $data['request_date'] = to_sql_date($data['request_date']);
+        
+        $this->db->where('id', $id);
+        $success = $this->db->update(db_prefix() . 'acc_imprest_requests', [
+            'project_id' => $data['project_id'],
+            'category_id' => $data['category_id'],
+            'staff_id' => $data['staff_id'],
+            'request_date' => $data['request_date'],
+            'amount_requested' => $data['amount_requested'],
+            'payment_method' => $data['payment_method'],
+            'debit_account_id' => $data['debit_account_id'],
+            'credit_account_id' => $data['credit_account_id'],
+            'description' => $data['description'],
+        ]);
+
+        if ($success) {
+            if ($imprest->status == 'disbursed') {
+                // Delete existing ledger entries for this imprest disbursement and recreate
+                $this->db->where('rel_id', $id);
+                $this->db->where('rel_type', 'imprest');
+                $this->db->delete(db_prefix() . 'acc_account_history');
+
+                if (!empty($data['debit_account_id']) && !empty($data['credit_account_id'])) {
+                    $ledger = [];
+                    // Debit Tạm ứng nhân viên
+                    $ledger[] = [
+                        'account' => $data['debit_account_id'],
+                        'debit' => $data['amount_requested'],
+                        'credit' => 0,
+                        'description' => 'Disbursed Imprest ' . $imprest->reference_no . ' (Updated) - Project: ' . $data['project_id'],
+                        'rel_id' => $id,
+                        'rel_type' => 'imprest',
+                        'date' => $data['request_date'],
+                        'datecreated' => date('Y-m-d H:i:s'),
+                        'addedfrom' => get_staff_user_id()
+                    ];
+                    // Credit Tiền mặt / Tiền gửi
+                    $ledger[] = [
+                        'account' => $data['credit_account_id'],
+                        'debit' => 0,
+                        'credit' => $data['amount_requested'],
+                        'description' => 'Disbursed Imprest ' . $imprest->reference_no . ' (Updated) - Project: ' . $data['project_id'],
+                        'rel_id' => $id,
+                        'rel_type' => 'imprest',
+                        'date' => $data['request_date'],
+                        'datecreated' => date('Y-m-d H:i:s'),
+                        'addedfrom' => get_staff_user_id()
+                    ];
+                    $this->db->insert_batch(db_prefix() . 'acc_account_history', $ledger);
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
+    public function retire_imprest($id, $data) {
+        $imprest = $this->get_imprests($id);
+        if (!$imprest) return false;
+
+        $amount_retired = floatval($data['amount_retired']);
+        $amount_requested = floatval($imprest->amount_requested);
+        $variance = $amount_requested - $amount_retired;
+
+        $status = 'completed';
+        if ($variance > 0) {
+            $status = 'pending_refund';
+        } elseif ($variance < 0) {
+            $status = 'pending_payment';
+        }
+
+        $update_data = [
+            'amount_retired' => $amount_retired,
+            'variance' => $variance,
+            'status' => $status,
+            'retire_notes' => isset($data['notes']) ? $data['notes'] : (isset($data['description']) ? $data['description'] : ''),
+            'retire_payment_method' => isset($data['payment_method']) ? $data['payment_method'] : '',
+            'retire_transaction_id' => isset($data['transaction_id']) ? $data['transaction_id'] : '',
+            'retire_date' => date('Y-m-d'),
+            'expense_account_id' => isset($data['expense_account_id']) ? $data['expense_account_id'] : null,
+            'cash_bank_account_id' => isset($data['cash_bank_account_id']) ? $data['cash_bank_account_id'] : null,
+        ];
+        
+        $this->db->where('id', $id);
+        $this->db->update(db_prefix() . 'acc_imprest_requests', $update_data);
+
+        // Delete any existing retirement ledger records for this imprest (so we don't duplicate on edit)
+        $this->db->where('rel_id', $id);
+        $this->db->where('rel_type', 'imprest_retirement');
+        $this->db->delete(db_prefix() . 'acc_account_history');
+
+        // Auto Journalize Imprest Retirement
+        // Scenario A, B, C based on variance
+        $expense_account = isset($data['expense_account_id']) ? $data['expense_account_id'] : null;
+        $cash_bank_account = isset($data['cash_bank_account_id']) ? $data['cash_bank_account_id'] : null; // Account used for refund or reimbursement
+
+        if ($expense_account && $imprest->debit_account_id) {
+            $ledger = [];
+            $retire_date = date('Y-m-d');
+
+            if ($variance == 0) {
+                // Scenario A: Variance = 0
+                // Debit: Expense Account
+                $ledger[] = [
+                    'account' => $expense_account,
+                    'debit' => $amount_retired,
+                    'credit' => 0,
+                    'description' => 'Retired Imprest ' . $imprest->reference_no . ' (Variance 0) - Expense',
+                    'rel_id' => $id,
+                    'rel_type' => 'imprest_retirement',
+                    'date' => $retire_date,
+                    'datecreated' => date('Y-m-d H:i:s'),
+                    'addedfrom' => get_staff_user_id()
+                ];
+                // Credit: Imprest Debit Account (Tạm ứng nhân viên)
+                $ledger[] = [
+                    'account' => $imprest->debit_account_id,
+                    'debit' => 0,
+                    'credit' => $amount_retired,
+                    'description' => 'Retired Imprest ' . $imprest->reference_no . ' (Variance 0) - Clearance',
+                    'rel_id' => $id,
+                    'rel_type' => 'imprest_retirement',
+                    'date' => $retire_date,
+                    'datecreated' => date('Y-m-d H:i:s'),
+                    'addedfrom' => get_staff_user_id()
+                ];
+            } elseif ($variance > 0) {
+                // Scenario B: Under-spend (Variance > 0)
+                // Employee spent LESS than requested, they must refund remaining cash
+                // Debit: Expense Account for amount spent
+                $ledger[] = [
+                    'account' => $expense_account,
+                    'debit' => $amount_retired,
+                    'credit' => 0,
+                    'description' => 'Retired Imprest ' . $imprest->reference_no . ' (Under-spend) - Expense',
+                    'rel_id' => $id,
+                    'rel_type' => 'imprest_retirement',
+                    'date' => $retire_date,
+                    'datecreated' => date('Y-m-d H:i:s'),
+                    'addedfrom' => get_staff_user_id()
+                ];
+                // Debit: Cash/Bank Account for refund
+                if ($cash_bank_account) {
+                    $ledger[] = [
+                        'account' => $cash_bank_account,
+                        'debit' => $variance,
+                        'credit' => 0,
+                        'description' => 'Retired Imprest ' . $imprest->reference_no . ' (Under-spend) - Cash Refund Received',
+                        'rel_id' => $id,
+                        'rel_type' => 'imprest_retirement',
+                        'date' => $retire_date,
+                        'datecreated' => date('Y-m-d H:i:s'),
+                        'addedfrom' => get_staff_user_id()
+                    ];
+                }
+                // Credit: Imprest Debit Account (Tạm ứng nhân viên) for requested amount
+                $ledger[] = [
+                    'account' => $imprest->debit_account_id,
+                    'debit' => 0,
+                    'credit' => $amount_requested,
+                    'description' => 'Retired Imprest ' . $imprest->reference_no . ' (Under-spend) - Clearance',
+                    'rel_id' => $id,
+                    'rel_type' => 'imprest_retirement',
+                    'date' => $retire_date,
+                    'datecreated' => date('Y-m-d H:i:s'),
+                    'addedfrom' => get_staff_user_id()
+                ];
+            } else {
+                // Scenario C: Over-spend (Variance < 0)
+                // Employee spent MORE than requested, company must reimburse them the difference
+                // Debit: Expense Account for amount spent
+                $ledger[] = [
+                    'account' => $expense_account,
+                    'debit' => $amount_retired,
+                    'credit' => 0,
+                    'description' => 'Retired Imprest ' . $imprest->reference_no . ' (Over-spend) - Expense',
+                    'rel_id' => $id,
+                    'rel_type' => 'imprest_retirement',
+                    'date' => $retire_date,
+                    'datecreated' => date('Y-m-d H:i:s'),
+                    'addedfrom' => get_staff_user_id()
+                ];
+                // Credit: Imprest Debit Account (Tạm ứng nhân viên) for requested amount
+                $ledger[] = [
+                    'account' => $imprest->debit_account_id,
+                    'debit' => 0,
+                    'credit' => $amount_requested,
+                    'description' => 'Retired Imprest ' . $imprest->reference_no . ' (Over-spend) - Clearance',
+                    'rel_id' => $id,
+                    'rel_type' => 'imprest_retirement',
+                    'date' => $retire_date,
+                    'datecreated' => date('Y-m-d H:i:s'),
+                    'addedfrom' => get_staff_user_id()
+                ];
+                // Credit: Cash/Bank Account for reimbursement payout of the variance difference
+                if ($cash_bank_account) {
+                    $overspend = abs($variance);
+                    $ledger[] = [
+                        'account' => $cash_bank_account,
+                        'debit' => 0,
+                        'credit' => $overspend,
+                        'description' => 'Retired Imprest ' . $imprest->reference_no . ' (Over-spend) - Company Reimbursement Paid',
+                        'rel_id' => $id,
+                        'rel_type' => 'imprest_retirement',
+                        'date' => $retire_date,
+                        'datecreated' => date('Y-m-d H:i:s'),
+                        'addedfrom' => get_staff_user_id()
+                    ];
+                }
+            }
+
+            if (!empty($ledger)) {
+                $this->db->insert_batch(db_prefix() . 'acc_account_history', $ledger);
+            }
+        }
+
+        return true;
+    }
+
+    public function delete_imprest_retirement($id) {
+        $imprest = $this->get_imprests($id);
+        if (!$imprest) {
+            return false;
+        }
+
+        $has_retirement = !empty($imprest->retire_date)
+            || floatval($imprest->amount_retired) > 0
+            || in_array($imprest->status, ['completed', 'pending_refund', 'pending_payment']);
+
+        if (!$has_retirement) {
+            return false;
+        }
+
+        $this->db->where('rel_id', $id);
+        $this->db->where('rel_type', 'imprest_retirement');
+        $this->db->delete(db_prefix() . 'acc_account_history');
+
+        $this->db->where('id', $id);
+        return $this->db->update(db_prefix() . 'acc_imprest_requests', [
+            'amount_retired' => 0,
+            'variance' => 0,
+            'status' => 'disbursed',
+            'retire_notes' => null,
+            'retire_payment_method' => null,
+            'retire_transaction_id' => null,
+            'retire_date' => null,
+            'expense_account_id' => null,
+            'cash_bank_account_id' => null,
+        ]);
+    }
+
+    public function get_imprest_ledger_entries($imprest_id) {
+        $this->db->select('h.*, a.name as account_name, a.number as account_number, a.key_name as account_key_name');
+        $this->db->from(db_prefix() . 'acc_account_history h');
+        $this->db->join(db_prefix() . 'acc_accounts a', 'a.id = h.account', 'left');
+        $this->db->where('h.rel_id', $imprest_id);
+        $this->db->where_in('h.rel_type', ['imprest', 'imprest_retirement']);
+        $this->db->order_by('h.id', 'asc');
+        return $this->db->get()->result_array();
+    }
+
+    public function update_imprest_ledger_account($history_id, $new_account_id) {
+        $this->db->where('id', $history_id);
+        return $this->db->update(db_prefix() . 'acc_account_history', ['account' => $new_account_id]);
+    }
+
+    public function get_claims($id = '') {
+        $this->db->select('c.*, p.name as project_name, cat.name as category_name, CONCAT(s.firstname, " ", s.lastname) as staff_name');
+        $this->db->from(db_prefix() . 'acc_claims c');
+        $this->db->join(db_prefix() . 'projects p', 'p.id = c.project_id', 'left');
+        $this->db->join(db_prefix() . 'acc_project_budget_categories cat', 'cat.id = c.category_id', 'left');
+        $this->db->join(db_prefix() . 'staff s', 's.staffid = c.staff_id', 'left');
+        if ($id != '') {
+            $this->db->where('c.id', $id);
+            return $this->db->get()->row();
+        }
+        return $this->db->get()->result_array();
+    }
+
+    public function add_claim($data) {
+
+        $data['expense_date'] = to_sql_date($data['expense_date']);
+        $data['created_by'] = get_staff_user_id();
+        $data['created_at'] = date('Y-m-d H:i:s');
+        $data['status'] = 'draft'; // Start in draft, requires director approval
+
+        $this->db->insert(db_prefix() . 'acc_claims', $data);
+        $insert_id = $this->db->insert_id();
+
+        if ($insert_id && !$this->get_approve_setting('claim')) {
+            $this->approve_claim($insert_id);
+        }
+
+        return $insert_id;
+    }
+
+    public function approve_claim($id) {
+        $claim = $this->get_claims($id);
+        if (!$claim || ($claim->status != 'draft' && $claim->status != 'pending_approval')) return false;
+
+        // Update status to approved
+        $this->db->where('id', $id);
+        $this->db->update(db_prefix() . 'acc_claims', ['status' => 'approved']);
+
+        // Auto Journalize Claim Booking on Approval
+        if (!empty($claim->debit_account_id) && !empty($claim->credit_account_id)) {
+            $ledger = [];
+            // Debit Tài khoản Chi phí
+            $ledger[] = [
+                'account' => $claim->debit_account_id,
+                'debit' => $claim->amount,
+                'credit' => 0,
+                'description' => 'Approved Claim #' . $id . ' - Staff: ' . $claim->staff_name,
+                'rel_id' => $id,
+                'rel_type' => 'claim',
+                'date' => $claim->expense_date,
+                'datecreated' => date('Y-m-d H:i:s'),
+                'addedfrom' => get_staff_user_id()
+            ];
+            // Credit Tài khoản Phải trả nhân viên
+            $ledger[] = [
+                'account' => $claim->credit_account_id,
+                'debit' => 0,
+                'credit' => $claim->amount,
+                'description' => 'Approved Claim #' . $id . ' - Staff: ' . $claim->staff_name,
+                'rel_id' => $id,
+                'rel_type' => 'claim',
+                'date' => $claim->expense_date,
+                'datecreated' => date('Y-m-d H:i:s'),
+                'addedfrom' => get_staff_user_id()
+            ];
+            $this->db->insert_batch(db_prefix() . 'acc_account_history', $ledger);
+        }
+        return true;
+    }
+
+    public function reject_claim($id) {
+        $claim = $this->get_claims($id);
+        if (!$claim) return false;
+
+        $this->db->where('id', $id);
+        $this->db->update(db_prefix() . 'acc_claims', ['status' => 'rejected']);
+
+        // Delete ledger entries if they were previously created
+        $this->db->where('rel_id', $id);
+        $this->db->where('rel_type', 'claim');
+        $this->db->delete(db_prefix() . 'acc_account_history');
+
+        return true;
+    }
+
+    public function submit_claim_for_approval($id) {
+        $claim = $this->get_claims($id);
+        if (!$claim) return false;
+
+        $check_approval_setting = $this->get_approve_setting('claim');
+        if ($check_approval_setting) {
+            $this->send_request_approve([
+                'rel_id' => $id,
+                'rel_type' => 'claim',
+                'addedfrom' => $claim->staff_id,
+            ]);
+            $this->db->where('id', $id);
+            return $this->db->update(db_prefix() . 'acc_claims', ['status' => 'pending_approval']);
+        } else {
+            return $this->approve_claim($id);
+        }
+    }
+
+    public function update_claim($id, $data) {
+        $claim = $this->get_claims($id);
+        if (!$claim) return false;
+
+        $data['expense_date'] = to_sql_date($data['expense_date']);
+
+        $this->db->where('id', $id);
+        $this->db->update(db_prefix() . 'acc_claims', $data);
+
+        // Rebuild ledger entries if approved or paid
+        if ($claim->status == 'approved' || $claim->status == 'paid') {
+            $this->db->where('rel_id', $id);
+            $this->db->where('rel_type', 'claim');
+            $this->db->delete(db_prefix() . 'acc_account_history');
+
+            $updated_claim = $this->get_claims($id);
+
+            if (!empty($updated_claim->debit_account_id) && !empty($updated_claim->credit_account_id)) {
+                $ledger = [];
+                $ledger[] = [
+                    'account' => $updated_claim->debit_account_id,
+                    'debit' => $updated_claim->amount,
+                    'credit' => 0,
+                    'description' => 'Approved Claim #' . $id . ' - Staff: ' . $updated_claim->staff_name,
+                    'rel_id' => $id,
+                    'rel_type' => 'claim',
+                    'date' => $updated_claim->expense_date,
+                    'datecreated' => date('Y-m-d H:i:s'),
+                    'addedfrom' => get_staff_user_id()
+                ];
+                $ledger[] = [
+                    'account' => $updated_claim->credit_account_id,
+                    'debit' => 0,
+                    'credit' => $updated_claim->amount,
+                    'description' => 'Approved Claim #' . $id . ' - Staff: ' . $updated_claim->staff_name,
+                    'rel_id' => $id,
+                    'rel_type' => 'claim',
+                    'date' => $updated_claim->expense_date,
+                    'datecreated' => date('Y-m-d H:i:s'),
+                    'addedfrom' => get_staff_user_id()
+                ];
+                $this->db->insert_batch(db_prefix() . 'acc_account_history', $ledger);
+            }
+        }
+        return true;
+    }
+
+    public function get_claim_refunds($claim_id) {
+        $this->db->select('r.*');
+        $this->db->from(db_prefix() . 'acc_claim_refunds r');
+        $this->db->where('r.claim_id', $claim_id);
+        return $this->db->get()->result_array();
+    }
+
+    public function get_claim_refund($id) {
+        $this->db->where('id', $id);
+        return $this->db->get(db_prefix() . 'acc_claim_refunds')->row();
+    }
+
+    private function update_claim_refund_status($claim_id) {
+        $claim = $this->get_claims($claim_id);
+        if (!$claim) {
+            return false;
+        }
+
+        $refunds = $this->get_claim_refunds($claim_id);
+        $total_refunded = 0;
+        foreach ($refunds as $ref) {
+            $total_refunded += floatval($ref['amount']);
+        }
+
+        $status = $total_refunded >= floatval($claim->amount) ? 'paid' : 'approved';
+        $this->db->where('id', $claim_id);
+        return $this->db->update(db_prefix() . 'acc_claims', ['status' => $status]);
+    }
+
+    private function insert_claim_refund_ledger($refund_id, $data) {
+        if (empty($data['debit_account_id']) || empty($data['credit_account_id'])) {
+            return false;
+        }
+
+        $ledger = [];
+        $ledger[] = [
+            'account' => $data['debit_account_id'],
+            'debit' => $data['amount'],
+            'credit' => 0,
+            'description' => 'Refund Paid for Claim #' . $data['claim_id'],
+            'rel_id' => $refund_id,
+            'rel_type' => 'claim_refund',
+            'date' => $data['payment_date'],
+            'datecreated' => date('Y-m-d H:i:s'),
+            'addedfrom' => get_staff_user_id()
+        ];
+        $ledger[] = [
+            'account' => $data['credit_account_id'],
+            'debit' => 0,
+            'credit' => $data['amount'],
+            'description' => 'Refund Paid for Claim #' . $data['claim_id'],
+            'rel_id' => $refund_id,
+            'rel_type' => 'claim_refund',
+            'date' => $data['payment_date'],
+            'datecreated' => date('Y-m-d H:i:s'),
+            'addedfrom' => get_staff_user_id()
+        ];
+
+        return $this->db->insert_batch(db_prefix() . 'acc_account_history', $ledger);
+    }
+
+    public function add_claim_refund($data) {
+        $claim = $this->get_claims($data['claim_id']);
+        if (!$claim) return false;
+
+        $data['payment_date'] = to_sql_date($data['payment_date']);
+        $data['created_at'] = date('Y-m-d H:i:s');
+
+        // Automatically set accounts for the refund:
+        // Debit: Claim Credit Account (Tài khoản Phải trả nhân viên) to clear liability
+        $data['debit_account_id'] = $claim->credit_account_id;
+        // Credit: Selected Cash/Bank Account
+        // (credit_account_id comes from form submit)
+
+        $this->db->insert(db_prefix() . 'acc_claim_refunds', $data);
+        $insert_id = $this->db->insert_id();
+
+        if ($insert_id) {
+            if (false) {
+                $ledger = [];
+                // Debit Tài khoản Phải trả nhân viên
+                $ledger[] = [
+                    'account' => $data['debit_account_id'],
+                    'debit' => $data['amount'],
+                    'credit' => 0,
+                    'description' => 'Refund Paid for Claim #' . $data['claim_id'],
+                    'rel_id' => $insert_id,
+                    'rel_type' => 'claim_refund',
+                    'date' => $data['payment_date'],
+                    'datecreated' => date('Y-m-d H:i:s'),
+                    'addedfrom' => get_staff_user_id()
+                ];
+                // Credit Selected Payment Cash/Bank Account
+                $ledger[] = [
+                    'account' => $data['credit_account_id'],
+                    'debit' => 0,
+                    'credit' => $data['amount'],
+                    'description' => 'Refund Paid for Claim #' . $data['claim_id'],
+                    'rel_id' => $insert_id,
+                    'rel_type' => 'claim_refund',
+                    'date' => $data['payment_date'],
+                    'datecreated' => date('Y-m-d H:i:s'),
+                    'addedfrom' => get_staff_user_id()
+                ];
+                $this->db->insert_batch(db_prefix() . 'acc_account_history', $ledger);
+            }
+
+            $this->insert_claim_refund_ledger($insert_id, $data);
+            $this->update_claim_refund_status($data['claim_id']);
+
+            return $insert_id;
+        }
+        return false;
+    }
+
+    public function update_claim_refund($id, $data) {
+        $refund = $this->get_claim_refund($id);
+        if (!$refund) {
+            return false;
+        }
+
+        $claim = $this->get_claims($refund->claim_id);
+        if (!$claim) {
+            return false;
+        }
+
+        $update_data = [
+            'claim_id' => $refund->claim_id,
+            'amount' => floatval($data['amount']),
+            'payment_date' => to_sql_date($data['payment_date']),
+            'payment_method' => $data['payment_method'],
+            'notes' => isset($data['notes']) ? $data['notes'] : '',
+            'debit_account_id' => $claim->credit_account_id,
+            'credit_account_id' => $data['credit_account_id'],
+        ];
+
+        $this->db->where('id', $id);
+        $success = $this->db->update(db_prefix() . 'acc_claim_refunds', $update_data);
+        if ($success) {
+            $this->db->where('rel_id', $id);
+            $this->db->where('rel_type', 'claim_refund');
+            $this->db->delete(db_prefix() . 'acc_account_history');
+
+            $this->insert_claim_refund_ledger($id, $update_data);
+            $this->update_claim_refund_status($refund->claim_id);
+        }
+
+        return $success;
+    }
+
+    public function delete_claim_refund($id) {
+        $refund = $this->get_claim_refund($id);
+        if (!$refund) {
+            return false;
+        }
+
+        $this->db->where('rel_id', $id);
+        $this->db->where('rel_type', 'claim_refund');
+        $this->db->delete(db_prefix() . 'acc_account_history');
+
+        $this->db->where('id', $id);
+        $success = $this->db->delete(db_prefix() . 'acc_claim_refunds');
+        if ($success) {
+            $this->update_claim_refund_status($refund->claim_id);
+        }
+
+        return $success;
+    }
+
+    public function get_claim_ledger_entries($claim_id) {
+        $refunds = $this->get_claim_refunds($claim_id);
+        $refund_ids = array_column($refunds, 'id');
+
+        $this->db->select('h.*, a.name as account_name, a.number as account_number');
+        $this->db->from(db_prefix() . 'acc_account_history h');
+        $this->db->join(db_prefix() . 'acc_accounts a', 'a.id = h.account', 'left');
+        
+        $this->db->group_start();
+        $this->db->where('h.rel_id', $claim_id)->where('h.rel_type', 'claim');
+        if (!empty($refund_ids)) {
+            $this->db->or_group_start();
+            $this->db->where_in('h.rel_id', $refund_ids)->where('h.rel_type', 'claim_refund');
+            $this->db->group_end();
+        }
+        $this->db->group_end();
+        
+        $this->db->order_by('h.id', 'asc');
+        return $this->db->get()->result_array();
+    }
+
+    public function update_claim_ledger_account($history_id, $new_account_id) {
+        // Get ledger entry
+        $this->db->where('id', $history_id);
+        $entry = $this->db->get(db_prefix() . 'acc_account_history')->row();
+        if (!$entry) return false;
+
+        // Update history
+        $this->db->where('id', $history_id);
+        $this->db->update(db_prefix() . 'acc_account_history', ['account' => $new_account_id]);
+
+        // Sync with primary table
+        if ($entry->rel_type == 'claim') {
+            $claim_id = $entry->rel_id;
+            if ($entry->debit > 0) {
+                $this->db->where('id', $claim_id);
+                $this->db->update(db_prefix() . 'acc_claims', ['debit_account_id' => $new_account_id]);
+            } elseif ($entry->credit > 0) {
+                $this->db->where('id', $claim_id);
+                $this->db->update(db_prefix() . 'acc_claims', ['credit_account_id' => $new_account_id]);
+            }
+        } elseif ($entry->rel_type == 'claim_refund') {
+            $refund_id = $entry->rel_id;
+            if ($entry->debit > 0) {
+                $this->db->where('id', $refund_id);
+                $this->db->update(db_prefix() . 'acc_claim_refunds', ['debit_account_id' => $new_account_id]);
+            } elseif ($entry->credit > 0) {
+                $this->db->where('id', $refund_id);
+                $this->db->update(db_prefix() . 'acc_claim_refunds', ['credit_account_id' => $new_account_id]);
+            }
+        }
+        return true;
+    }
+
+
+    public function get_approval_setting($id = '')
+    {
+        if(is_numeric($id)){
+            $this->db->where('id', $id);
+            return $this->db->get(db_prefix().'acc_approval_setting')->row();
+        }
+        return $this->db->get(db_prefix().'acc_approval_setting')->result_array();
+    }
+
+    public function add_approval_setting($data)
+    {
+        unset($data['approval_setting_id']);
+
+        if(isset($data['approver'])){
+            $setting = [];
+            foreach ($data['approver'] as $key => $value) {
+                $node = [];
+                $node['approver'] = $data['approver'][$key];
+                $node['staff'] = $data['staff'][$key];
+                $node['action'] = $data['action'][$key];
+
+                $setting[] = $node;
+            }
+            unset($data['approver']);
+            unset($data['staff']);
+            unset($data['action']);
+        }
+
+        if(isset($data['approval_type'])){
+            $data['approval_type'] = 1;
+        }else{
+           $data['approval_type'] = 0; 
+        }
+
+        $data['setting'] = json_encode($setting);
+
+        $this->db->insert(db_prefix() .'acc_approval_setting', $data);
+        $insert_id = $this->db->insert_id();
+        if($insert_id){
+            return true;
+        }
+        return false;
+    }
+
+    public function edit_approval_setting($id, $data)
+    {
+        unset($data['approval_setting_id']);
+
+        if(isset($data['approver'])){
+            $setting = [];
+            foreach ($data['approver'] as $key => $value) {
+                $node = [];
+                $node['approver'] = $data['approver'][$key];
+                $node['staff'] = $data['staff'][$key];
+                $node['action'] = $data['action'][$key];
+
+                $setting[] = $node;
+            }
+            unset($data['approver']);
+            unset($data['staff']);
+            unset($data['action']);
+        }
+
+        if(isset($data['approval_type'])){
+            $data['approval_type'] = 1;
+        }else{
+           $data['approval_type'] = 0; 
+        }
+
+        $data['setting'] = json_encode($setting);
+
+        $this->db->where('id', $id);
+        $this->db->update(db_prefix() .'acc_approval_setting', $data);
+
+        return true;
+    }
+
+    public function delete_approval_setting($id)
+    {
+        if(is_numeric($id)){
+            $this->db->where('id', $id);
+            $this->db->delete(db_prefix() .'acc_approval_setting');
+
+            if ($this->db->affected_rows() > 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public function get_approve_setting($type, $status = '') {
+        $this->db->select('*');
+        $this->db->where('related', $type);
+        $approval_setting = $this->db->get(db_prefix() . 'acc_approval_setting')->row();
+        if($approval_setting){
+            return json_decode($approval_setting->setting);
+        }else{
+            return false;
+        }
+    }
+
+    public function get_approve_setting_new($type, $status = '') {
+        $this->db->select('*');
+        $this->db->where('related', $type);
+        $approval_setting = $this->db->get(db_prefix() . 'acc_approval_setting')->row();
+        return $approval_setting;
+    }
+
+    public function get_staff_sign($rel_id, $rel_type){
+        $this->db->select('*');
+        $this->db->where('rel_id', $rel_id);
+        $this->db->where('rel_type', $rel_type);
+        $this->db->where('action', 'sign');    
+        $approve_status = $this->db->get(db_prefix().'acc_approval_details')->result_array();
+        if(isset($approve_status))
+        {
+            $array_return = [];
+            foreach ($approve_status as $key => $value) {
+               array_push($array_return, $value['staffid']);
+            }
+            return $array_return;
+        }
+        return [];
+    }
+
+    public function check_approval_details($rel_id, $rel_type){
+        $this->db->where('rel_id', $rel_id);
+        $this->db->where('rel_type', $rel_type);
+        $this->db->order_by('id', 'asc');
+        $approve_status = $this->db->get(db_prefix().'acc_approval_details')->result_array();
+        if(count($approve_status) > 0){
+            foreach ($approve_status as $value) {
+                if($value['approve'] == 3){
+                    return 'reject';
+                }
+                if($value['approve'] == 0){
+                    $value['staffid'] = explode(', ',$value['staffid']);
+                    return $value;
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
+    public function check_approval_details_new($rel_id, $rel_type){
+        $this->db->where('rel_id', $rel_id);
+        $this->db->where('rel_type', $rel_type);
+        $approve_status = $this->db->get(db_prefix().'acc_approval_details')->result_array();
+        if(count($approve_status) > 0){
+            $data_rs = [];
+            foreach ($approve_status as $value) {
+                if($value['approve'] == 3){
+                    return 'reject';
+                }
+                if($value['approve'] == 0){
+                    $data_rs['staffid'][] = $value['staffid'];
+                }
+            }
+            return $data_rs;
+        }
+        return false;
+    }
+
+    public function get_list_approval_details($rel_id, $rel_type){
+        $this->db->select('*');
+        $this->db->where('rel_id', $rel_id);
+        $this->db->where('rel_type', $rel_type);
+        $this->db->order_by('id', 'asc');
+        return $this->db->get(db_prefix().'acc_approval_details')->result_array();
+    }
+
+    public function delete_approval_details($rel_id, $rel_type) {
+        $this->db->where('rel_id', $rel_id);
+        $this->db->where('rel_type', $rel_type);
+        $this->db->delete(db_prefix() . 'acc_approval_details');
+    }
+
+    public function get_staff_id_by_approve_value($data, $approve_value){
+        $this->load->model('departments_model');
+        $this->load->model('staff_model');
+        $staffid = [];
+        if($approve_value == 'head_of_department'){
+            $manager = $this->departments_model->get_staff_departments($data->staff_addedfrom);
+            if(isset($manager[0]['manager_id'])){  
+                $staffid = $manager[0]['manager_id'];
+            }
+        }elseif($approve_value == 'direct_manager'){
+            $manager = $this->staff_model->get($data->staff_addedfrom);
+            if(isset($manager->team_manage)){  
+                $staffid = $manager->team_manage;
+            }
+        }
+        return $staffid;
+    }
+
+    private function get_approval_notification_data($rel_id, $rel_type)
+    {
+        $data = [
+            'type' => _l($rel_type),
+            'link' => '',
+            'reference' => '#' . $rel_id,
+        ];
+
+        if ($rel_type == 'project_budget') {
+            $budget = $this->get_project_budget($rel_id);
+            $data['type'] = _l('project_budgets');
+            $data['link'] = 'accounting/project_budget_detail/' . $rel_id;
+            if ($budget) {
+                $project = $this->db->select('name')->where('id', $budget->project_id)->get(db_prefix() . 'projects')->row();
+                $data['reference'] = $project ? $project->name : $data['reference'];
+            }
+        } elseif ($rel_type == 'imprest') {
+            $imprest = $this->get_imprests($rel_id);
+            $data['type'] = _l('imprests');
+            $data['link'] = 'accounting/view_imprest/' . $rel_id;
+            if ($imprest) {
+                $data['reference'] = $imprest->reference_no;
+            }
+        } elseif ($rel_type == 'claim') {
+            $claim = $this->get_claims($rel_id);
+            $data['type'] = _l('claims');
+            $data['link'] = 'accounting/view_claim/' . $rel_id;
+            if ($claim) {
+                $data['reference'] = 'CLM-' . $claim->id;
+            }
+        }
+
+        return $data;
+    }
+
+    private function get_pending_approval_staff_ids($rel_id, $rel_type)
+    {
+        $appr_setting = $this->get_approve_setting_new($rel_type);
+        $this->db->select('staffid');
+        $this->db->where('rel_id', $rel_id);
+        $this->db->where('rel_type', $rel_type);
+        $this->db->where('approve', 0);
+        $this->db->order_by('id', 'asc');
+
+        if (!isset($appr_setting->approval_type) || $appr_setting->approval_type != 1) {
+            $this->db->limit(1);
+        }
+
+        $rows = $this->db->get(db_prefix() . 'acc_approval_details')->result_array();
+        $staff_ids = [];
+
+        foreach ($rows as $row) {
+            $ids = explode(',', $row['staffid']);
+            foreach ($ids as $staff_id) {
+                $staff_id = trim($staff_id);
+                if ($staff_id !== '' && !in_array($staff_id, $staff_ids)) {
+                    $staff_ids[] = $staff_id;
+                }
+            }
+        }
+
+        return $staff_ids;
+    }
+
+    private function send_approval_request_notifications($rel_id, $rel_type, $addedfrom)
+    {
+        $staff_ids = $this->get_pending_approval_staff_ids($rel_id, $rel_type);
+        if (empty($staff_ids)) {
+            return;
+        }
+
+        $this->load->model('staff_model');
+        $this->load->model('emails_model');
+
+        $notification_data = $this->get_approval_notification_data($rel_id, $rel_type);
+        $from_staff_name = get_staff_full_name($addedfrom);
+        $description = 'acc_notify_send_request_approve_project';
+        $additional_data = $notification_data['type'] . ' ' . $notification_data['reference'];
+
+        foreach ($staff_ids as $staff_id) {
+            $staff = $this->staff_model->get($staff_id);
+            if (!$staff) {
+                continue;
+            }
+
+            $notified = add_notification([
+                'description' => $description,
+                'touserid' => $staff->staffid,
+                'link' => $notification_data['link'],
+                'additional_data' => serialize([$additional_data]),
+            ]);
+
+            if ($notified) {
+                pusher_trigger_notification([$staff->staffid]);
+            }
+
+            if (!empty($staff->email)) {
+                $message = _l('email_send_request_approve', $notification_data['type'])
+                    . ' <a href="' . admin_url($notification_data['link']) . '">' . $notification_data['reference'] . '</a> '
+                    . _l('from_staff', $from_staff_name);
+
+                $this->emails_model->send_simple_email($staff->email, _l('request_approval'), $message);
+            }
+        }
+    }
+
+    public function send_next_approval_request_notifications($rel_id, $rel_type)
+    {
+        $appr_setting = $this->get_approve_setting_new($rel_type);
+        if (isset($appr_setting->approval_type) && $appr_setting->approval_type == 1) {
+            return;
+        }
+
+        $this->db->select('sender');
+        $this->db->where('rel_id', $rel_id);
+        $this->db->where('rel_type', $rel_type);
+        $this->db->order_by('id', 'asc');
+        $approval_detail = $this->db->get(db_prefix() . 'acc_approval_details')->row();
+
+        $this->send_approval_request_notifications($rel_id, $rel_type, $approval_detail ? $approval_detail->sender : get_staff_user_id());
+    }
+
+    public function send_request_approve($data){
+        if(!isset($data['status'])){
+            $data['status'] = '';
+        }
+        $date_send = date('Y-m-d H:i:s');
+        $data_new = $this->get_approve_setting($data['rel_type'], $data['status']);
+
+        if(!$data_new){
+            return false;
+        }
+        $this->delete_approval_details($data['rel_id'], $data['rel_type']);
+        $sender = get_staff_user_id();
+        
+        $this->load->model('staff_model');
+        foreach ($data_new as $value) {
+            $row = [];
+            
+            if($value->approver !== 'staff'){
+                $value->staff_addedfrom = $data['addedfrom'];
+                $value->rel_type = $data['rel_type'];
+                $value->rel_id = $data['rel_id'];
+            
+                $approve_value = $this->get_staff_id_by_approve_value($value, $value->approver);
+
+                if(is_numeric($approve_value) && $approve_value != 0){
+                    $approve_value = $this->staff_model->get($approve_value)->email;
+                }else{
+                    $this->delete_approval_details($data['rel_id'], $data['rel_type']);
+                    return $value->approver;
+                }
+                $row['approve_value'] = $approve_value;
+            
+                $staffid = $this->get_staff_id_by_approve_value($value, $value->approver);
+                
+                if(empty($staffid)){
+                    $this->delete_approval_details($data['rel_id'], $data['rel_type']);
+                    return $value->approver;
+                }
+
+                $row['action'] = isset($value->action) ? $value->action : 'approve';
+                $row['staffid'] = $staffid;
+                $row['date_send'] = $date_send;
+                $row['rel_id'] = $data['rel_id'];
+                $row['rel_type'] = $data['rel_type'];
+                $row['sender'] = $sender;
+                $row['approve'] = 0;
+                $this->db->insert(db_prefix().'acc_approval_details', $row);
+
+            }else if($value->approver == 'staff' && $value->staff != ''){
+                $row['action'] = isset($value->action) ? $value->action : 'approve';
+                $row['staffid'] = is_array($value->staff) ? implode(', ', $value->staff) : $value->staff;
+                $row['date_send'] = $date_send;
+                $row['rel_id'] = $data['rel_id'];
+                $row['rel_type'] = $data['rel_type'];
+                $row['sender'] = $sender;
+                $row['approve'] = 0;
+
+                $this->db->insert(db_prefix().'acc_approval_details', $row);
+            }
+        }
+        $this->send_approval_request_notifications($data['rel_id'], $data['rel_type'], $data['addedfrom']);
+        return true;
+    }
+
+    public function get_approve_detail($data){
+        $this->db->where('rel_id', $data['rel_id']);
+        $this->db->where('rel_type', $data['rel_type']);
+        $this->db->where('staffid', $data['staff_approve']);
+        $details = $this->db->get(db_prefix().'acc_approval_details')->row();
+        if($details){
+            return $details;
+        }
+        return false;
+    }
+
+    public function update_approval_details($id, $data){
+        $update_data = [];
+        if (isset($data['approve'])) {
+            $update_data['approve'] = $data['approve'];
+        }
+        if (isset($data['note'])) {
+            $update_data['note'] = $data['note'];
+        }
+        $update_data['date'] = date('Y-m-d H:i:s');
+
+        $this->db->where('id', $id);
+        $this->db->update(db_prefix().'acc_approval_details', $update_data);
+        if($this->db->affected_rows() > 0) {
+            return true;
+        }
+        return false;
+    }
+
+    public function check_sign_approval_details($rel_id, $rel_type){
+        $this->db->where('staffid', get_staff_user_id());
+        $this->db->where('rel_id', $rel_id);
+        $this->db->where('rel_type', $rel_type);
+        $approve_status = $this->db->get(db_prefix().'acc_approval_details')->result_array();
+        if(count($approve_status) > 0){
+            foreach ($approve_status as $value) {
+                return $value;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    public function approve_claim_request($rel_id, $status) {
+        if ($status == 2) {
+            $this->approve_claim($rel_id);
+        } elseif ($status == 3) {
+            $this->reject_claim($rel_id);
+        }
+        return true;
+    }
+
+    public function approve_project_budget($id) {
+        $budget = $this->get_project_budget($id);
+        if (!$budget || ($budget->status != 'draft' && $budget->status != 'pending_approval')) return false;
+        if ($this->get_overlapping_active_project_budget($id)) return false;
+
+        $this->db->where('id', $id);
+        $this->db->update(db_prefix() . 'acc_project_budgets', ['status' => 'approved']);
+        return true;
+    }
+
+    public function get_overlapping_active_project_budget($id)
+    {
+        $budget = $this->get_project_budget($id);
+        if (!$budget) {
+            return null;
+        }
+
+        $this->db->where('project_id', $budget->project_id);
+        $this->db->where('id !=', $id);
+        $this->db->where('status !=', 'rejected');
+        $this->db->where('start_date <=', $budget->end_date);
+        $this->db->where('end_date >=', $budget->start_date);
+
+        return $this->db->get(db_prefix() . 'acc_project_budgets')->row();
+    }
+
+    public function reject_project_budget($id) {
+        $budget = $this->get_project_budget($id);
+        if (!$budget) return false;
+
+        $this->db->where('id', $id);
+        $this->db->update(db_prefix() . 'acc_project_budgets', ['status' => 'rejected']);
+        return true;
+    }
+
+    public function submit_project_budget_for_approval($id) {
+        $budget = $this->get_project_budget($id);
+        if (!$budget) return false;
+        if ($this->get_overlapping_active_project_budget($id)) return false;
+
+        $check_approval_setting = $this->get_approve_setting('project_budget');
+        if ($check_approval_setting) {
+            $this->send_request_approve([
+                'rel_id' => $id,
+                'rel_type' => 'project_budget',
+                'addedfrom' => $budget->owner_id,
+            ]);
+            $this->db->where('id', $id);
+            return $this->db->update(db_prefix() . 'acc_project_budgets', ['status' => 'pending_approval']);
+        } else {
+            return $this->approve_project_budget($id);
+        }
+    }
+
+    public function approve_project_budget_request($rel_id, $status) {
+        if ($status == 2) {
+            return $this->approve_project_budget($rel_id);
+        } elseif ($status == 3) {
+            return $this->reject_project_budget($rel_id);
+        }
+        return false;
+    }
+
+    public function approve_imprest($id) {
+        $imprest = $this->get_imprests($id);
+        if (!$imprest || ($imprest->status != 'draft' && $imprest->status != 'pending_approval')) return false;
+
+        // Update status to disbursed
+        $this->db->where('id', $id);
+        $this->db->update(db_prefix() . 'acc_imprest_requests', ['status' => 'disbursed']);
+
+        // Auto Journalize Imprest Disbursement on Approval
+        if (!empty($imprest->debit_account_id) && !empty($imprest->credit_account_id)) {
+            $ledger = [];
+            // Debit Tạm ứng nhân viên
+            $ledger[] = [
+                'account' => $imprest->debit_account_id,
+                'debit' => $imprest->amount_requested,
+                'credit' => 0,
+                'description' => 'Disbursed Imprest ' . $imprest->reference_no . ' - Project: #' . $imprest->project_id,
+                'rel_id' => $id,
+                'rel_type' => 'imprest',
+                'date' => $imprest->request_date,
+                'datecreated' => date('Y-m-d H:i:s'),
+                'addedfrom' => get_staff_user_id()
+            ];
+            // Credit Tiền mặt / Tiền gửi
+            $ledger[] = [
+                'account' => $imprest->credit_account_id,
+                'debit' => 0,
+                'credit' => $imprest->amount_requested,
+                'description' => 'Disbursed Imprest ' . $imprest->reference_no . ' - Project: #' . $imprest->project_id,
+                'rel_id' => $id,
+                'rel_type' => 'imprest',
+                'date' => $imprest->request_date,
+                'datecreated' => date('Y-m-d H:i:s'),
+                'addedfrom' => get_staff_user_id()
+            ];
+            $this->db->insert_batch(db_prefix() . 'acc_account_history', $ledger);
+        }
+        return true;
+    }
+
+    public function reject_imprest($id) {
+        $imprest = $this->get_imprests($id);
+        if (!$imprest) return false;
+
+        $this->db->where('id', $id);
+        $this->db->update(db_prefix() . 'acc_imprest_requests', ['status' => 'rejected']);
+
+        // Delete ledger entries if they were previously created
+        $this->db->where('rel_id', $id);
+        $this->db->where('rel_type', 'imprest');
+        $this->db->delete(db_prefix() . 'acc_account_history');
+
+        return true;
+    }
+
+    public function submit_imprest_for_approval($id) {
+        $imprest = $this->get_imprests($id);
+        if (!$imprest) return false;
+
+        $check_approval_setting = $this->get_approve_setting('imprest');
+        if ($check_approval_setting) {
+            $this->send_request_approve([
+                'rel_id' => $id,
+                'rel_type' => 'imprest',
+                'addedfrom' => $imprest->staff_id,
+            ]);
+            $this->db->where('id', $id);
+            return $this->db->update(db_prefix() . 'acc_imprest_requests', ['status' => 'pending_approval']);
+        } else {
+            return $this->approve_imprest($id);
+        }
+    }
+
+    public function approve_imprest_request($rel_id, $status) {
+        if ($status == 2) {
+            $this->approve_imprest($rel_id);
+        } elseif ($status == 3) {
+            $this->reject_imprest($rel_id);
+        }
+        return true;
+    }
 }
+
+
+

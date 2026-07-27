@@ -60,6 +60,7 @@
               <?php echo render_select('transfer_funds_to',$accounts,array('id','name','account_type_name'),'transfer_funds_to'); ?>
               <?php echo render_date_input('date', 'expense_dt_table_heading_date') ?>
               <?php echo render_input('transfer_amount', 'transfer_amount', '', 'text', $arrAtt) ?>
+              <?php echo render_select('acc_class',$classes,array('id','name'),'acc_class');  ?>
               <div class="row">
                 <div class="col-md-12">
                   <p class="bold"><?php echo _l('dt_expense_description'); ?></p>

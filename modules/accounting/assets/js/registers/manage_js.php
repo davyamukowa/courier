@@ -189,13 +189,14 @@ function acc_add_transaction(id) {
 
 function formatNumber(n) {
   "use strict";
-  // format number 1000000 to 1,234,567
-  return n.replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+  // format number 1000000 to 1,234,567 (with dynamic separator)
+  var thousand_sep = (typeof(acc_thousand_separator) !== 'undefined') ? acc_thousand_separator : ((typeof(app) !== 'undefined' && app.options && app.options.thousand_separator) ? app.options.thousand_separator : ',');
+  return n.replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, thousand_sep);
 }
 function formatCurrency(input, blur) {
   "use strict";
-  // appends $ to value, validates decimal side
-  // and puts cursor back in right position.
+  var decimal_sep = (typeof(acc_decimal_separator) !== 'undefined') ? acc_decimal_separator : ((typeof(app) !== 'undefined' && app.options && app.options.decimal_separator) ? app.options.decimal_separator : '.');
+  var thousand_sep = (typeof(acc_thousand_separator) !== 'undefined') ? acc_thousand_separator : ((typeof(app) !== 'undefined' && app.options && app.options.thousand_separator) ? app.options.thousand_separator : ',');
 
   // get input value
   var input_val = input.val();
@@ -210,12 +211,10 @@ function formatCurrency(input, blur) {
   var caret_pos = input.prop("selectionStart");
 
   // check for decimal
-  if (input_val.indexOf(".") >= 0) {
+  if (input_val.indexOf(decimal_sep) >= 0) {
 
     // get position of first decimal
-    // this prevents multiple decimals from
-    // being entered
-    var decimal_pos = input_val.indexOf(".");
+    var decimal_pos = input_val.indexOf(decimal_sep);
     var minus = input_val.substring(0, 1);
     if(minus != '-'){
       minus = '';
@@ -223,29 +222,27 @@ function formatCurrency(input, blur) {
 
     // split number by decimal point
     var left_side = input_val.substring(0, decimal_pos);
-    var right_side = input_val.substring(decimal_pos);
-    // add commas to left side of number
+    var right_side = input_val.substring(decimal_pos + 1);
+
     left_side = formatNumber(left_side);
 
-    // validate right side
-    right_side = formatNumber(right_side);
+    // validate right side (only digits)
+    right_side = right_side.replace(/\D/g, "");
 
     // Limit decimal to only 2 digits
     right_side = right_side.substring(0, 2);
 
-    // join number by .
-    input_val = minus+left_side + "." + right_side;
+    // join number by decimal separator
+    input_val = minus + left_side + decimal_sep + right_side;
 
   } else {
     // no decimal entered
-    // add commas to number
-    // remove all non-digits
     var minus = input_val.substring(0, 1);
     if(minus != '-'){
       minus = '';
     }
     input_val = formatNumber(input_val);
-    input_val = minus+input_val;
+    input_val = minus + input_val;
 
   }
 

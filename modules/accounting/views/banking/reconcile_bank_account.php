@@ -24,7 +24,7 @@ $arrAtt['data-type']='currency';
     <h5><?php echo _l('add_the_following_information'); ?></h5>
     <div class="row">
       <div class="col-md-4">
-        <?php echo render_input('beginning_balance','beginning_balance', number_format($beginning_balance,2),'text', $arrAtt2); ?>
+        <?php echo render_input('beginning_balance','beginning_balance', acc_format_number($beginning_balance),'text', $arrAtt2); ?>
       </div>
       <div class="col-md-4">
         <?php echo render_input('debits_for_period','debits_for_period','','text', $arrAtt); ?>

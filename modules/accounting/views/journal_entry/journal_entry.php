@@ -109,8 +109,9 @@
               
             <tr>
               <th width="25%"><?php echo _l('account'); ?></th>
-              <th width="15%"><?php echo _l('debit'); ?></th>
-              <th width="15%"><?php echo _l('credit'); ?></th>
+              <th width="10%"><?php echo _l('debit'); ?></th>
+              <th width="10%"><?php echo _l('credit'); ?></th>
+              <th width="10%"><?php echo _l('acc_class'); ?></th>
               <th width="35%"><?php echo _l('description'); ?></th>
               <th width="10%"></th>
             </tr>
@@ -118,8 +119,8 @@
           <?php if(isset($journal_entry)){
             $i               = 0;
             foreach($journal_entry->details as $detail){ 
-              $debit_amount = $detail['debit'] != 0 ? number_format($detail['debit'],2) : '';
-              $credit_amount = $detail['credit'] != 0 ? number_format($detail['credit'],2) : '';
+              $debit_amount = $detail['debit'] != 0 ? acc_format_number($detail['debit']) : '';
+              $credit_amount = $detail['credit'] != 0 ? acc_format_number($detail['credit']) : '';
               ?>
               <tr class="bill-debit-account-<?php echo new_html_entity_decode($i); ?> template_children">
                <td>
@@ -130,6 +131,9 @@
                </td>
                <td>
                   <?php echo render_input('credit_amount['.$i.']', '',$credit_amount,'text', array('data-type' => 'currency', 'data-index' => $i)); ?>
+               </td>
+               <td>
+                 <?php echo render_select('class['.$i.']',$classes,array('id','name'),'', $detail['class']);  ?>
                </td>
                <td>
                   <?php echo render_textarea('description_detail['.$i.']', '',$detail['description'], ['rows' => 2]); ?>
@@ -152,6 +156,9 @@
                </td>
                <td>
                   <?php echo render_input('credit_amount[0]', '','','text', array('data-type' => 'currency', 'data-index' => 0)); ?>
+               </td>
+               <td>
+                 <?php echo render_select('class[0]',$classes,array('id','name'),'');  ?>
                </td>
                <td>
                   <?php echo render_textarea('description_detail[0]', '','', ['rows' => 2]); ?>

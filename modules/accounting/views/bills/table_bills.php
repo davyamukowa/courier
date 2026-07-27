@@ -95,7 +95,7 @@ $sTable       = db_prefix() . 'expenses';
 // Fix for big queries. Some hosting have max_join_limit
 
 $result = data_tables_init($aColumns, $sIndexColumn, $sTable, $join, $where, [
-     'vendor', db_prefix().'expenses.approved'
+     'vendor', db_prefix().'expenses.approved', 'acc_recurring'
 ]);
 $output  = $result['output'];
 $rResult = $result['rResult'];
@@ -110,13 +110,18 @@ foreach ($rResult as $aRow) {
     $categoryOutput = '';
 
     $categoryOutput = '<a href="' . admin_url('accounting/bills/' . $aRow['id']) . '" onclick="init_bills(' . $aRow['id'] . ');return false;">' . $aRow['vendor_name'] . '</a>';
-
+    if ($aRow['acc_recurring'] == 1) {
+        $categoryOutput .= '<span class="label label-primary"> ' . _l('expense_recurring_indicator') . '</span>';
+    }
         switch ($type) {
             case 'unpaid':
                 $categoryOutput .= '<div class="row-options ">';
                 $categoryOutput .= '<a href="#" onclick="init_bills(' . $aRow['id'] . ');return false;" class="">' . _l('acc_open') . '</a>';
 
                 $categoryOutput .= ' | <a href="#" class="" onclick="approve_payable('.$aRow['id'].'); return false;">' . _l('approve_payable') . '</a>';
+                if (has_permission('accounting_bills', '', 'create')) {
+                    $categoryOutput .= ' | <a href="' . admin_url('accounting/bill?duplicate_from=' . $aRow['id']) . '" class="">' . _l('acc_duplicate') . '</a>';
+                }
                 if (has_permission('accounting_bills', '', 'edit')) {
                     $categoryOutput .= ' | <a href="' . admin_url('accounting/bill/' . $aRow['id']) . '" class="">' . _l('edit') . '</a>';
                 }
@@ -133,7 +138,9 @@ foreach ($rResult as $aRow) {
 
                 $categoryOutput .= '<a href="#" onclick="init_bills(' . $aRow['id'] . ');return false;" class="">' . _l('acc_open') . '</a>';
 
-
+                if (has_permission('accounting_bills', '', 'create')) {
+                    $categoryOutput .= ' | <a href="' . admin_url('accounting/bill?duplicate_from=' . $aRow['id']) . '" class="">' . _l('acc_duplicate') . '</a>';
+                }
                 if (has_permission('accounting_bills', '', 'edit')) {
                     $categoryOutput .= ' | <a href="' . admin_url('accounting/pay_bill?bill=' . $aRow['id']) . '" class="">' . _l('pay_bill') . '</a>';
                 }
@@ -147,6 +154,9 @@ foreach ($rResult as $aRow) {
                 $categoryOutput .= '<div class="row-options ">';
 
                 $categoryOutput .= ' <a href="#" onclick="init_bills(' . $aRow['id'] . ');return false;" class="">' . _l('acc_open') . '</a>';
+                if (has_permission('accounting_bills', '', 'create')) {
+                    $categoryOutput .= ' | <a href="' . admin_url('accounting/bill?duplicate_from=' . $aRow['id']) . '" class="">' . _l('acc_duplicate') . '</a>';
+                }
 
                 $categoryOutput .= '</div>';
                 break;
@@ -157,6 +167,9 @@ foreach ($rResult as $aRow) {
 
                 $categoryOutput .= ' | <a href="#" onclick="approve_payable('.$aRow['id'].'); return false;" class="">' . _l('approve_payable') . '</a>';
                 
+                if (has_permission('accounting_bills', '', 'create')) {
+                    $categoryOutput .= ' | <a href="' . admin_url('accounting/bill?duplicate_from=' . $aRow['id']) . '" class="">' . _l('acc_duplicate') . '</a>';
+                }
                 if (has_permission('accounting_bills', '', 'edit')) {
                     $categoryOutput .= ' | <a href="' . admin_url('accounting/bill/' . $aRow['id']) . '" class="">' . _l('edit') . '</a>';
                 }

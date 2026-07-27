@@ -440,7 +440,7 @@ if($check){
 
                                     <br>
                                     <span >
-                                       <?php echo app_format_money($value, ''); ?></span>
+                                       <?php echo acc_format_number($value); ?></span>
                                     </td>
                                  </tr>
 

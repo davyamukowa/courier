@@ -21,6 +21,8 @@
   
   $acc_enable_all_time_filter = get_option('acc_enable_all_time_filter');
   $acc_mapping_label_type = get_option('acc_mapping_label_type');
+  $acc_enable_class_tracking = get_option('acc_enable_class_tracking');
+  $acc_hide_zero_value_rows = get_option('acc_hide_zero_value_rows');
  ?>
 <?php echo form_open(admin_url('accounting/reset_data')); ?>
 <div class="row mbot10">
@@ -159,6 +161,19 @@
               </div>
           </div>
       </div>
+      
+      <h5 class="title mbot5"><?php echo _l('reports') ?></h5>
+      <div class="row">
+          <div class="col-md-6 mtop10 border-right">
+            <span><?php echo _l('acc_hide_zero_value_rows'); ?></span>
+          </div>
+          <div class="col-md-6 mtop10">
+              <div class="onoffswitch">
+                  <input type="checkbox" id="acc_hide_zero_value_rows" data-perm-id="3" class="onoffswitch-checkbox" <?php if($acc_hide_zero_value_rows == '1'){echo 'checked';} ?>  value="1" name="acc_hide_zero_value_rows">
+                  <label class="onoffswitch-label" for="acc_hide_zero_value_rows"></label>
+              </div>
+          </div>
+      </div>
 
       <h5 class="title mbot5"><?php echo _l('acc_mapping') ?></h5>
       <?php
@@ -167,9 +182,78 @@
                   2 => ['id' => 'credit_debit', 'name' => _l('credit_debit')],
                  ];
        echo render_select('acc_mapping_label_type', $month, array('id', 'name'), _l('label_type'), $acc_mapping_label_type, array(), array(), '', '', false); ?>
+
+       <h5 class="title mbot5"><?php echo _l('class') ?></h5>
+      <div class="row">
+          <div class="col-md-6 mtop10 border-right">
+            <span><?php echo _l('enable_class_tracking'); ?> <i class="fa fa-question-circle" data-toggle="tooltip" data-title="<?php echo _l('enable_class_tracking_note'); ?>"></i></span>
+          </div>
+          <div class="col-md-6 mtop10">
+              <div class="onoffswitch">
+                  <input type="checkbox" id="acc_enable_class_tracking" data-perm-id="3" class="onoffswitch-checkbox" <?php if($acc_enable_class_tracking == '1'){echo 'checked';} ?>  value="1" name="acc_enable_class_tracking">
+                  <label class="onoffswitch-label" for="acc_enable_class_tracking"></label>
+              </div>
+          </div>
+      </div>
+      <h5 class="title mbot5"><?php echo _l('acc_project_budget_control', 'Project Budget & Enforcement'); ?></h5>
+      <div class="row">
+          <div class="col-md-12">
+              <div class="radio radio-primary">
+                  <input type="radio" id="acc_budget_enforce_disable" name="acc_budget_enforcement" value="disable" <?php if(get_option('acc_budget_enforcement') == 'disable' || !get_option('acc_budget_enforcement')){echo 'checked';} ?>>
+                  <label for="acc_budget_enforce_disable"><?php echo _l('acc_budget_enforce_disable', 'Disable request when budget exceeded (Hard Block)'); ?></label>
+              </div>
+              <div class="radio radio-primary">
+                  <input type="radio" id="acc_budget_enforce_approval" name="acc_budget_enforcement" value="approval" <?php if(get_option('acc_budget_enforcement') == 'approval'){echo 'checked';} ?>>
+                  <label for="acc_budget_enforce_approval"><?php echo _l('acc_budget_enforce_approval', 'Allow request but require advanced approval'); ?></label>
+              </div>
+              <div class="radio radio-primary">
+                  <input type="radio" id="acc_budget_enforce_notify" name="acc_budget_enforcement" value="notify" <?php if(get_option('acc_budget_enforcement') == 'notify'){echo 'checked';} ?>>
+                  <label for="acc_budget_enforce_notify"><?php echo _l('acc_budget_enforce_notify', 'Only notify (Warning message)'); ?></label>
+              </div>
+          </div>
+      </div>
+
+      <?php
+      $CI = &get_instance();
+      $CI->load->model('staff_model');
+      $staff_members = $CI->staff_model->get('', ['active' => 1]);
+      $acc_budget_approver_id = get_option('acc_budget_approver_id');
+      ?>
+      <div id="div_budget_approver" class="mtop10 <?php if(get_option('acc_budget_enforcement') != 'approval'){echo 'hide';} ?>">
+          <?php echo render_select('acc_budget_approver_id', $staff_members, array('staffid', array('firstname', 'lastname')), _l('acc_budget_approver', 'Director / Budget Approver'), $acc_budget_approver_id); ?>
+      </div>
+
+      <div class="mtop15">
+          <strong><?php echo _l('acc_enforce_applicable_to', 'Enforce Budget Constraints on:'); ?></strong>
+          <div class="checkbox checkbox-primary mtop5">
+              <input type="checkbox" name="acc_enforce_purchase_order" <?php if(get_option('acc_enforce_purchase_order') == '1'){echo 'checked';} ?> id="acc_enforce_purchase_order" value="1">
+              <label for="acc_enforce_purchase_order"><?php echo _l('purchase_order', 'Purchase Order'); ?></label>
+          </div>
+          <div class="checkbox checkbox-primary">
+              <input type="checkbox" name="acc_enforce_expense" <?php if(get_option('acc_enforce_expense') == '1'){echo 'checked';} ?> id="acc_enforce_expense" value="1">
+              <label for="acc_enforce_expense"><?php echo _l('acc_expense', 'Expense'); ?></label>
+          </div>
+      </div>
     </div>
   </div>
 </div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        var radios = document.querySelectorAll('input[name="acc_budget_enforcement"]');
+        var approverDiv = document.getElementById('div_budget_approver');
+        radios.forEach(function(radio) {
+            radio.addEventListener('change', function() {
+                if (this.value === 'approval') {
+                    approverDiv.classList.remove('hide');
+                } else {
+                    approverDiv.classList.add('hide');
+                }
+            });
+        });
+    });
+</script>
+
 <hr>
 <div class="col-md-12">
   <button type="submit" class="btn btn-info pull-right"><?php echo _l('submit'); ?></button>

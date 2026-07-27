@@ -13,7 +13,25 @@
               <i class="fa fa-file-text"></i>&nbsp;<?php echo _l('invoice'); ?> <span class="text-danger"><?php echo '('.$count_invoice.')'; ?></span>
             </a>
          </li>
-
+         <?php if (get_option('acc_credit_note_mapping_mode') == 'on_create') { ?>
+               <li role="presentation" class="<?php if($tab_2 == 'credit_note'){echo 'active';}; ?>">
+                  <a href="<?php echo admin_url('accounting/transaction?group=sales&tab=credit_note'); ?>">
+                    <i class="fa fa-credit-card"></i>&nbsp;<?php echo _l('credit_note'); ?> <span class="text-danger"><?php echo '('.$count_credit_note.')'; ?></span>
+                  </a>
+               </li>
+         <?php }else{ ?>
+               <li role="presentation" class="<?php if($tab_2 == 'credit_note_applied'){echo 'active';}; ?>">
+                  <a href="<?php echo admin_url('accounting/transaction?group=sales&tab=credit_note_applied'); ?>">
+                    <i class="fa fa-credit-card"></i>&nbsp;<?php echo _l('credit_note_applied'); ?> <span class="text-danger"><?php echo '('.$count_credit_note_apply.')'; ?></span>
+                  </a>
+               </li>
+         <?php } ?>
+               <li role="presentation" class="<?php if($tab_2 == 'credit_note_refund'){echo 'active';}; ?>">
+                  <a href="<?php echo admin_url('accounting/transaction?group=sales&tab=credit_note_refund'); ?>">
+                    <i class="fa fa-credit-card"></i>&nbsp;<?php echo _l('credit_note_refund'); ?> <span class="text-danger"><?php echo '('.$count_credit_note_refund.')'; ?></span>
+                  </a>
+               </li>
+         
          <?php if(acc_required_omni_sales_module()){ ?>
             <li role="presentation" class="<?php if($tab_2 == 'omni_sales_return_order'){echo 'active';}; ?>">
                <a href="<?php echo admin_url('accounting/transaction?group=sales&tab=omni_sales_return_order'); ?>">

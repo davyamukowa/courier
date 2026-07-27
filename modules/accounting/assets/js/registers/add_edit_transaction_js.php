@@ -126,7 +126,6 @@
         return cp
       },
       beforeRemoveRow: function(index) {
-      		console.log(index);
       	if(confirm_delete()){
       		var row_data = product_tabs.getDataAtRow(index);
       		delete_transaction(row_data[0]);
@@ -143,11 +142,11 @@
 
 			if(changes !== null && changes !== undefined){
 				changes.forEach(([row, col, prop, oldValue, newValue]) => {
-	    	var row_data = product_tabs.getDataAtRow(row);
-				ids_changes.push(row_data[0]);
+					var row_data = product_tabs.getDataAtRow(row);
+					ids_changes.push(row_data[0]);	
 
 					if(col == 'credit' && oldValue != ''){
-
+						console.log('credit');
 						product_tabs.setDataAtCell(row,5,'');
 						var date = product_tabs.getDataAtCell(row, 1);
 
@@ -158,6 +157,7 @@
 					}
 
 					if(col == 'debit' && oldValue != ''){
+						console.log('debit');
 
 						product_tabs.setDataAtCell(row,6,'');
 						var date = product_tabs.getDataAtCell(row, 1);
@@ -171,7 +171,6 @@
 
 				});
 			}
-
 		});
 
 
@@ -370,7 +369,7 @@ function customDropdownRenderer(instance, td, row, col, prop, value, cellPropert
     			data: response.dataObject,
     		});
 
-    		if(!page_change){
+    		if(page_change == true){
 	    		$('select[name="page_filter"]').html(response.page_html);
 	  			$('select[name="page_filter"]').val(1);
 					$('select[name="page_filter"]').selectpicker('refresh');

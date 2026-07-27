@@ -1,13 +1,6 @@
 <?php if(count(get_included_files()) == 1) exit("No direct script access allowed");
 
 define("LB_API_DEBUG", false);
-
-/**
- * DEV_MODE — set TRUE during local development/testing to bypass all
- * Envato API calls. Every purchase key and username will be accepted.
- * Set to FALSE before publishing to Envato marketplace.
- */
-define("LB_DEV_MODE", true);
 define("LB_SHOW_UPDATE_PROGRESS", true);
 
 define("LB_TEXT_CONNECTION_FAILED", 'Server is unavailable at the moment, please try again.');
@@ -224,18 +217,6 @@ class AccountingLic{
 	 * @return array
 	 */
 	public function activate_license($license, $client, $create_lic = true){
-		// ── DEV MODE: accept any key/username without hitting the API ──────────
-		if(defined('LB_DEV_MODE') && LB_DEV_MODE){
-			if($create_lic){
-				// Write a dummy license file so check_local_license_exist() returns true
-				file_put_contents($this->license_file, base64_encode('DEV_LICENSE_' . $license . '_' . $client), LOCK_EX);
-			}
-			return array(
-				'status'  => TRUE,
-				'message' => 'Activated successfully (DEV MODE — no Envato check).'
-			);
-		}
-		// ── PRODUCTION: call Envato API ────────────────────────────────────────
 		$data_array =  array(
 			"product_id"  => $this->product_id,
 			"license_code" => $license,
@@ -270,15 +251,6 @@ class AccountingLic{
 	 * @return array
 	 */
 	public function verify_license($time_based_check = false, $license = false, $client = false){
-		// ── DEV MODE: return verified if already activated ───────────────────────
-		if(defined('LB_DEV_MODE') && LB_DEV_MODE){
-			if ($this->check_local_license_exist() || (!empty($license) && !empty($client))) {
-				return array('status' => TRUE, 'message' => LB_TEXT_VERIFIED_RESPONSE);
-			} else {
-				return array('status' => FALSE, 'message' => LB_TEXT_INVALID_RESPONSE);
-			}
-		}
-		// ── PRODUCTION: original API logic ─────────────────────────────────────
 		if(!empty($license)&&!empty($client)){
 			$data_array =  array(
 				"product_id"  => $this->product_id,

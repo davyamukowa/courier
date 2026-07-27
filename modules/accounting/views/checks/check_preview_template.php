@@ -51,7 +51,7 @@
     }
 
     $amount_attr = '';
-    $check_amount = (isset($check) ? number_format($check->amount,2) : number_format($bill_amount, 2));
+    $check_amount = (isset($check) ? acc_format_number($check->amount) : acc_format_number($bill_amount));
     ?>
    <?php if(!isset($check) || (isset($check) && isset($is_edit))){ ?>
     <div class="row">
@@ -110,24 +110,25 @@
            </div>
          </div>
      </div>
-
      <div class="col-md-12">
       <div class="row">
         <div class="col-md-6">
           <?php $value = (isset($check) ? $check->bank_account : $bank_account_check); ?>
           <?php echo render_select('bank_account', $accounts, array('id', 'name'), '<span class="text-danger">* </span>'. _l('acc_bank_account'), $value); ?>
+        </div>
+        <div class="col-md-6 ">
+          <?php echo render_input('bank_account_balance', 'balance', '', 'text', array('disabled' => true)); ?>
+        </div>
+        <div class="col-md-6">
+          <?php $value = (isset($check) ? $check->number : 0); ?>
+          <?php echo render_input('check_number', 'check_number', $value, 'number'); ?>
           
+        </div>
+        <div class="col-md-6">
+        <?php $value = (isset($check) ? $check->acc_class : '');
+          echo render_select('acc_class',$classes,array('id','name'),'acc_class',$value);  ?>
+        </div>
       </div>
-      <div class="col-md-6 ">
-        <?php echo render_input('bank_account_balance', 'balance', '', 'text', array('disabled' => true)); ?>
-      </div>
-      <div class="col-md-6">
-        <?php $value = (isset($check) ? $check->number : 0); ?>
-        <?php echo render_input('check_number', 'check_number', $value, 'number'); ?>
-        
-      </div>
-    </div>
-
 
   <?php 
         if(is_numeric($bill_ids) || $bill != '' || (isset($check) && $check->bill_items != '')){
@@ -176,10 +177,10 @@
                       '. render_input('pay_bill_item['.$value['item_id'].']', '', $value['item_name'],'text', array('readonly' => true)).'
                    </td>
                    <td>
-                      '. render_input('pay_bill_amount['.$value['item_id'].']', '',number_format($value['item_amount'],2),'text', array('readonly' => true, 'data-type' => 'currency')).'
+                      '. render_input('pay_bill_amount['.$value['item_id'].']', '',acc_format_number($value['item_amount']),'text', array('readonly' => true, 'data-type' => 'currency')).'
                    </td>
                    <td>
-                      '. render_input('pay_bill_amount_paid['.$value['item_id'].']', '',number_format($value['amount_paid'],2),'text', array('required' => true, 'data-type' => 'currency', 'max-amount' => $value['item_amount'])).'
+                      '. render_input('pay_bill_amount_paid['.$value['item_id'].']', '',acc_format_number($value['amount_paid']),'text', array('required' => true, 'data-type' => 'currency', 'max-amount' => $value['item_amount'])).'
                    </td>
                 </tr>';
             } ?>
@@ -190,12 +191,17 @@
 
       <?php } ?>
   </div>
- 
-
 </div>
 <?php } ?>
 
-
+<?php if(isset($check)){ ?>
+<div class="row">
+  <div class="col-md-3">
+    <?php $value = (isset($check) ? $check->acc_class : '');
+    echo render_select('acc_class',$classes,array('id','name'),'acc_class',$value);  ?>
+  </div>
+</div>
+<?php } ?>
 <div class="col-md-12">
  <div class="row frcard">
   <?php if(isset($check) && $check->issue == 3){ ?>

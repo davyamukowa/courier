@@ -142,7 +142,7 @@ function init_warehouse_table() {
   if ($.fn.DataTable.isDataTable('.table-stock-export')) {
     $('.table-stock-export').DataTable().destroy();
   }
-  initDataTable('.table-stock-export', admin_url + 'accounting/stock_export_table', [0], [0], fnServerParams, [1, 'desc']);
+  initDataTable('.table-stock-export', admin_url + 'accounting/stock_export_table', [0, 5, 6], [0, 5, 6], fnServerParams, [1, 'desc']);
 
   if ($.fn.DataTable.isDataTable('.table-loss-adjustment')) {
     $('.table-loss-adjustment').DataTable().destroy();

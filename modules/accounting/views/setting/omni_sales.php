@@ -3,6 +3,10 @@
   $acc_omni_sales_order_return_automatic_conversion = get_option('acc_omni_sales_order_return_automatic_conversion');
   $acc_omni_sales_order_return_payment_account = get_option('acc_omni_sales_order_return_payment_account');
   $acc_omni_sales_order_return_deposit_to = get_option('acc_omni_sales_order_return_deposit_to');
+  $acc_omni_sales_order_return_fee_payment_account = get_option('acc_omni_sales_order_return_fee_payment_account');
+  $acc_omni_sales_order_return_fee_deposit_to = get_option('acc_omni_sales_order_return_fee_deposit_to');
+  $acc_omni_sales_order_return_discount_payment_account = get_option('acc_omni_sales_order_return_discount_payment_account');
+  $acc_omni_sales_order_return_discount_deposit_to = get_option('acc_omni_sales_order_return_discount_deposit_to');
 
   $acc_omni_sales_refund_automatic_conversion = get_option('acc_omni_sales_refund_automatic_conversion');
   $acc_omni_sales_refund_payment_account = get_option('acc_omni_sales_refund_payment_account');
@@ -34,11 +38,32 @@
           </div>
         </div>
         <div class="row <?php if($acc_omni_sales_order_return_automatic_conversion == 0){echo 'hide';} ?>" id="div_omni_sales_order_return_automatic_conversion">
+          <div class="col-md-12">
+            <h5><?php echo _l('default_for_all_item'); ?></h5>
+          </div>
           <div class="col-md-6">
             <?php echo render_select('acc_omni_sales_order_return_payment_account',$accounts,array('id','name', 'account_type_name'),'payment_account',$acc_omni_sales_order_return_payment_account,array(),array(),'','',false); ?>
           </div>
           <div class="col-md-6">
             <?php echo render_select('acc_omni_sales_order_return_deposit_to',$accounts,array('id','name', 'account_type_name'),'deposit_to',$acc_omni_sales_order_return_deposit_to,array(),array(),'','',false); ?>
+          </div>
+          <div class="col-md-12">
+            <h5><?php echo _l('fee_for_return_order'); ?></h5>
+          </div>
+          <div class="col-md-6">
+            <?php echo render_select('acc_omni_sales_order_return_fee_payment_account',$accounts,array('id','name', 'account_type_name'),'payment_account',$acc_omni_sales_order_return_fee_payment_account,array(),array(),'','',false); ?>
+          </div>
+          <div class="col-md-6">
+            <?php echo render_select('acc_omni_sales_order_return_fee_deposit_to',$accounts,array('id','name', 'account_type_name'),'deposit_to',$acc_omni_sales_order_return_fee_deposit_to,array(),array(),'','',false); ?>
+          </div>
+          <div class="col-md-12">
+            <h5><?php echo _l('discount'); ?></h5>
+          </div>
+          <div class="col-md-6">
+            <?php echo render_select('acc_omni_sales_order_return_discount_payment_account',$accounts,array('id','name', 'account_type_name'),'payment_account',$acc_omni_sales_order_return_discount_payment_account,array(),array(),'','',false); ?>
+          </div>
+          <div class="col-md-6">
+            <?php echo render_select('acc_omni_sales_order_return_discount_deposit_to',$accounts,array('id','name', 'account_type_name'),'deposit_to',$acc_omni_sales_order_return_discount_deposit_to,array(),array(),'','',false); ?>
           </div>
         </div>
       </div>

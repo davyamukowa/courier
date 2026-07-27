@@ -30,6 +30,24 @@
                </a>
             </li>
          <?php } ?>
+         <?php if (get_option('acc_debit_note_mapping_mode') == 'on_create') { ?>
+               <li role="presentation" class="<?php if($tab_2 == 'debit_note'){echo 'active';}; ?>">
+                  <a href="<?php echo admin_url('accounting/transaction?group=purchase&tab=debit_note'); ?>">
+                    <i class="fa fa-debit-card"></i>&nbsp;<?php echo _l('debit_note'); ?> <span class="text-danger"><?php echo '('.$count_debit_note.')'; ?></span>
+                  </a>
+               </li>
+         <?php }else{ ?>
+               <li role="presentation" class="<?php if($tab_2 == 'debit_note_applied'){echo 'active';}; ?>">
+                  <a href="<?php echo admin_url('accounting/transaction?group=purchase&tab=debit_note_applied'); ?>">
+                    <i class="fa fa-debit-card"></i>&nbsp;<?php echo _l('debit_note_applied'); ?> <span class="text-danger"><?php echo '('.$count_debit_note_apply.')'; ?></span>
+                  </a>
+               </li>
+         <?php } ?>
+            <li role="presentation" class="<?php if($tab_2 == 'debit_note_refund'){echo 'active';}; ?>">
+               <a href="<?php echo admin_url('accounting/transaction?group=purchase&tab=debit_note_refund'); ?>">
+                 <i class="fa fa-debit-card"></i>&nbsp;<?php echo _l('debit_note_refund'); ?> <span class="text-danger"><?php echo '('.$count_debit_note_refund.')'; ?></span>
+               </a>
+            </li>
       </ul>
    </div>
     <?php echo form_hidden('currency_id', $currency->id); ?>

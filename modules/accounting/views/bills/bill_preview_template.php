@@ -54,60 +54,72 @@
          <div class="tab-content">
             <div role="tabpanel" class="tab-pane ptop10 active" id="tab_expense" data-empty-note="<?php echo empty($expense->note); ?>" data-empty-name="<?php echo empty($expense->expense_name); ?>">
                <div class="row">
-                <?php
-                if($expense->recurring > 0 || $expense->recurring_from != NULL) {
-                  echo '<div class="col-md-12">';
+                 <?php
+                 if($expense->acc_recurring > 0) {
+                   echo '<div class="col-md-12">';
 
-                  $recurring_expense = $expense;
-                  $show_recurring_expense_info = true;
+                   $recurring_expense = $expense;
+                   $show_recurring_expense_info = true;
 
-                  if($expense->recurring_from != NULL){
-                    $recurring_expense = $this->expenses_model->get($expense->recurring_from);
-                         // Maybe recurring expense not longer recurring?
-                    if($recurring_expense->recurring == 0) {
-                      $show_recurring_expense_info = false;
-                    } else {
-                      $next_recurring_date_compare = $recurring_expense->last_recurring_date;
-                    }
-                  } else {
-                    $next_recurring_date_compare = $recurring_expense->date;
-                    if($recurring_expense->last_recurring_date){
-                      $next_recurring_date_compare = $recurring_expense->last_recurring_date;
-                    }
+                   if($expense->acc_is_recurring_from != NULL){
+                       $show_recurring_expense_info = false;
+                   } else {
+                     $next_recurring_date_compare = $recurring_expense->date;
+                     if($recurring_expense->acc_last_recurring_date){
+                       $next_recurring_date_compare = $recurring_expense->acc_last_recurring_date;
+                     }
+                   }
+                   if($show_recurring_expense_info){
+                    $next_date = date('Y-m-d', strtotime('+' . $recurring_expense->acc_repeat_every . ' ' . strtoupper($recurring_expense->acc_recurring_type),strtotime($next_recurring_date_compare)));
                   }
-                  if($show_recurring_expense_info){
-                   $next_date = date('Y-m-d', strtotime('+' . $recurring_expense->repeat_every . ' ' . strtoupper($recurring_expense->recurring_type),strtotime($next_recurring_date_compare)));
-                 }
-                 ?>
-                 <?php if($expense->recurring_from == null && $recurring_expense->cycles > 0 && $recurring_expense->cycles == $recurring_expense->total_cycles) { ?>
-                  <div class="alert alert-info mbot15">
-                   <?php echo _l('recurring_has_ended', _l('expense_lowercase')); ?>
-                 </div>
-               <?php } else  if($show_recurring_expense_info){ ?>
-                <span class="label label-default padding-5">
-                  <?php echo _l('cycles_remaining'); ?>:
-                  <b>
-                   <?php
-                     echo $recurring_expense->cycles == 0 ? _l('cycles_infinity') : $recurring_expense->cycles - $recurring_expense->total_cycles;
-                   ?>
-                 </b>
-               </span>
-               <?php if($recurring_expense->cycles == 0 || $recurring_expense->cycles != $recurring_expense->total_cycles){
-                echo '<span class="label label-default padding-5 mleft5"><i class="fa fa-question-circle fa-fw" data-toggle="tooltip" data-title="'._l('recurring_recreate_hour_notice',_l('expense')).'"></i> ' . _l('next_expense_date','<b>'._d($next_date).'</b>') .'</span>';
-              }
-            }
-            if($expense->recurring_from != NULL){ ?>
-              <?php echo '<p class="text-muted no-mbot'.($show_recurring_expense_info ? ' mtop15': '').'">'._l('expense_recurring_from','<a href="'.admin_url('expenses/list_expenses/'.$expense->recurring_from).'" onclick="init_expense('.$expense->recurring_from.');return false;">'.$recurring_expense->category_name.(!empty($recurring_expense->expense_name) ? ' ('.$recurring_expense->expense_name.')' : '').'</a></p>'); ?>
-            <?php } ?>
-          </div>
-          <div class="clearfix"></div>
-          <hr class="hr-panel-heading" />
-        <?php } ?>
+                 
+                  ?>
+                  <?php if($expense->acc_is_recurring_from == null && $recurring_expense->acc_cycles > 0 && $recurring_expense->acc_cycles == $recurring_expense->acc_total_cycles) { ?>
+                   <div class="alert alert-info mbot15">
+                    <?php echo _l('recurring_has_ended', _l('expense_lowercase')); ?>
+                  </div>
+                <?php } else  if($show_recurring_expense_info){ ?>
+                 <span class="label label-default padding-5">
+                   <?php echo _l('cycles_remaining'); ?>:
+                   <b>
+                    <?php
+                      echo $recurring_expense->acc_cycles == 0 ? _l('cycles_infinity') : $recurring_expense->acc_cycles - $recurring_expense->acc_total_cycles;
+                    ?>
+                  </b>
+                </span>
+                <?php if($recurring_expense->acc_cycles == 0 || $recurring_expense->acc_cycles != $recurring_expense->acc_total_cycles){
+                 echo '<span class="label label-default padding-5 mleft5"><i class="fa fa-question-circle fa-fw" data-toggle="tooltip" data-title="'._l('recurring_recreate_hour_notice',_l('expense')).'"></i> ' . _l('next_expense_date','<b>'._d($next_date).'</b>') .'</span>';
+               }
+             }
+             if($expense->acc_is_recurring_from != NULL){ ?>
+               <?php echo '<p class="text-muted no-mbot'.($show_recurring_expense_info ? ' mtop15': '').'">'._l('expense_recurring_from','<a href="'.admin_url('expenses/list_expenses/'.$expense->acc_is_recurring_from).'" onclick="init_expense('.$expense->acc_is_recurring_from.');return false;">'.$recurring_expense->category_name.(!empty($recurring_expense->expense_name) ? ' ('.$recurring_expense->expense_name.')' : '').'</a></p>'); ?>
+             <?php } ?>
+           </div>
+           <div class="clearfix"></div>
+           <hr class="hr-panel-heading" />
+         <?php } ?>
 
          <?php $card_image = site_url('modules/accounting/assets/images/check_card3.png') ?>
                      <div class="row check-card bill-card" style="background: url('<?php echo new_html_entity_decode($card_image); ?>')">
-                        <h3 class="no-margin"><?php echo _l('acc_bill'); ?></h3>
-                     </br>
+                        <div class="row">
+                           <div class="col-md-2">
+                              <h3 class="no-margin"><?php echo _l('acc_bill'); ?></h3>
+                           </div>
+
+                           <div class="col-md-5">
+                           </div>
+                            <?php if (get_option('acc_enable_class_tracking') == 1) { ?>
+                               <div class="col-md-2">
+                                  <label for="class" class="mtop10"><?php echo _l('acc_class'); ?></label>
+ 
+                               </div>
+                               <div class="col-md-3">
+                                  <?php $value = (isset($expense) ? $expense->acc_class : '');
+                                     echo render_select('acc_class',$classes,array('id','name'),'',$value, ['disabled' => true]);  ?>
+                               </div>
+                               <?php } ?>
+
+                       </div>
                      <?php $vendor =  isset($expense) ? $expense->vendor : '' ;?>
 
                      <div class="row">
@@ -125,7 +137,7 @@
                            <?php $value = (isset($expense) ? _d($expense->date) : _d(date('Y-m-d')));
                            $date_attrs = array();
                            $date_attrs['disabled'] = true;
-                           if(isset($expense) && $expense->recurring > 0 && $expense->last_recurring_date != null) {
+                           if(isset($expense) && $expense->acc_recurring > 0 && $expense->acc_last_recurring_date != null) {
                              $date_attrs['disabled'] = true;
                           }
                           ?>

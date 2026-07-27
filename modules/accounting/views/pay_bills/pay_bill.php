@@ -37,11 +37,12 @@
                   <hr class="hr-panel-heading" />
                   <div class="row">
                      
-                  <div class="col-md-6 form-group <?php if(isset($pay_bill)){ echo 'hide'; }?>">
+                  <div class="col-md-12 form-group <?php if(isset($pay_bill)){ echo 'hide'; }?>">
                      <p class="mbot5"><?php echo _l('payment_method'); ?></p>
                      <label class="radio-inline"><input type="radio" id="check" name="payment_method" value="check" ><?php echo _l('check'); ?></label>
                      <label class="radio-inline"><input type="radio" id="credit_card" name="payment_method" value="credit_card"><?php echo _l('acc_credit_card'); ?></label>
                      <label class="radio-inline"><input type="radio" id="electronic_payment" name="payment_method" value="electronic_payment" checked><?php echo _l('electronic_payment'); ?></label>
+                     <label class="radio-inline"><input type="radio" id="cash" name="payment_method" value="cash"><?php echo _l('cash'); ?></label>
                    </div>
                   </div>
                    <hr>
@@ -112,10 +113,10 @@
                                   '. render_input('pay_bill_item['.$value['item_id'].']', '', $value['item_name'],'text', array('readonly' => true)).'
                                </td>
                                <td>
-                                  '. render_input('pay_bill_amount['.$value['item_id'].']', '',number_format($value['item_amount'],2),'text', array('readonly' => true, 'data-type' => 'currency')).'
+                                  '. render_input('pay_bill_amount['.$value['item_id'].']', '',acc_format_number($value['item_amount']),'text', array('readonly' => true, 'data-type' => 'currency')).'
                                </td>
                                <td>
-                                  '. render_input('pay_bill_amount_paid['.$value['item_id'].']', '',number_format($value['amount_paid'],2),'text', array('required' => true, 'data-type' => 'currency', 'max-amount' => $value['item_amount'])).'
+                                  '. render_input('pay_bill_amount_paid['.$value['item_id'].']', '',acc_format_number($value['amount_paid']),'text', array('required' => true, 'data-type' => 'currency', 'max-amount' => $value['item_amount'])).'
                                </td>
                             </tr>';
                         } ?>
@@ -129,7 +130,7 @@
                                      </td>
                                      <?php echo form_hidden('amount', $pay_bill->amount); ?>
                                      <td id="pay-bill-total" class="text-danger">
-                                        <?php echo number_format($pay_bill->amount, 2); ?>
+                                        <?php echo acc_format_number($pay_bill->amount); ?>
                                      </td>
                                   </tr>
                                </tbody>
@@ -142,7 +143,8 @@
                       <?php $value = (isset($pay_bill) ? $pay_bill->amount : $bill_amount); ?>
                       <?php echo render_input('amount','acc_amount_paid',$value,'number',array('readonly' => true)); ?>
                   <?php } ?>
-                  
+                  <?php $value = (isset($pay_bill) ? $pay_bill->acc_class : '');
+                     echo render_select('acc_class',$classes,array('id','name'),'acc_class',$value);  ?>
                   <?php $value = (isset($pay_bill) ? $pay_bill->reference_no : ''); ?>
                   <?php echo render_input('reference_no','ref_number',$value); ?>
                   

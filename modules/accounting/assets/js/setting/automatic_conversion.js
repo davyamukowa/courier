@@ -14,9 +14,11 @@ var fnServerParams,
  preferred_payment_method,
  credit_note_refund_payment_account,
  credit_note_refund_deposit_to,
+debit_note_refund_payment_account,
+ debit_note_refund_deposit_to,
  purchase_payment_account,
- purchase_deposit_to;
- 
+ purchase_deposit_to,
+ item_group_id;
 (function($) {
 	"use strict";
   $( document ).ready(function() {
@@ -26,8 +28,16 @@ var fnServerParams,
     },item_automatic_form_handler);
 
   appValidateForm($('#edit-item-automatic-form'), {
-		item_id: 'required',
+    item_id: 'required',
     },item_automatic_form_handler);
+
+  appValidateForm($('#item-group-automatic-form'), {
+    'item_group[]': 'required',
+    },item_group_automatic_form_handler);
+
+  appValidateForm($('#edit-item-group-automatic-form'), {
+		item_group_id: 'required',
+    },item_group_automatic_form_handler);
 
   appValidateForm($('#payment-mode-mapping-form'), {
     'payment_mode[]': 'required',
@@ -297,18 +307,58 @@ var fnServerParams,
       }
   });
 
+  $('input[name="acc_debit_note_automatic_conversion"]').on('change', function() {
+      if($('input[name="acc_debit_note_automatic_conversion"]').is(':checked') == true){
+        $('#div_debit_note_automatic_conversion').removeClass('hide');
+      }else{
+        $('#div_debit_note_automatic_conversion').addClass('hide');
+      }
+  });
+
+  $('input[name="acc_debit_note_refund_automatic_conversion"]').on('change', function() {
+      if($('input[name="acc_debit_note_refund_automatic_conversion"]').is(':checked') == true){
+        $('#div_debit_note_refund_automatic_conversion').removeClass('hide');
+      }else{
+        $('#div_debit_note_refund_automatic_conversion').addClass('hide');
+      }
+  });
+
+  $('select[name="acc_debit_note_mapping_mode"]').on('change', function() {
+      if($('select[name="acc_debit_note_mapping_mode"]').val() == 'on_create'){
+        $('.invoices_debited_label').addClass('hide');
+        $('.debit_note_label').removeClass('hide');
+
+
+      }else{
+        $('.invoices_debited_label').removeClass('hide');
+        $('.debit_note_label').addClass('hide');
+      }
+  });
+
+
+  $('select[name="acc_credit_note_mapping_mode"]').on('change', function() {
+      if($('select[name="acc_credit_note_mapping_mode"]').val() == 'on_create'){
+        $('.credit_note_label').removeClass('hide');
+        $('.invoices_credited_label').addClass('hide');
+      }else{
+        $('.credit_note_label').addClass('hide');
+        $('.invoices_credited_label').removeClass('hide');
+      }
+  });
+
   init_item_automatic_table();
+  init_item_group_automatic_table();
   init_expense_category_mapping_table();
   init_payment_mode_mapping_table();
   init_tax_mapping_table();
 	init_payment_mode_mapping_table();
 
-  var addMoreLadderInputKey = $('.list-payment-method-mapping #payment_method_mapping').length;
   $("body").on('click', '.new_item_ladder', function() {
     if ($(this).hasClass('disabled')) { return false; }
 
-    addMoreLadderInputKey++;
-    var newItem = $('.list-payment-method-mapping').find('#payment_method_mapping').eq(0).clone().appendTo('.list-payment-method-mapping');
+    var listPaymentMethodMapping = $(this).closest('.list-payment-method-mapping');
+    var addMoreLadderInputKey = get_next_payment_method_mapping_key(listPaymentMethodMapping);
+    var newItem = listPaymentMethodMapping.find('#payment_method_mapping').eq(0).clone().appendTo(listPaymentMethodMapping);
     newItem.find('button[role="combobox"]').remove();
     newItem.find('select').selectpicker({
       showSubtext: true,
@@ -365,6 +415,20 @@ function init_item_automatic_table() {
      $('.table-item-automatic').DataTable().destroy();
   }
   initDataTable('.table-item-automatic', admin_url + 'accounting/item_automatic_table', false, false, fnServerParams, [0, 'desc']);
+}
+
+function get_next_payment_method_mapping_key(container) {
+  "use strict";
+
+  var maxKey = -1;
+  $(container).find('select[name^="payment_mode["]').each(function() {
+    var matched = $(this).attr('name').match(/^payment_mode\[(\d+)\]$/);
+    if (matched) {
+      maxKey = Math.max(maxKey, parseInt(matched[1], 10));
+    }
+  });
+
+  return maxKey + 1;
 }
 
 function init_expense_category_mapping_table() {
@@ -634,6 +698,8 @@ function add_payment_mode_mapping(invoker) {
   $('#payment-mode-mapping-modal select[name="expense_deposit_to"]').val($('#acc_expense_deposit_to').val()).change();
   $('#payment-mode-mapping-modal select[name="credit_note_refund_payment_account"]').val($('#acc_credit_note_refund_payment_account').val()).change();
   $('#payment-mode-mapping-modal select[name="credit_note_refund_deposit_to"]').val($('#acc_credit_note_refund_deposit_to').val()).change();
+  $('#payment-mode-mapping-modal select[name="debit_note_refund_payment_account"]').val($('input[name=acc_debit_note_refund_payment_account]').val()).change();
+  $('#payment-mode-mapping-modal select[name="debit_note_refund_deposit_to"]').val($('input[name=acc_debit_note_refund_deposit_to]').val()).change();
 }
 
 function edit_payment_mode_mapping(invoker) {
@@ -647,6 +713,16 @@ function edit_payment_mode_mapping(invoker) {
     expense_deposit_to = $(invoker).data('expense-deposit-to');
     credit_note_refund_payment_account = $(invoker).data('credit-note-refund-payment-account');
     credit_note_refund_deposit_to = $(invoker).data('credit-note-refund-deposit-to');
+    debit_note_refund_payment_account = $(invoker).data('debit-note-refund-payment-account');
+    debit_note_refund_deposit_to = $(invoker).data('debit-note-refund-deposit-to');
+
+    if (debit_note_refund_payment_account == 0) {
+      debit_note_refund_payment_account = $('input[name=acc_debit_note_refund_payment_account]').val();
+    }
+
+    if (debit_note_refund_deposit_to == 0) {
+      debit_note_refund_deposit_to = $('input[name=acc_debit_note_refund_deposit_to]').val();
+    }
 
     $('#edit-payment-mode-mapping-modal').find('button[type="submit"]').prop('disabled', false);
     $('#edit-payment-mode-mapping-modal input[name="id"]').val(id);
@@ -657,6 +733,8 @@ function edit_payment_mode_mapping(invoker) {
     $('#edit-payment-mode-mapping-modal select[name="expense_deposit_to"]').val(expense_deposit_to).change();
     $('#edit-payment-mode-mapping-modal select[name="credit_note_refund_payment_account"]').val(credit_note_refund_payment_account).change();
     $('#edit-payment-mode-mapping-modal select[name="credit_note_refund_deposit_to"]').val(credit_note_refund_deposit_to).change();
+    $('#edit-payment-mode-mapping-modal select[name="debit_note_refund_payment_account"]').val(debit_note_refund_payment_account).change();
+    $('#edit-payment-mode-mapping-modal select[name="debit_note_refund_deposit_to"]').val(debit_note_refund_deposit_to).change();
 
     $('#edit-payment-mode-mapping-modal').modal('show');
 }
@@ -694,4 +772,80 @@ function payment_mode_mapping_form_handler(form) {
     });
 
     return false;
+}
+
+
+function add_item_group_automatic(invoker) {
+  "use strict";
+
+  $('#item-group-automatic-modal').find('button[type="submit"]').prop('disabled', false);
+  $('#item-group-automatic-modal').modal('show');
+  $('#item-group-automatic-modal input[name="id"]').val('');
+  $('#item-group-automatic-modal select[name="transfer_funds_from"]').val('').change();
+  $('#item-group-automatic-modal select[name="transfer_funds_to"]').val('').change();
+  $('#item-group-automatic-modal input[name="date"]').val('');
+  $('#item-group-automatic-modal input[name="transfer_amount"]').val('');
+}
+
+function edit_item_group_automatic(invoker) {
+  "use strict";
+
+    id = $(invoker).data('id');
+  item_group_id = $(invoker).data('item-id');
+  inventory_asset_account = $(invoker).data('inventory-asset-account');
+  income_account = $(invoker).data('income-account');
+  expense_account = $(invoker).data('expense-account');
+
+    $('#edit-item-group-automatic-modal').find('button[type="submit"]').prop('disabled', false);
+    $('#edit-item-group-automatic-modal input[name="id"]').val(id);
+    $('#edit-item-group-automatic-modal select[name="item_group_id"]').val(item_group_id).change();
+    $('#edit-item-group-automatic-modal select[name="inventory_asset_account"]').val(inventory_asset_account).change();
+    $('#edit-item-group-automatic-modal select[name="income_account"]').val(income_account).change();
+    $('#edit-item-group-automatic-modal select[name="expense_account"]').val(expense_account).change();
+
+    $('#edit-item-group-automatic-modal').modal('show');
+}
+
+
+function item_group_automatic_form_handler(form) {
+    "use strict";
+    $('#item-group-automatic-modal').find('button[type="submit"]').prop('disabled', true);
+
+    var formURL = form.action;
+    var formData = new FormData($(form)[0]);
+
+    $.ajax({
+        type: $(form).attr('method'),
+        data: formData,
+        mimeType: $(form).attr('enctype'),
+        contentType: false,
+        cache: false,
+        processData: false,
+        url: formURL
+    }).done(function(response) {
+        response = JSON.parse(response);
+        if (response.success == 'close_the_book' || $.isNumeric(response.success)) {
+          alert_float('warning', response.message);
+        }else if (response.success === true || response.success == 'true' || $.isNumeric(response.success)) {
+          alert_float('success', response.message);
+          init_item_group_automatic_table();
+        }else {
+          alert_float('danger', response.message);
+        }
+        $('#item-group-automatic-modal').modal('hide');
+        $('#edit-item-group-automatic-modal').modal('hide');
+    }).fail(function(error) {
+        alert_float('danger', JSON.parse(error.mesage));
+    });
+
+    return false;
+}
+
+function init_item_group_automatic_table() {
+  "use strict";
+
+  if ($.fn.DataTable.isDataTable('.table-item-group-automatic')) {
+     $('.table-item-group-automatic').DataTable().destroy();
+  }
+  initDataTable('.table-item-group-automatic', admin_url + 'accounting/item_group_automatic_table', false, false, fnServerParams, [0, 'desc']);
 }

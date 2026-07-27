@@ -10,7 +10,7 @@
                <div class="col-md-12" id="small-table">
                   <div class="panel_s">
                      <?php
-                     if(isset($bill)){
+                     if(isset($bill) && !isset($is_duplicate)){
                        echo form_hidden('is_edit','true');
                     }
                     ?>
@@ -19,23 +19,121 @@
                      <div class="clearfix"></div>
                      <h4 class="no-margin"><?php echo $title; ?></h4>
                      <hr class="hr-panel-heading" />
-
+                     <div class="row">
+                     <div class="col-md-6">
+                       <div class="row">
+                        <div class="col-md-12">
+                          <div class="form-group select-placeholder"<?php if(isset($bill) && !empty($bill->is_recurring_from)){ ?> data-toggle="tooltip" data-title="<?php echo _l('create_recurring_from_child_error_message', [_l('invoice_lowercase'),_l('invoice_lowercase'), _l('invoice_lowercase')]); ?>"<?php } ?>>
+                             <label for="recurring" class="control-label">
+                             <?php echo _l('recurring_bill'); ?>
+                             </label>
+                             <select class="selectpicker"
+                             data-width="100%"
+                             name="recurring"
+                             data-none-selected-text="<?php echo _l('dropdown_non_selected_tex'); ?>"
+                             <?php
+                             // The problem is that this invoice was generated from previous recurring invoice
+                             // Then this new invoice you set it as recurring but the next invoice date was still taken from the previous invoice.
+                             if(isset($bill) && !empty($bill->acc_is_recurring_from)){echo 'disabled';} ?>
+                             >
+                                <?php for($i = 0; $i <=12; $i++){ ?>
+                                <?php
+                                   $selected = '';
+                                   if(isset($bill)){
+                                     if($bill->acc_custom_recurring == 0){
+                                      if($bill->acc_recurring == $i){
+                                        $selected = 'selected';
+                                      }
+                                    }
+                                   }
+                                   if($i == 0){
+                                    $reccuring_string =  _l('invoice_add_edit_recurring_no');
+                                   } else if($i == 1){
+                                    $reccuring_string = _l('invoice_add_edit_recurring_month',$i);
+                                   } else {
+                                    $reccuring_string = _l('invoice_add_edit_recurring_months',$i);
+                                   }
+                                   ?>
+                                <option value="<?php echo $i; ?>" <?php echo $selected; ?>><?php echo $reccuring_string; ?></option>
+                                <?php } ?>
+                                <option value="custom" <?php if(isset($bill) && $bill->acc_recurring != 0 && $bill->acc_custom_recurring == 1){echo 'selected';} ?>><?php echo _l('recurring_custom'); ?></option>
+                             </select>
+                          </div>
+                       </div>
+                       <div class="recurring_custom <?php if((isset($bill) && $bill->acc_custom_recurring != 1) || (!isset($bill))){echo 'hide';} ?>">
+                          <div class="col-md-6">
+                             <?php $value = (isset($bill) && $bill->acc_custom_recurring == 1 ? $bill->acc_recurring : 1); ?>
+                             <?php echo render_input('repeat_every_custom','',$value,'number',array('min'=>1)); ?>
+                          </div>
+                          <div class="col-md-6">
+                             <select name="repeat_type_custom" id="repeat_type_custom" class="selectpicker" data-width="100%" data-none-selected-text="<?php echo _l('dropdown_non_selected_tex'); ?>">
+                                <option value="day" <?php if(isset($bill) && $bill->acc_custom_recurring == 1 && $bill->acc_recurring_type == 'day'){echo 'selected';} ?>><?php echo _l('invoice_recurring_days'); ?></option>
+                                <option value="week" <?php if(isset($bill) && $bill->acc_custom_recurring == 1 && $bill->acc_recurring_type == 'week'){echo 'selected';} ?>><?php echo _l('invoice_recurring_weeks'); ?></option>
+                                <option value="month" <?php if(isset($bill) && $bill->acc_custom_recurring == 1 && $bill->acc_recurring_type == 'month'){echo 'selected';} ?>><?php echo _l('invoice_recurring_months'); ?></option>
+                                <option value="year" <?php if(isset($bill) && $bill->acc_custom_recurring == 1 && $bill->acc_recurring_type == 'year'){echo 'selected';} ?>><?php echo _l('invoice_recurring_years'); ?></option>
+                             </select>
+                          </div>
+                       </div>
+                       <div id="cycles_wrapper" class="<?php if(!isset($bill) || (isset($bill) && $bill->acc_recurring == 0)){echo ' hide';}?>">
+                          <div class="col-md-12">
+                             <?php $value = (isset($bill) ? $bill->acc_cycles : 0); ?>
+                             <div class="form-group recurring-cycles">
+                               <label for="cycles"><?php echo _l('recurring_total_cycles'); ?>
+                                 <?php if(isset($bill) && $bill->acc_total_cycles > 0){
+                                   echo '<small>' . _l('cycles_passed', $bill->acc_total_cycles) . '</small>';
+                                 }
+                                 ?>
+                               </label>
+                               <div class="input-group">
+                                 <input type="number" class="form-control"<?php if($value == 0){echo ' disabled'; } ?> name="cycles" id="cycles" value="<?php echo $value; ?>" <?php if(isset($bill) && $bill->acc_total_cycles > 0){echo 'min="'.($bill->acc_total_cycles).'"';} ?>>
+                                 <div class="input-group-addon">
+                                   <div class="checkbox">
+                                     <input type="checkbox"<?php if($value == 0){echo ' checked';} ?> id="unlimited_cycles">
+                                     <label for="unlimited_cycles"><?php echo _l('cycles_infinity'); ?></label>
+                                   </div>
+                                 </div>
+                               </div>
+                             </div>
+                           </div>
+                         </div>
+                       </div>
+                     </div>
+                     </div>
                      <?php $card_image = site_url('modules/accounting/assets/images/check_card3.png') ?>
                      <div class="col-md-10 check-card bill-card" style="background: url('<?php echo new_html_entity_decode($card_image); ?>')">
-                        <h3 class="no-margin"><?php echo _l('acc_bill'); ?></h3>
-                     </br>
+
+                        <div class="row">
+                           <div class="col-md-2">
+                              <h3 class="no-margin"><?php echo _l('acc_bill'); ?></h3>
+                           </div>
+
+                           <div class="col-md-5">
+                           </div>
+                           <?php if (get_option('acc_enable_class_tracking') == 1) { ?>
+                              <div class="col-md-2">
+                                 <label for="class" class="mtop10"><?php echo _l('acc_class'); ?></label>
+
+                              </div>
+                              <div class="col-md-3">
+                                 <?php $value = (isset($bill) ? $bill->acc_class : '');
+                                    echo render_select('acc_class',$classes,array('id','name'),'',$value);  ?>
+                              </div>
+                              <?php } ?>
+
+                       </div>
+
                      <?php $vendor =  isset($bill) ? $bill->vendor : '' ;?>
 
                      <div class="row">
                         <div class="col-md-2">
-                           <label for="vendor"><?php echo _l('acc_vendor'); ?></label>
+                           <label for="vendor" class="mtop5"><?php echo _l('acc_vendor'); ?></label>
                         </div>
 
                         <div class="col-md-5">
                            <?php echo render_select('vendor', $list_vendor, array('userid','company'), '', $vendor); ?>
                         </div>
                         <div class="col-md-2">
-                           <label for="date"><?php echo _l('bill_date'); ?></label>
+                           <label for="date" class="mtop5"><?php echo _l('bill_date'); ?></label>
                         </div>
                         <div class="col-md-3">
                            <?php $value = (isset($bill) ? _d($bill->date) : _d(date('Y-m-d')));
@@ -50,7 +148,7 @@
                     </div>
                     <div class="row">
                      <div class="col-md-2">
-                        <label for="expense_name"><i class="fa fa-question-circle pull-left" data-toggle="tooltip" data-title="<?php echo _l('expense_name_help'); ?> - <?php echo _l('expense_field_billable_help',_l('expense_name')); ?>"></i><?php echo _l('expense_name'); ?></label>
+                        <label for="expense_name" class="mtop5"><i class="fa fa-question-circle pull-left" data-toggle="tooltip" data-title="<?php echo _l('expense_name_help'); ?> - <?php echo _l('expense_field_billable_help',_l('expense_name')); ?>"></i><?php echo _l('expense_name'); ?></label>
                         
                      </div>
                      <div class="col-md-5">
@@ -58,7 +156,7 @@
                         <?php echo render_input('expense_name','',$value); ?>
                      </div>
                      <div class="col-md-2">
-                        <label for="reference_no"><?php echo _l('expense_add_edit_reference_no'); ?></label>
+                        <label for="reference_no" class="mtop5"><?php echo _l('expense_add_edit_reference_no'); ?></label>
                      </div>
                      <div class="col-md-3">
                         <?php $value = (isset($bill) ? $bill->reference_no : ''); ?>
@@ -68,14 +166,14 @@
 
                   <div class="row">
                      <div class="col-md-2">
-                        <label for="note"><i class="fa fa-question-circle pull-left" data-toggle="tooltip" data-title="<?php echo _l('expense_field_billable_help',_l('acc_memo')); ?>"></i><?php echo _l('acc_memo'); ?></label>
+                        <label for="note" class="mtop5"><i class="fa fa-question-circle pull-left" data-toggle="tooltip" data-title="<?php echo _l('expense_field_billable_help',_l('acc_memo')); ?>"></i><?php echo _l('acc_memo'); ?></label>
                      </div>
                      <div class="col-md-5">
                         <?php $value = (isset($bill) ? $bill->note : ''); ?>
                         <?php echo render_textarea('note','',$value,array('rows'=>1),array()); ?>
                      </div>
                      <div class="col-md-2">
-                        <label for="due_date"><?php echo _l('acc_due_date'); ?></label>
+                        <label for="due_date" class="mtop5"><?php echo _l('acc_due_date'); ?></label>
 
                      </div>
                      <div class="col-md-3">
@@ -85,8 +183,8 @@
                   </div>
 
                   <div class="row">
-                     <div class="col-md-7">
                         <?php if(isset($bill) && $bill->attachment !== ''){ ?>
+                     <div class="col-md-7">
                            <div class="row">
                               <div class="col-md-10">
                                  <i class="<?php echo get_mime_class($bill->filetype); ?>"></i> <a href="<?php echo admin_url('accounting/download_file/bill/'.$bill->id); ?>"><?php echo $bill->attachment; ?></a>
@@ -98,19 +196,20 @@
                               <?php } ?>
                            </div>
                            
-                        <?php } ?>
                      </div>
+                        <?php } ?>
 
                         <?php if(!isset($bill) || (isset($bill) && $bill->attachment == '')){ ?>
-                     <div class="col-md-7">
-                           <div id="dropzoneDragArea" class="dz-default dz-message">
-                              <span><?php echo _l('acc_attachment'); ?></span>
+                           <div class="col-md-7">
+                              <div id="dropzoneDragArea" class="dz-default dz-message">
+                                 <span><?php echo _l('acc_attachment'); ?></span>
+                              </div>
                            </div>
-                  </div>
-                     <div class="col-md-5">
-                           <div class="dropzone-previews"></div>
-                  </div>
+                           <div class="col-md-5">
+                              <div class="dropzone-previews"></div>
+                           </div>
                         <?php } ?>
+                    
                   </div>
 
                </div>
@@ -230,7 +329,7 @@
           <th width="10%"></th>
        </tr>
     </thead>
-    <?php if(isset($bill)){
+    <?php if(isset($bill) && !empty($bill->debit_account)){
       $i               = 0;
       foreach($bill->debit_account as $debit_account){ 
        ?>
@@ -239,7 +338,7 @@
             <?php echo render_select('debit_account['.$i.']', $list_debit_account, array('id','name'), '',$debit_account['account'], array()); ?>
          </td>
          <td>
-            <?php echo render_input('debit_amount['.$i.']', '',number_format($debit_account['amount'],2),'text', array('data-type' => 'currency')); ?>
+            <?php echo render_input('debit_amount['.$i.']', '',acc_format_number($debit_account['amount']),'text', array('data-type' => 'currency')); ?>
          </td>
          <td>
             <button name="add_template" class="btn <?php if($i == 0){ echo 'new_debit_template btn-success'; }else{ echo 'remove_debit_template btn-danger';} ?>" data-ticket="true" type="button"><i class="fa <?php if($i == 0){ echo 'fa-plus'; }else{ echo 'fa-minus';} ?>"></i></button>
@@ -273,7 +372,7 @@
  </thead>
  <tbody id="body-bill-credit-account">
    
-  <?php if(isset($bill)){
+  <?php if(isset($bill) && !empty($bill->credit_account)){
    $i               = 0;
    foreach($bill->credit_account as $credit_account){ 
     ?>
@@ -282,7 +381,7 @@
          <?php echo render_select('credit_account['.$i.']', $list_credit_account, array('id','name'), '',$credit_account['account'], array()); ?>
       </td>
       <td>
-         <?php echo render_input('credit_amount['.$i.']', '',number_format($credit_account['amount'],2),'text', array('data-type' => 'currency')); ?>
+         <?php echo render_input('credit_amount['.$i.']', '',acc_format_number($credit_account['amount']),'text', array('data-type' => 'currency')); ?>
       </td>
       <td>
          <button name="add_template" class="btn <?php if($i == 0){ echo 'new_credit_template btn-success'; }else{ echo 'remove_template btn-danger';} ?>" data-ticket="true" type="button"><i class="fa <?php if($i == 0){ echo 'fa-plus'; }else{ echo 'fa-minus';} ?>"></i></button>
@@ -321,7 +420,7 @@
           <th width="10%"></th>
        </tr>
     </thead>
-    <?php if(isset($bill)){
+    <?php if(isset($bill) && count($bill->bill_items) > 0){
       $i               = 0;
       foreach($bill->bill_items as $bill_item){ 
        ?>
@@ -336,10 +435,10 @@
             <?php echo render_input('item_qty['.$i.']', '',number_format($bill_item['qty'],2),'number', array('onchange' => 'bill_item_qty_change(this); return false;')); ?>
          </td>
          <td>
-            <?php echo render_input('item_cost['.$i.']', '',number_format($bill_item['cost'],2),'text', array('data-type' => 'currency', 'onchange' => 'bill_item_cost_change(this); return false;')); ?>
+            <?php echo render_input('item_cost['.$i.']', '',acc_format_number($bill_item['cost']),'text', array('data-type' => 'currency', 'onchange' => 'bill_item_cost_change(this); return false;')); ?>
          </td>
          <td>
-            <?php echo render_input('item_amount['.$i.']', '',number_format($bill_item['amount'],2),'text', array('readonly' => true, 'data-type' => 'currency')); ?>
+            <?php echo render_input('item_amount['.$i.']', '',acc_format_number($bill_item['amount']),'text', array('readonly' => true, 'data-type' => 'currency')); ?>
          </td>
          <td>
             <button name="add_template" class="btn <?php if($i == 0){ echo 'new_item_template btn-success'; }else{ echo 'remove_item_template btn-danger';} ?>" data-ticket="true" type="button"><i class="fa <?php if($i == 0){ echo 'fa-plus'; }else{ echo 'fa-minus';} ?>"></i></button>

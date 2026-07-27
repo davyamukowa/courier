@@ -27,6 +27,7 @@
   $acc_active_payment_mode_mapping = get_option('acc_active_payment_mode_mapping');
   $acc_active_expense_category_mapping = get_option('acc_active_expense_category_mapping');
 
+  $acc_credit_note_mapping_mode = get_option('acc_credit_note_mapping_mode');
   $acc_credit_note_automatic_conversion = get_option('acc_credit_note_automatic_conversion');
   $acc_credit_note_payment_account = get_option('acc_credit_note_payment_account');
   $acc_credit_note_deposit_to = get_option('acc_credit_note_deposit_to');
@@ -35,11 +36,17 @@
   $acc_credit_note_refund_payment_account = get_option('acc_credit_note_refund_payment_account');
   $acc_credit_note_refund_deposit_to = get_option('acc_credit_note_refund_deposit_to');
 
+  $acc_debit_note_refund_payment_account = get_option('acc_debit_note_refund_payment_account');
+  $acc_debit_note_refund_deposit_to = get_option('acc_debit_note_refund_deposit_to');
+
   $acc_pur_tax_payment_account = get_option('acc_pur_tax_payment_account');
   $acc_pur_tax_deposit_to = get_option('acc_pur_tax_deposit_to');
   
   $acc_check_deposit_to = get_option('acc_check_deposit_to');
  ?>
+
+<?php echo form_hidden('acc_debit_note_refund_payment_account', $acc_debit_note_refund_payment_account); ?>
+<?php echo form_hidden('acc_debit_note_refund_deposit_to', $acc_debit_note_refund_deposit_to); ?>
  
 <?php echo form_open(admin_url('accounting/update_automatic_conversion'),array('id'=>'general-settings-form')); ?>
 <div class="row">
@@ -154,6 +161,14 @@
               </div>
             </div>
           </div>
+          <div class="col-md-6">
+          <?php
+              $credit_note_mapping_mode = [
+                          1 => ['id' => 'on_create', 'name' => _l('map_credit_note_when_creating_it')],
+                          2 => ['id' => 'on_apply', 'name' => _l('map_credit_note_when_applying_it_to_an_invoice')],
+                        ];
+               echo render_select('acc_credit_note_mapping_mode', $credit_note_mapping_mode, array('id', 'name'), '', $acc_credit_note_mapping_mode, array(), array(), '', '', false); ?>
+          </div>
         </div>
         <div class="row">
           <div class="row">
@@ -161,7 +176,8 @@
               <div class="col-md-6">
                 <div class="row">
                   <div class="col-md-6 border-right">
-                    <h5><?php echo _l('sales'); ?></h5>
+                    <h5 class="credit_note_label <?php if($acc_credit_note_mapping_mode == 'on_apply'){echo 'hide';} ?>"><?php echo _l('credit_note'); ?></h5>
+                    <h5 class="invoices_credited_label <?php if($acc_credit_note_mapping_mode == 'on_create'){echo 'hide';} ?>"><?php echo _l('invoices_credited'); ?></h5>
                   </div>
                   <div class="col-md-6 mtop5">
                       <div class="onoffswitch">
@@ -181,7 +197,7 @@
               <?php echo render_select('acc_credit_note_deposit_to',$accounts,array('id','name', 'account_type_name'),'deposit_to',$acc_credit_note_deposit_to,array(),array(),'','',false); ?>
             </div>
           </div>
-          <div class="row">
+          <div class="row div_credit_note_refund">
             <div class="col-md-12">
               <div class="col-md-6">
                 <div class="row">
@@ -198,7 +214,7 @@
               </div>
             </div>
           </div>
-          <div class="<?php if($acc_credit_note_refund_automatic_conversion == 0){echo 'hide';} ?>" id="div_credit_note_refund_automatic_conversion">
+          <div class="<?php if($acc_credit_note_refund_automatic_conversion == 0){echo 'hide';} ?> div_credit_note_refund" id="div_credit_note_refund_automatic_conversion">
             <div class="col-md-6">
               <?php echo render_select('acc_credit_note_refund_payment_account',$accounts,array('id','name', 'account_type_name'),'payment_account',$acc_credit_note_refund_payment_account,array(),array(),'','',false); ?>
             </div>
@@ -296,6 +312,25 @@
     <button type="submit" class="btn btn-info pull-right"><?php echo _l('submit'); ?></button>
   </div>
 <?php echo form_close(); ?>
+<div class="row">
+  <div class="col-md-12">
+    <hr>
+  </div>
+</div>
+  <h4 class="no-margin font-bold"><?php echo _l('item_group_mapping_setup'); ?></h4>
+<hr>
+<a href="#" onclick="add_item_group_automatic(); return false;" class="btn btn-info mr-4 button-margin-r-b" title="<?php echo _l('add') ?> ">
+  <?php echo _l('add'); ?>
+</a>
+<hr>
+<table class="table table-item-group-automatic">
+  <thead>
+    <th>#</th>
+    <th><?php echo _l('item_group_name'); ?></th>
+  </thead>
+  <tbody>
+  </tbody>
+</table>
 <div class="row">
   <div class="col-md-12">
     <hr>
@@ -453,6 +488,54 @@
    </div>
 </div>
 
+<div class="modal fade" id="item-group-automatic-modal">
+   <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+         <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+            <h4 class="modal-title"><?php echo _l('item_group_mapping_setup')?></h4>
+         </div>
+         <?php echo form_open_multipart(admin_url('accounting/item_group_automatic'),array('id'=>'item-group-automatic-form'));?>
+         <?php echo form_hidden('id'); ?>
+         <div class="modal-body">
+              <?php echo render_select('item_group[]',$item_groups,array('id','name'),'acc_item_group', '', array('multiple' => true, 'data-actions-box' => true), array(), '', '', false); ?>
+              <?php echo render_select('inventory_asset_account',$accounts,array('id','name','account_type_name'),'inventory_asset_account', '37', array(), array(), '', '', false); ?>
+              <?php echo render_select('income_account',$accounts,array('id','name','account_type_name'),'income_account', '69', array(), array(), '', '', false); ?>
+              <?php echo render_select('expense_account',$accounts,array('id','name','account_type_name'),'expense_account', '16', array(), array(), '', '', false); ?>
+         </div>
+         <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal"><?php echo _l('close'); ?></button>
+            <button type="submit" class="btn btn-info btn-submit"><?php echo _l('submit'); ?></button>
+         </div>
+         <?php echo form_close(); ?>  
+      </div>
+   </div>
+</div>
+
+<div class="modal fade" id="edit-item-group-automatic-modal">
+   <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+         <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+            <h4 class="modal-title"><?php echo _l('item_group_mapping_setup')?></h4>
+         </div>
+         <?php echo form_open_multipart(admin_url('accounting/item_group_automatic'),array('id'=>'edit-item-group-automatic-form'));?>
+         <?php echo form_hidden('id'); ?>
+         
+         <div class="modal-body">
+              <?php echo render_select('item_group_id',$_item_groups,array('id','name'),'acc_item_group', '',array('disabled' => true), array(), '', '', false); ?>
+              <?php echo render_select('inventory_asset_account',$accounts,array('id','name','account_type_name'),'inventory_asset_account', '37', array(), array(), '', '', false); ?>
+              <?php echo render_select('income_account',$accounts,array('id','name','account_type_name'),'income_account', '69', array(), array(), '', '', false); ?>
+              <?php echo render_select('expense_account',$accounts,array('id','name','account_type_name'),'expense_account', '16', array(), array(), '', '', false); ?>
+         </div>
+         <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal"><?php echo _l('close'); ?></button>
+            <button type="submit" class="btn btn-info btn-submit"><?php echo _l('submit'); ?></button>
+         </div>
+         <?php echo form_close(); ?>  
+      </div>
+   </div>
+</div>
 
 <div class="modal fade" id="tax-mapping-modal">
    <div class="modal-dialog modal-lg">
@@ -676,6 +759,15 @@
                 <div class="col-md-6">
                   <?php echo render_select('credit_note_refund_deposit_to',$accounts,array('id','name', 'account_type_name'),'deposit_to',$acc_credit_note_refund_deposit_to,array(),array(),'','',false); ?>
                 </div>
+                <div class="col-md-12">
+                  <h5><?php echo _l('debit_note_refund'); ?></h5>
+                </div>
+                <div class="col-md-6">
+                  <?php echo render_select('debit_note_refund_payment_account',$accounts,array('id','name', 'account_type_name'),'payment_account',$acc_debit_note_refund_payment_account,array(),array(),'','',false); ?>
+                </div>
+                <div class="col-md-6">
+                  <?php echo render_select('debit_note_refund_deposit_to',$accounts,array('id','name', 'account_type_name'),'deposit_to',$acc_debit_note_refund_deposit_to,array(),array(),'','',false); ?>
+                </div>
               </div>
          </div>
 
@@ -725,6 +817,15 @@
                 </div>
                 <div class="col-md-6">
                   <?php echo render_select('credit_note_refund_deposit_to',$accounts,array('id','name', 'account_type_name'),'deposit_to',$acc_credit_note_refund_deposit_to,array(),array(),'','',false); ?>
+                </div>
+                <div class="col-md-12">
+                  <h5><?php echo _l('debit_note_refund'); ?></h5>
+                </div>
+                <div class="col-md-6">
+                  <?php echo render_select('debit_note_refund_payment_account',$accounts,array('id','name', 'account_type_name'),'payment_account',$acc_debit_note_refund_payment_account,array(),array(),'','',false); ?>
+                </div>
+                <div class="col-md-6">
+                  <?php echo render_select('debit_note_refund_deposit_to',$accounts,array('id','name', 'account_type_name'),'deposit_to',$acc_debit_note_refund_deposit_to,array(),array(),'','',false); ?>
                 </div>
               </div>
          </div>

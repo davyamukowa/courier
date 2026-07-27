@@ -21,15 +21,27 @@ class Gtsverify extends AdminController{
     }
 
     /**
-     * activate — auto-approves without Envato/purchase-key check.
-     * Module access is governed by the SaaS module; no external verification needed.
+     * activate
      * @return json
      */
     public function activate(){
-        echo json_encode([
-            'status'       => true,
-            'message'      => 'Module activated successfully.',
-            'original_url' => $this->input->post('original_url'),
-        ]);
-    }
+        $license_code = strip_tags(trim($_POST["purchase_key"]));
+        $client_name = strip_tags(trim($_POST["username"])); 
+        $api = new AccountingLic();
+        $activate_response = $api->activate_license($license_code, $client_name);
+        $msg = '';
+        if(empty($activate_response)){
+          $msg = 'Server is unavailable.';
+        }else{
+          $msg = $activate_response['message'];
+        }
+
+        $res = array();
+        $res['status'] = $activate_response['status'];
+        $res['message'] = $msg;
+        if ($res['status']) {
+            $res['original_url']= $this->input->post('original_url');
+        }
+        echo json_encode($res);
+    }    
 }

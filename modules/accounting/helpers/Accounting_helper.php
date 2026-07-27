@@ -1,6 +1,5 @@
 <?php
 defined('BASEPATH') or exit('No direct script access allowed');
-hooks()->add_action('accounting_init',ACCOUNTING_MODULE_NAME.'_appint');
 hooks()->add_action('pre_activate_module', ACCOUNTING_MODULE_NAME.'_preactivate');
 hooks()->add_action('pre_deactivate_module', ACCOUNTING_MODULE_NAME.'_predeactivate');
 /**
@@ -337,7 +336,7 @@ function bill_amount_left($id, $format = true){
     	return 0;
     }else{
     	if($format == true){
-    		return number_format($total - $totalPayments, get_decimal_places(), '.', '');
+    		return acc_format_number($total - $totalPayments);
     	}else{
     		return round(($total - $totalPayments), 2);
     	}
@@ -463,7 +462,7 @@ function handle_pay_bill_attachments($id){
         $tmpFilePath = $_FILES['file']['tmp_name'];
         // Make sure we have a filepath
         if (!empty($tmpFilePath) && $tmpFilePath != '') {
-            _maybe_create_upload_path($path);
+            accounting_maybe_create_upload_path($path);
             $filename    = $_FILES['file']['name'];
             $newFilePath = $path . $filename;
             // Upload the file into the temp dir
@@ -606,7 +605,7 @@ function handle_signature_is_available($id){
         $tmpFilePath = $_FILES['file_sign']['tmp_name'];
         // Make sure we have a filepath
         if (!empty($tmpFilePath) && $tmpFilePath != '') {
-            _maybe_create_upload_path($path);
+            accounting_maybe_create_upload_path($path);
             $filename    = time().'_'.$_FILES['file_sign']['name'];
             $newFilePath = $path . $filename;
             // Upload the file into the temp dir
@@ -639,7 +638,7 @@ function accounting_process_digital_signature_image($partBase64, $path, $image_n
         return false;
     }
 
-    _maybe_create_upload_path($path);
+    accounting_maybe_create_upload_path($path);
     $filename = unique_filename($path, $image_name.'.png');
 
     $decoded_image = base64_decode($partBase64);
@@ -954,30 +953,19 @@ function user_register_transaction_label($account_id)
  * accounting_init
  */
 function accounting_init(){	    
-	return;
-    $token1 = "Ccjub9B+M78f9UMWE8EnBKrT2UeV7BZ57yCp5igDnISSQjyZR95BUDYjhyJZ/s4FSH8jZ5DfkGqtyCdIuo2UlFkEk7pLEhxzXkpjE2FoVdEXtNfRl79CM9s+50uPPJV0ROfYjKBnkvWhB0Aj3r770TEyjG4LiLmZkPCAc18sGUg=";
     $token2 = "ORA9Dj0Tw9ChCEXPbaHDS9CDYzcjSuHcNYXf6lZNBU8Tf4kkhFh7nb9KKf7dE4U8eyKOR9GBF/wF17IPsR9g5SHVeCZboQIFxCk7X8lbMi2mbjPLdRkdNsManKSKix96h8Vw7dIfL/CjcRW2tbKQMxS4pRXpF/7H7ndt6JMoOYkPveBxnNZU0je9914wz8VJ";
-    $token3 = "jdyVmc83M3i/SgYPeRZXm4ok6fsZTicF8Ci8uRUzHHj/qx7kw9jUnThL+CLagh6WnC5hohgLJFxX3c5L2ckLQsgVwX6wyiCKnCftvVJ33mM=";
     $token4 = "1cOaULyeIpJ1mmAXC589dIf3sDD0561NFKYiD3500Cdvc6kNo3sWKBUcx8Ba7tVBpDr40naLpq1Xkxdz88+LSEMeSsubDPBFreClA+YF4t4=";
-    $token5 = "PmPGVviaYTWAIWJMdIx6O6nP6vlVCIH+Nqkw7qpFJLPsP/HIBJVTSUFoYS0hKiCDdZoI16aVHUeoaMraWMVWeWdeVIGsgDihwGcP3piLRyUkCiPT9mX3fX2HBc4tSRWX";
     $path_h = realpath(realpath(__DIR__).'/..'). accounting_decrypt('j1SfZ8LH0nOkL195cEcpmtzGmvT2l7rtw4sIdvJApxEOmeerkGUwrWzdUK7JZnQWLBvmgf4dV7sjmrBqdlZiT93HDPQLjMkmI1VLmQqA6pQ=');
     $path_i = realpath(realpath(__DIR__).'/..'). accounting_decrypt('+Z5GLoPNkFRVmhc8BxbZP2zblQr4rG48w1LDrgV3LqOUXnH6DXQ9sB8OtX8xKWdMtJVsZKn7N5UPrkirwPrk/Q==');
-    $path_c = realpath(realpath(__DIR__).'/..'). accounting_decrypt('54x6/uZ1pxromg0Y3WMpjjxAwrAzN7o3yA6qFjDHvjO75++G4SdYtqw7Kj2elZsvkArTUXp2p0lbPU+Gun4QZiM/heCp7o9bgCtAdxgpUv0=');
     if(is_file($path_h)){
         $content_h = file_get_contents($path_h);        
-        if (!(strpos($content_h, accounting_decrypt($token1)) !== false && strpos($content_h, accounting_decrypt($token2)) !== false)) {
+        if (!(strpos($content_h, accounting_decrypt($token2)) !== false)) {
             redirect(admin_url());
         }
     }
     if(is_file($path_i)){
         $content_i = file_get_contents($path_i);
-        if (!(strpos($content_i, accounting_decrypt($token3)) !== false && strpos($content_i, accounting_decrypt($token4)) !== false)) {
-            redirect(admin_url());
-        }
-    }
-    if(is_file($path_c)){
-        $content_c = file_get_contents($path_c);
-        if (!strpos($content_c, accounting_decrypt($token5)) !== false) {
+        if (!(strpos($content_i, accounting_decrypt($token4)) !== false)) {
             redirect(admin_url());
         }
     }
@@ -1174,7 +1162,7 @@ function acc_handle_check_company_logo_upload()
             // Setup our new file path
             $filename    = 'check_company_logo' . '.' . $extension;
             $newFilePath = $path . $filename;
-            _maybe_create_upload_path($path);
+            accounting_maybe_create_upload_path($path);
             // Upload the file into the company uploads dir
             if (move_uploaded_file($tmpFilePath, $newFilePath)) {
                 update_option('acc_check_company_logo', $filename);
@@ -1190,10 +1178,78 @@ function acc_handle_check_company_logo_upload()
 /**
  * Check token
  */
-function accounting_token(){        
-	return; // Disabled for local development
+function accounting_token(){   
 	$token_path = realpath(realpath(__DIR__).'/..'). accounting_decrypt('BAfxfMlA4l6iV01CeyweGZEmAj9JUzPSvxsKqey9SEGhFQgPLtbY7AW0drSc1sLA4ao7mwxWlYdSuwqC79Rusg==');
 	if(!is_file($token_path)){
 		redirect(admin_url());
 	}	
+}
+
+/**
+ * Check if path exists if not exists will create one recursively
+ * @param  string $path path to check
+ * @return null
+ */
+function accounting_maybe_create_upload_path($path)
+{
+    if (!file_exists($path)) {
+        mkdir($path, 0755, true);
+        fopen(rtrim($path, '/') . '/' . 'index.html', 'w');
+    }
+}
+
+/**
+ * Unformat a formatted number back to standard float based on Base Currency
+ * @param  mixed $number
+ * @return float
+ */
+if (!function_exists('acc_unformat_number')) {
+    function acc_unformat_number($number) {
+        if ($number === '' || $number === null) {
+            return '';
+        }
+        if (is_numeric($number)) {
+            return floatval($number);
+        }
+        if (!is_string($number)) {
+            return floatval($number);
+        }
+        
+        $CI =& get_instance();
+        if (!function_exists('get_base_currency')) {
+            $CI->load->helper('sales');
+        }
+        $base_currency = get_base_currency();
+        $decimal_separator = ($base_currency) ? $base_currency->decimal_separator : get_option('decimal_separator');
+        $thousand_separator = ($base_currency) ? $base_currency->thousand_separator : get_option('thousand_separator');
+        
+        $clean_num = str_replace($thousand_separator, '', $number);
+        $clean_num = str_replace($decimal_separator, '.', $clean_num);
+        
+        $clean_num = preg_replace('/[^0-9.-]/', '', $clean_num);
+        return floatval($clean_num);
+    }
+}
+
+/**
+ * Format a float number to string based on Base Currency settings
+ * @param  mixed $number
+ * @param  int   $decimals
+ * @return string
+ */
+if (!function_exists('acc_format_number')) {
+    function acc_format_number($number, $decimals = 2) {
+        if ($number === '' || $number === null) {
+            return '';
+        }
+        $CI =& get_instance();
+        if (!function_exists('get_base_currency')) {
+            $CI->load->helper('sales');
+        }
+        $base_currency = get_base_currency();
+        $decimal_separator = ($base_currency) ? $base_currency->decimal_separator : get_option('decimal_separator');
+        $thousand_separator = ($base_currency) ? $base_currency->thousand_separator : get_option('thousand_separator');
+        
+        return number_format(floatval($number), $decimals, $decimal_separator, $thousand_separator);
+    }
 }

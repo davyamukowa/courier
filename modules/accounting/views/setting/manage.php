@@ -24,6 +24,12 @@
                     echo '<i class="fa fa-th-list" aria-hidden="true"></i>';
                 }elseif ($gr == 'currency_rates') {
                     echo '<i class="fa fa-usd" aria-hidden="true"></i>';
+                }elseif ($gr == 'class') {
+                    echo '<i class="fa fa-list" aria-hidden="true"></i>';
+                }elseif ($gr == 'budget_categories') {
+                    echo '<i class="fa fa-briefcase" aria-hidden="true"></i>';
+                }elseif ($gr == 'approval') {
+                    echo '<i class="fa fa-check-square" aria-hidden="true"></i>';
                 } ?>
                 <?php echo _l($gr); ?>
               </a>

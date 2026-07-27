@@ -22,6 +22,8 @@
     <th><?php echo _l('customer_name'); ?></th>
     <th><?php echo _l('accounting_date'); ?></th>
     <th><?php echo _l('invoices'); ?></th>
+    <th><?php echo _l('acc_inventory_value'); ?></th>
+    <th><?php echo _l('profit'); ?></th>
     <th><?php echo _l('status_label'); ?></th>
     <th><?php echo _l('mapping_status'); ?></th>
     <th><?php echo _l('acc_convert'); ?></th>

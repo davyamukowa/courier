@@ -13,7 +13,7 @@
               <div class="row">
               <?php echo form_open(admin_url('accounting/view_report'),array('id'=>'filter-form')); ?>
                 <div class="col-md-3">
-                  <?php echo render_select('tax',$taxes,array('id','name', 'taxrate'),'tax', '', array(), array(), '', '', false); ?>
+                  <?php echo render_select('tax[]',$taxes,array('id','name', 'taxrate'),'tax', '', array('multiple' => true, 'data-actions-box' => true), array(), '', '', false); ?>
                 </div>
                 <div class="col-md-2">
                   <?php echo render_date_input('from_date','from_date', _d($from_date)); ?>
