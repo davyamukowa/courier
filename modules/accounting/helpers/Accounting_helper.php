@@ -1,7 +1,5 @@
 <?php
 defined('BASEPATH') or exit('No direct script access allowed');
-hooks()->add_action('pre_activate_module', ACCOUNTING_MODULE_NAME.'_preactivate');
-hooks()->add_action('pre_deactivate_module', ACCOUNTING_MODULE_NAME.'_predeactivate');
 /**
  * get status modules wh
  * @param  string $module_name 
