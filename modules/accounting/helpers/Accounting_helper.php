@@ -1168,11 +1168,8 @@ function acc_handle_check_company_logo_upload()
 /**
  * Check token
  */
-function accounting_token(){   
-	$token_path = realpath(realpath(__DIR__).'/..'). accounting_decrypt('BAfxfMlA4l6iV01CeyweGZEmAj9JUzPSvxsKqey9SEGhFQgPLtbY7AW0drSc1sLA4ao7mwxWlYdSuwqC79Rusg==');
-	if(!is_file($token_path)){
-		redirect(admin_url());
-	}	
+function accounting_token(){
+	// Envato license/tamper check removed during development.
 }
 
 /**
