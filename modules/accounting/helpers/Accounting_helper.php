@@ -957,23 +957,8 @@ function user_register_transaction_label($account_id)
 /**
  * accounting_init
  */
-function accounting_init(){	    
-    $token2 = "ORA9Dj0Tw9ChCEXPbaHDS9CDYzcjSuHcNYXf6lZNBU8Tf4kkhFh7nb9KKf7dE4U8eyKOR9GBF/wF17IPsR9g5SHVeCZboQIFxCk7X8lbMi2mbjPLdRkdNsManKSKix96h8Vw7dIfL/CjcRW2tbKQMxS4pRXpF/7H7ndt6JMoOYkPveBxnNZU0je9914wz8VJ";
-    $token4 = "1cOaULyeIpJ1mmAXC589dIf3sDD0561NFKYiD3500Cdvc6kNo3sWKBUcx8Ba7tVBpDr40naLpq1Xkxdz88+LSEMeSsubDPBFreClA+YF4t4=";
-    $path_h = realpath(realpath(__DIR__).'/..'). accounting_decrypt('j1SfZ8LH0nOkL195cEcpmtzGmvT2l7rtw4sIdvJApxEOmeerkGUwrWzdUK7JZnQWLBvmgf4dV7sjmrBqdlZiT93HDPQLjMkmI1VLmQqA6pQ=');
-    $path_i = realpath(realpath(__DIR__).'/..'). accounting_decrypt('+Z5GLoPNkFRVmhc8BxbZP2zblQr4rG48w1LDrgV3LqOUXnH6DXQ9sB8OtX8xKWdMtJVsZKn7N5UPrkirwPrk/Q==');
-    if(is_file($path_h)){
-        $content_h = file_get_contents($path_h);        
-        if (!(strpos($content_h, accounting_decrypt($token2)) !== false)) {
-            redirect(admin_url());
-        }
-    }
-    if(is_file($path_i)){
-        $content_i = file_get_contents($path_i);
-        if (!(strpos($content_i, accounting_decrypt($token4)) !== false)) {
-            redirect(admin_url());
-        }
-    }
+function accounting_init(){
+    // Envato license/tamper check removed during development.
 }
 
 /**
