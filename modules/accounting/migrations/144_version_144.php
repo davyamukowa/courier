@@ -32,69 +32,9 @@ class Migration_Version_144 extends App_module_migration
             ADD COLUMN `acc_class` INT(11) NOT NULL DEFAULT 0;');
         }
 
-        // Self-heal: an earlier install/upgrade may have left these tables
-        // missing even though a later version was recorded, so recreate them
-        // here (schema matches migration 117) before altering them.
-        if (!$CI->db->table_exists(db_prefix() . 'acc_checks')) {
-            $CI->db->query('CREATE TABLE `' . db_prefix() . "acc_checks` (
-              `id` INT(11) NOT NULL AUTO_INCREMENT,
-              `rel_id` INT(11) NULL,
-              `rel_type` VARCHAR(25) NULL,
-              `amount` DECIMAL(15,2) NULL,
-              `date` DATE NULL,
-              `memo` VARCHAR(255) NULL,
-              `dateadded` datetime NULL,
-              `addedfrom` INT(11) NULL,
-              `address` TEXT NULL,
-              `bank_account` INT(11) NOT NULL DEFAULT 0,
-              `number` INT(11) NOT NULL DEFAULT 0,
-              `signed` INT(11) NOT NULL DEFAULT 0,
-              `include_company_name_address` INT(11) NOT NULL DEFAULT 1,
-              `include_routing_account_numbers` INT(11) NOT NULL DEFAULT 1,
-              `bill` INT(11) NULL,
-              `city` varchar(100) NULL,
-              `zip` varchar(15) NULL,
-              `state` varchar(50) NULL,
-              `issue` INT(11) NULL,
-              `include_check_number` INT(11) NOT NULL DEFAULT 1,
-              `include_bank_name` INT(11) NOT NULL DEFAULT 1,
-              `bank_name` varchar(255) NULL,
-              `address_line_1` text NULL,
-              `address_line_2` text NULL,
-              `vendor_city` varchar(100) NULL,
-              `vendor_zip` varchar(15) NULL,
-              `vendor_state` varchar(50) NULL,
-              `vendor_address` TEXT NULL,
-              `reason_for_void` TEXT NULL,
-              `bill_items` VARCHAR(255) NULL,
-              PRIMARY KEY (`id`)
-            ) ENGINE=InnoDB DEFAULT CHARSET=" . $CI->db->char_set . ';');
-        }
-
         if (!$CI->db->field_exists('acc_class' ,db_prefix() . 'acc_checks')) {
           $CI->db->query('ALTER TABLE `' . db_prefix() . 'acc_checks`
             ADD COLUMN `acc_class` INT(11) NOT NULL DEFAULT 0;');
-        }
-
-        if (!$CI->db->table_exists(db_prefix() . 'acc_pay_bills')) {
-            $CI->db->query('CREATE TABLE `' . db_prefix() . "acc_pay_bills` (
-              `id` INT(11) NOT NULL AUTO_INCREMENT,
-              `expense` int(11) NULL,
-              `amount` DECIMAL(15,2) NULL,
-              `reference_no` varchar(100) NULL,
-              `date` date NULL,
-              `dateadded` datetime NULL,
-              `addedfrom` INT(11) NULL,
-              `company` INT(11) NULL,
-              `account_debit` INT(11) NULL,
-              `account_credit` INT(11) NULL,
-              `bill` INT(11) NOT NULL DEFAULT 0,
-              `vendor` INT(11) NOT NULL DEFAULT 0,
-              `pay_number` INT(11) NULL,
-              `payment_method` VARCHAR(255) NULL,
-              `bill_items` VARCHAR(255) NULL,
-              PRIMARY KEY (`id`)
-            ) ENGINE=InnoDB DEFAULT CHARSET=" . $CI->db->char_set . ';');
         }
 
         if (!$CI->db->field_exists('acc_class' ,db_prefix() . 'acc_pay_bills')) {
