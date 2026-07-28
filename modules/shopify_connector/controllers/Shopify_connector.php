@@ -982,7 +982,7 @@ class Shopify_connector extends AdminController
             return;
         }
 
-        $new_branch_id = $this->resolve_branch_from_route_tag($order->salibay_route_tag ?? null);
+        $new_branch_id = courier_resolve_branch_from_route_tag($order->salibay_route_tag ?? null);
         if (!$new_branch_id || (int) $new_branch_id === (int) ($shipment->branch_id ?? 0)) {
             return;
         }
@@ -1309,7 +1309,7 @@ class Shopify_connector extends AdminController
         // staff to a branch, wins over the SKU-based guess — it reflects an
         // actual sourcing/warehouse decision already made upstream.
         $this->load->helper('courier_goshipping/courier');
-        $branch_id = $this->resolve_branch_from_route_tag($order->salibay_route_tag ?? null);
+        $branch_id = courier_resolve_branch_from_route_tag($order->salibay_route_tag ?? null);
         if (!$branch_id) {
             $branch_id = $mapping_branch_supported ? $this->resolve_order_branch_id($items) : courier_get_fallback_branch_id();
         }
