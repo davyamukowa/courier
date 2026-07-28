@@ -1831,22 +1831,6 @@ class Shopify_connector extends AdminController
     }
 
     /**
-     * Maps a "Route GSC-AE-DXB" style tag to a Go Shipping branch, via the
-     * staff-configured tbl_courier_route_branch_map — route tag formats are
-     * decided by the sourcing app, not us, so this can't assume they line
-     * up with tbl_courier_branches.code.
-     */
-    private function resolve_branch_from_route_tag($route_tag)
-    {
-        if (empty($route_tag) || !$this->db->table_exists(db_prefix() . 'courier_route_branch_map')) {
-            return null;
-        }
-
-        $map = $this->db->where('route_tag', $route_tag)->get(db_prefix() . 'courier_route_branch_map')->row();
-        return $map ? (int) $map->branch_id : null;
-    }
-
-    /**
      * Resolves which Go Shipping branch/office should fulfil an order from its
      * Model A line items' shopify_product_mappings.courier_branch_id (majority
      * vote), falling back to the org-wide default branch when unresolved.
