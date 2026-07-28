@@ -137,6 +137,30 @@ if (!function_exists('courier_get_fallback_branch_id')) {
 }
 
 /**
+ * Maps a "GSC-AE-DXB" style route tag to a Go Shipping branch, via the
+ * staff-configured tbl_courier_route_branch_map (Fulfilment settings ->
+ * Route Map). Shared by both the Shopify webhook auto-create path and the
+ * manual "Create Shipment" button so branch resolution can't drift between
+ * the two — a route tag, when present, always wins over the SKU-based guess.
+ */
+if (!function_exists('courier_resolve_branch_from_route_tag')) {
+    function courier_resolve_branch_from_route_tag($route_tag)
+    {
+        if (empty($route_tag)) {
+            return null;
+        }
+
+        $CI = &get_instance();
+        if (!$CI->db->table_exists(db_prefix() . '_courier_route_branch_map')) {
+            return null;
+        }
+
+        $map = $CI->db->where('route_tag', $route_tag)->get(db_prefix() . '_courier_route_branch_map')->row();
+        return $map ? (int) $map->branch_id : null;
+    }
+}
+
+/**
  * Applies branch isolation to the current CI query builder: restricts to the
  * staff's assigned branches unless they're an admin or hold 'view_all_branches'.
  * Call this right before ->get()/->count_all_results() on a table/alias that
