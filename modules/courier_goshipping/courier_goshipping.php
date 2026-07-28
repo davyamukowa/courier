@@ -1327,6 +1327,25 @@ class Courier_Logistic_System {
      */
     public function run_db_upgrades_v33() {
         if (get_option('courier_schema_v33_done')) return;
+        $this->reroute_mis_stamped_shipments();
+        update_option('courier_schema_v33_done', '1');
+    }
+
+    /**
+     * Scans every Salibay-tagged order with a shipment already created and
+     * re-points branch_id (plus sender details) at whatever the route tag
+     * actually resolves to right now, via courier_resolve_branch_from_route_tag().
+     * Safe to call more than once — a shipment is only touched if its current
+     * branch doesn't match, and only while it's still at its very first
+     * status (once it's moved past "Created" someone already has hands on
+     * the parcel at the branch it's currently under, so a late correction
+     * shouldn't retroactively relabel the sender — same rule as
+     * Shopify_connector::reroute_shipment_to_branch()). Called by both v33
+     * and v35 so an improvement to the resolver (e.g. matching a brand-new
+     * port code to an already-known country) also fixes shipments that were
+     * mis-stamped before that improvement existed.
+     */
+    private function reroute_mis_stamped_shipments() {
         $CI = &get_instance();
 
         $shipments_table = db_prefix() . '_shipments';
@@ -1340,7 +1359,6 @@ class Courier_Logistic_System {
             || !$CI->db->field_exists('salibay_route_tag', $orders_table)
             || !$CI->db->field_exists('gs_shipment_id', $orders_table)
         ) {
-            update_option('courier_schema_v33_done', '1');
             return;
         }
 
@@ -1394,8 +1412,6 @@ class Courier_Logistic_System {
                 $CI->db->where('id', $order->id)->update($orders_table, ['branch_id' => $correct_branch_id]);
             }
         }
-
-        update_option('courier_schema_v33_done', '1');
     }
 
     /**
