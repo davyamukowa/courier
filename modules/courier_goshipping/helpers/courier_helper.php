@@ -151,11 +151,11 @@ if (!function_exists('courier_resolve_branch_from_route_tag')) {
         }
 
         $CI = &get_instance();
-        if (!$CI->db->table_exists(db_prefix() . '_courier_route_branch_map')) {
+        if (!$CI->db->table_exists(db_prefix() . 'courier_route_branch_map')) {
             return null;
         }
 
-        $map = $CI->db->where('route_tag', $route_tag)->get(db_prefix() . '_courier_route_branch_map')->row();
+        $map = $CI->db->where('route_tag', $route_tag)->get(db_prefix() . 'courier_route_branch_map')->row();
         return $map ? (int) $map->branch_id : null;
     }
 }
