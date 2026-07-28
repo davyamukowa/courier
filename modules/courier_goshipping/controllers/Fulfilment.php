@@ -2279,7 +2279,14 @@ class Fulfilment extends AdminController
         }
 
         $tracking_number = 'GS' . date('Ymd') . str_pad((string) $order_id, 6, '0', STR_PAD_LEFT);
-        $branch_id = $this->resolve_order_branch_id($items);
+        // A sourcing-app route tag (e.g. "GSC-AE-DXB"), if mapped by staff to a
+        // branch, wins over the SKU-based guess — see the matching override in
+        // Shopify_connector::create_courier_shipment().
+        $this->load->helper('courier_goshipping/courier');
+        $branch_id = courier_resolve_branch_from_route_tag($order->salibay_route_tag ?? null);
+        if (!$branch_id) {
+            $branch_id = $this->resolve_order_branch_id($items);
+        }
         $sender_data = [
             'first_name' => 'Go Shipping',
             'last_name' => 'Warehouse',
