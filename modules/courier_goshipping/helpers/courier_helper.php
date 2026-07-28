@@ -142,6 +142,13 @@ if (!function_exists('courier_get_fallback_branch_id')) {
  * Route Map). Shared by both the Shopify webhook auto-create path and the
  * manual "Create Shipment" button so branch resolution can't drift between
  * the two — a route tag, when present, always wins over the SKU-based guess.
+ *
+ * Route tags are "GSC-{country}-{port}" (e.g. GSC-US-ORD, GSC-US-EWR) — the
+ * sourcing app can introduce a brand-new port code for an already-mapped
+ * country at any time (a US order via Newark instead of Chicago, say), and
+ * staff shouldn't have to notice and add a settings row before it routes
+ * correctly. So when there's no exact match, fall back to any other mapped
+ * tag sharing the same "GSC-{country}-" prefix and reuse its branch.
  */
 if (!function_exists('courier_resolve_branch_from_route_tag')) {
     function courier_resolve_branch_from_route_tag($route_tag)
@@ -151,12 +158,24 @@ if (!function_exists('courier_resolve_branch_from_route_tag')) {
         }
 
         $CI = &get_instance();
-        if (!$CI->db->table_exists(db_prefix() . 'courier_route_branch_map')) {
+        $table = db_prefix() . 'courier_route_branch_map';
+        if (!$CI->db->table_exists($table)) {
             return null;
         }
 
-        $map = $CI->db->where('route_tag', $route_tag)->get(db_prefix() . 'courier_route_branch_map')->row();
-        return $map ? (int) $map->branch_id : null;
+        $map = $CI->db->where('route_tag', $route_tag)->get($table)->row();
+        if ($map) {
+            return (int) $map->branch_id;
+        }
+
+        if (preg_match('/^(GSC-[A-Za-z]{2}-)/', $route_tag, $m)) {
+            $sibling = $CI->db->like('route_tag', $m[1], 'after')->get($table)->row();
+            if ($sibling) {
+                return (int) $sibling->branch_id;
+            }
+        }
+
+        return null;
     }
 }
 
