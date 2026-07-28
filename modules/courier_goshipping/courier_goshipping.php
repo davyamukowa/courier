@@ -1495,6 +1495,20 @@ class Courier_Logistic_System {
     }
 
     /**
+     * v35: reruns reroute_mis_stamped_shipments() now that
+     * courier_resolve_branch_from_route_tag() also matches a brand-new port
+     * code (e.g. "GSC-US-EWR") against an already-mapped country's route tag
+     * (e.g. "GSC-US-ORD") instead of only exact tag matches — v33 ran before
+     * that fallback existed, so any order using a port code no one had
+     * explicitly mapped yet was still stamped with the org default branch.
+     */
+    public function run_db_upgrades_v35() {
+        if (get_option('courier_schema_v35_done')) return;
+        $this->reroute_mis_stamped_shipments();
+        update_option('courier_schema_v35_done', '1');
+    }
+
+    /**
      * v19: add kra_pin to shipment senders and companies tables.
      */
     public function run_db_upgrades_v19() {
