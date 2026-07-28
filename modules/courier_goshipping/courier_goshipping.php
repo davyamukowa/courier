@@ -1313,6 +1313,171 @@ class Courier_Logistic_System {
     }
 
     /**
+     * v33: one-time backfill correcting shipments that were stamped with the
+     * wrong branch because they were created through the manual "Create
+     * Shipment" button (Fulfilment::create_courier_shipment()) before it knew
+     * how to consult the route-tag map — it used to fall back straight to
+     * SKU-mapping/the org default, unlike the Shopify webhook's auto-create
+     * path. Re-points branch_id (and the shipment's sender details) at
+     * whatever the order's route tag actually resolves to, but only while the
+     * shipment is still at its very first status — once it's moved past
+     * "Created" someone already has hands on the parcel at the branch it's
+     * currently under, so a late correction shouldn't retroactively relabel
+     * the sender (same safety rule as Shopify_connector::reroute_shipment_to_branch()).
+     */
+    public function run_db_upgrades_v33() {
+        if (get_option('courier_schema_v33_done')) return;
+        $CI = &get_instance();
+
+        $shipments_table = db_prefix() . '_shipments';
+        $orders_table = db_prefix() . 'shopify_orders';
+        $branches_table = db_prefix() . '_courier_branches';
+        $senders_table = db_prefix() . '_shipment_senders';
+        $statuses_table = db_prefix() . '_shipment_statuses';
+
+        if (!$CI->db->table_exists($shipments_table)
+            || !$CI->db->table_exists($orders_table)
+            || !$CI->db->field_exists('salibay_route_tag', $orders_table)
+            || !$CI->db->field_exists('gs_shipment_id', $orders_table)
+        ) {
+            update_option('courier_schema_v33_done', '1');
+            return;
+        }
+
+        $CI->load->helper('courier_goshipping/courier');
+
+        $created_status = $CI->db->where('status_name', 'created')->get($statuses_table)->row();
+
+        $orders = $CI->db->select('id, gs_shipment_id, salibay_route_tag, salibay_classification')
+            ->where('gs_shipment_id IS NOT NULL')
+            ->where('salibay_route_tag IS NOT NULL')
+            ->get($orders_table)
+            ->result();
+
+        foreach ($orders as $order) {
+            $correct_branch_id = courier_resolve_branch_from_route_tag($order->salibay_route_tag);
+            if (!$correct_branch_id) {
+                continue;
+            }
+
+            $shipment = $CI->db->where('id', $order->gs_shipment_id)->get($shipments_table)->row();
+            if (!$shipment || (int) ($shipment->branch_id ?? 0) === $correct_branch_id) {
+                continue;
+            }
+
+            if ($created_status && (int) $shipment->status_id !== (int) $created_status->id) {
+                continue;
+            }
+
+            $branch_info = courier_get_invoice_info($correct_branch_id);
+            $branch_name_parts = explode(' ', trim($branch_info['name'] ?: 'Go Shipping Warehouse'), 2);
+
+            if (!empty($shipment->sender_id) && $CI->db->table_exists($senders_table)) {
+                $CI->db->where('id', $shipment->sender_id)->update($senders_table, [
+                    'first_name'   => $branch_name_parts[0],
+                    'last_name'    => $branch_name_parts[1] ?? '',
+                    'phone_number' => $branch_info['phone'] ?: (get_option('company_phonenumber') ?: '000000000'),
+                    'email'        => $branch_info['email'] ?: (get_option('smtp_email') ?: 'warehouse@example.com'),
+                    'address'      => trim(strip_tags(str_replace(['<br />', '<br/>', '<br>'], ', ', $branch_info['address'] ?: format_organization_info())), ', ') ?: 'Main Warehouse',
+                ]);
+            }
+
+            $update = ['branch_id' => $correct_branch_id];
+            $new_branch_row = $CI->db->where('id', $correct_branch_id)->get($branches_table)->row();
+            if (($order->salibay_classification ?? null) === 'global' || ($new_branch_row && $new_branch_row->branch_type === 'international')) {
+                $update['shipping_category'] = 'international';
+                $update['shipping_mode'] = 'COURIER (NONE)';
+            }
+            $CI->db->where('id', $shipment->id)->update($shipments_table, $update);
+
+            if ($CI->db->field_exists('branch_id', $orders_table)) {
+                $CI->db->where('id', $order->id)->update($orders_table, ['branch_id' => $correct_branch_id]);
+            }
+        }
+
+        update_option('courier_schema_v33_done', '1');
+    }
+
+    /**
+     * v34: consolidates the "Branches / Offices" list down to the branches
+     * that are actually operationally meaningful — the 4 route-tag-mapped
+     * international branches (Dubai, China by Air, UK, USA — see Fulfilment
+     * settings -> Route Map) plus whichever branch is flagged is_default=1
+     * (the org-wide fallback that courier_get_fallback_branch_id() uses
+     * whenever nothing else resolves a branch). Every other branch — mostly
+     * one auto-generated "<Country> Office" row per legacy staff-country
+     * assignment from the v26 backfill — is dead weight that only clutters
+     * the branch picker and staff assignment UI.
+     *
+     * A candidate branch is deleted ONLY if nothing in the system actually
+     * references it (no staff assignment, shipment, pickup, manifest, agent,
+     * quotation, order, or route-map row), so this can never silently orphan
+     * real data — if a "confusing" branch turns out to still be in use,
+     * it's left alone instead of guessed about.
+     */
+    public function run_db_upgrades_v34() {
+        if (get_option('courier_schema_v34_done')) return;
+        $CI = &get_instance();
+
+        $branches_table = db_prefix() . '_courier_branches';
+        if (!$CI->db->table_exists($branches_table)) {
+            update_option('courier_schema_v34_done', '1');
+            return;
+        }
+
+        $keep_names = ['Dubai Branch', 'China by Air', 'UK Branch', 'USA Branch'];
+        $keep_ids = [];
+        foreach ($CI->db->where_in('name', $keep_names)->get($branches_table)->result() as $row) {
+            $keep_ids[] = (int) $row->id;
+        }
+
+        $default_branch = $CI->db->where('is_default', 1)->get($branches_table)->row();
+        if ($default_branch) {
+            $keep_ids[] = (int) $default_branch->id;
+        }
+        $keep_ids = array_unique($keep_ids);
+
+        if (empty($keep_ids)) {
+            // Curated branches haven't been seeded on this install yet —
+            // bail rather than risk deleting everything.
+            return;
+        }
+
+        $candidates = $CI->db->where_not_in('id', $keep_ids)->get($branches_table)->result();
+
+        $reference_tables = [
+            db_prefix() . '_courier_staff_branches',
+            db_prefix() . '_shipments',
+            db_prefix() . '_pickups',
+            db_prefix() . '_manifests',
+            db_prefix() . '_agents',
+            db_prefix() . '_courier_quotations',
+            db_prefix() . 'courier_route_branch_map',
+        ];
+        if ($CI->db->table_exists(db_prefix() . 'shopify_orders') && $CI->db->field_exists('branch_id', db_prefix() . 'shopify_orders')) {
+            $reference_tables[] = db_prefix() . 'shopify_orders';
+        }
+
+        foreach ($candidates as $branch) {
+            $in_use = false;
+            foreach ($reference_tables as $ref_table) {
+                if (!$CI->db->table_exists($ref_table)) {
+                    continue;
+                }
+                if ($CI->db->where('branch_id', $branch->id)->count_all_results($ref_table) > 0) {
+                    $in_use = true;
+                    break;
+                }
+            }
+            if (!$in_use) {
+                $CI->db->where('id', $branch->id)->delete($branches_table);
+            }
+        }
+
+        update_option('courier_schema_v34_done', '1');
+    }
+
+    /**
      * v19: add kra_pin to shipment senders and companies tables.
      */
     public function run_db_upgrades_v19() {
