@@ -1734,6 +1734,12 @@ $tab_urls = [
         }
     })();
 
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str == null ? '' : String(str);
+        return div.innerHTML;
+    }
+
     function fmtDate(dt) {
         if (!dt) return '';
         // Replace '-' with '/' for Safari and Firefox date parsing compatibility
