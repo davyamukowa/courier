@@ -74,6 +74,22 @@ class Shopify_connector extends AdminController
             ) ENGINE=InnoDB DEFAULT CHARSET=" . $this->db->char_set . ";");
         }
 
+        // Passive capture of the external sourcing pipeline's own progress
+        // tags (e.g. "Salibay Warehouse Received", "Salibay Fulfillment In
+        // Progress") — read-only, purely so the client portal tracker can
+        // show the full sourcing-to-doorstep journey. We never write
+        // anything back to Shopify or otherwise act on these beyond logging
+        // them — see record_sourcing_milestone_tags().
+        if (!$this->db->table_exists(db_prefix() . 'courier_sourcing_events')) {
+            $this->db->query("CREATE TABLE `" . db_prefix() . "courier_sourcing_events` (
+                `id` INT AUTO_INCREMENT PRIMARY KEY,
+                `shopify_order_id` INT NOT NULL,
+                `tag` VARCHAR(255) NOT NULL,
+                `changed_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY `order_tag` (`shopify_order_id`, `tag`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=" . $this->db->char_set . ";");
+        }
+
         // The webhook idempotency check used to key on (shopify_order_id,
         // topic) alone — which discards every orders/updated webhook after
         // the first one ever processed for an order, since Shopify fires a
