@@ -38,9 +38,17 @@ function xetuu_hr_init_sidebar()
 {
     $CI = &get_instance();
 
-    // Run DB column migrations whenever we're on an HR page
+    // Run DB column migrations whenever we're on an HR page. install.php
+    // itself was doing 66 uncached "SHOW COLUMNS ... LIKE" checks
+    // (xetuu_hr_add_column()) on EVERY HR page view — gate it behind a
+    // version-keyed flag so it only actually re-runs once per module
+    // version instead of on every single request.
     if ($CI->uri->segment(2) === 'xetuu_hr') {
-        require_once(__DIR__ . '/install.php');
+        $verified_flag = 'xetuu_hr_schema_v' . XETUU_HR_VERSION . '_verified';
+        if (!get_option($verified_flag)) {
+            require_once(__DIR__ . '/install.php');
+            update_option($verified_flag, '1');
+        }
         xetuu_hr_bootstrap_payroll_addons();
     }
 
