@@ -3016,6 +3016,24 @@ class Shipments extends AdminController
                 log_message('error', 'Shopify fulfillment push crashed: ' . $e->getMessage());
             }
 
+            // A Salibay-sourced international shipment reaching "Arrived at
+            // Destination" means it's cleared Nairobi and the international
+            // leg's job is done — spin up the separate local courier leg for
+            // last-mile delivery. No-op for ordinary (non-Salibay) freight
+            // shipments and safe to run more than once (idempotent — see
+            // create_domestic_leg_from_international()). Deliberately after
+            // the fulfillment push above, so that push still targets the
+            // international leg's own shipment id before gs_shipment_id gets
+            // reassigned to the new domestic leg.
+            if ($new_status_id === 6) {
+                try {
+                    $this->load->model('shopify_connector/shopify_connector_model');
+                    $this->shopify_connector_model->create_domestic_leg_from_international((int) $id);
+                } catch (\Throwable $e) {
+                    log_message('error', 'Domestic last-mile leg creation crashed: ' . $e->getMessage());
+                }
+            }
+
             set_alert('success', 'Status updated successfully.');
             redirect(admin_url('courier_goshipping/shipments/waybill/' . $id));
 
