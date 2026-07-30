@@ -436,6 +436,13 @@ $tab_urls = [
                         <p class="tl-time" id="time-8"></p>
                     </div>
                 </div>
+
+                <div id="journey-section" style="margin-top:32px; display:none;">
+                    <h4 style="font-size:14px; color:#555; font-weight:600; margin-bottom:12px;">
+                        <i class="fas fa-route"></i> Full Journey
+                    </h4>
+                    <div class="timeline" id="journey-timeline" style="margin-top:0;"></div>
+                </div>
             </div>
 
             <div id="track-empty" style="text-align:center; padding:30px 0; color:#999; display:none;">
