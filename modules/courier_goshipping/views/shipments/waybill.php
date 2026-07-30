@@ -336,6 +336,26 @@
 </style>
 <?php $this->load->view('courier_goshipping/layout/_topnav', ['cgs_active' => 'shipments']); ?>
     <div class="content gs-waybill-page">
+        <?php if (!empty($linked_leg['shipment'])): ?>
+        <div class="row">
+            <div class="col-md-12">
+                <div class="alert alert-info" style="margin-bottom:15px;">
+                    <i class="fa fa-exchange"></i>
+                    <?php if ($linked_leg['relation'] === 'parent'): ?>
+                        This is the <strong>domestic last-mile leg</strong> that continues from international shipment
+                        <a href="<?php echo admin_url('courier_goshipping/shipments/waybill/' . $linked_leg['shipment']->id); ?>">
+                            <strong><?php echo e($linked_leg['shipment']->waybill_number); ?></strong>
+                        </a>.
+                    <?php else: ?>
+                        This international shipment continued as a separate <strong>domestic last-mile leg</strong>:
+                        <a href="<?php echo admin_url('courier_goshipping/shipments/waybill/' . $linked_leg['shipment']->id); ?>">
+                            <strong><?php echo e($linked_leg['shipment']->waybill_number); ?></strong>
+                        </a>.
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
         <div class="row">
             <?php
             $wb_type = $this->session->userdata('type') ?: 'domestic';
