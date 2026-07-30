@@ -182,8 +182,9 @@ if (!function_exists('courier_resolve_branch_from_route_tag')) {
 /**
  * Builds the full sourcing-to-doorstep journey for a shipment, for the
  * client portal tracker: the external sourcing pipeline's own progress tags
- * (courier_get_shipment_journey_source_events()) merged with Go Shipping's
- * own shipment status history, across BOTH legs of a two-leg international
+ * (tbl_courier_sourcing_events, captured by
+ * Shopify_connector::record_sourcing_milestone_tags()) merged with Go
+ * Shipping's own shipment status history, across BOTH legs of a two-leg international
  * order (the international air-freight leg and its linked domestic last-mile
  * leg — see run_db_upgrades_v36()/parent_shipment_id) if one exists. Works
  * the same whether $shipment_id is the leg the customer happens to be
