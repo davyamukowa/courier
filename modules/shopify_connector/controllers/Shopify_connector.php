@@ -55,6 +55,15 @@ class Shopify_connector extends AdminController
             if (!$this->db->field_exists('needs_manual_review', db_prefix() . 'shopify_orders')) {
                 $this->db->query("ALTER TABLE `" . db_prefix() . "shopify_orders` ADD `needs_manual_review` TINYINT(1) NOT NULL DEFAULT 0;");
             }
+            // Two-leg international journey (air-freight leg -> domestic
+            // last-mile leg) — see courier_goshipping.php run_db_upgrades_v36()
+            // and activate_international_air_freight_leg() below.
+            if (!$this->db->field_exists('salibay_ready_for_intl_fulfillment', db_prefix() . 'shopify_orders')) {
+                $this->db->query("ALTER TABLE `" . db_prefix() . "shopify_orders` ADD `salibay_ready_for_intl_fulfillment` TINYINT(1) NOT NULL DEFAULT 0;");
+            }
+        }
+        if ($this->db->table_exists(db_prefix() . '_shipments') && !$this->db->field_exists('parent_shipment_id', db_prefix() . '_shipments')) {
+            $this->db->query("ALTER TABLE `" . db_prefix() . "_shipments` ADD `parent_shipment_id` INT NULL DEFAULT NULL AFTER `id`;");
         }
         if (!$this->db->table_exists(db_prefix() . 'courier_route_branch_map')) {
             $this->db->query("CREATE TABLE `" . db_prefix() . "courier_route_branch_map` (
