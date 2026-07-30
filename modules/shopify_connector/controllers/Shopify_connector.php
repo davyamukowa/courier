@@ -940,6 +940,18 @@ class Shopify_connector extends AdminController
                     }
                 }
             }
+
+            // "Ready for International Fulfillment" is written independently
+            // of classification/route tags (it arrives much later, once the
+            // external sourcing pipeline finishes), so it's checked as its
+            // own condition rather than folded into classification_changed/
+            // route_changed above.
+            if (!empty($salibay_tags['ready_for_international_fulfillment'])
+                && $this->db->field_exists('salibay_ready_for_intl_fulfillment', db_prefix() . 'shopify_orders')
+                && empty($order->salibay_ready_for_intl_fulfillment)
+            ) {
+                $this->activate_international_air_freight_leg($order);
+            }
         }
 
         // Re-check branch routing on every update, not just when the route
