@@ -1843,6 +1843,67 @@ class Shopify_connector extends AdminController
     }
 
     /**
+     * Passively records every "journey milestone" tag the external sourcing
+     * pipeline writes onto the order as it works through its own stages
+     * (Review, Needs sourcing, Warehouse assigned, Purchased, In transit, At
+     * warehouse, Delivered, ...) — we've only actually observed tags like
+     * "Salibay Warehouse Received" and "Salibay Fulfillment In Progress" in
+     * practice, worded differently from that internal stage vocabulary, so
+     * this deliberately does NOT hardcode a fixed tag list. Instead it logs
+     * any tag that looks like a sourcing-pipeline signal (starts with
+     * "Salibay ", or is exactly "Ready for International Fulfillment") and
+     * isn't already handled elsewhere as structured data (classification,
+     * route tag) — so a future stage tag we've never seen is captured
+     * automatically instead of silently vanishing.
+     *
+     * Purely additive and read-only: never writes back to Shopify, never
+     * feeds any routing/status decision — only for the client portal's
+     * journey timeline (courier_get_shipment_journey()). One row per
+     * distinct tag per order (UNIQUE KEY order_tag), so repeated webhook
+     * deliveries for the same order never duplicate an entry, and the
+     * `changed_at` timestamp on first insert is our best approximation of
+     * when that stage was actually reached (Shopify tags carry no
+     * per-tag timestamp of their own).
+     */
+    private function record_sourcing_milestone_tags($shopify_db_order_id, $tags_string)
+    {
+        if (empty($tags_string) || !is_string($tags_string)) {
+            return;
+        }
+        if (!$this->db->table_exists(db_prefix() . 'courier_sourcing_events')) {
+            return;
+        }
+
+        $classification_tags = ['salibay local', 'salibay global', 'salibay mixed', 'salibay manual review'];
+
+        foreach (array_map('trim', explode(',', $tags_string)) as $tag) {
+            if ($tag === '') {
+                continue;
+            }
+            $lower = strtolower($tag);
+            $is_milestone = $lower === 'ready for international fulfillment'
+                || (strpos($lower, 'salibay ') === 0 && !in_array($lower, $classification_tags, true));
+            if (!$is_milestone) {
+                continue;
+            }
+
+            $exists = $this->db->where('shopify_order_id', $shopify_db_order_id)
+                ->where('tag', $tag)
+                ->get(db_prefix() . 'courier_sourcing_events')
+                ->row();
+            if ($exists) {
+                continue;
+            }
+
+            $this->db->insert(db_prefix() . 'courier_sourcing_events', [
+                'shopify_order_id' => $shopify_db_order_id,
+                'tag'              => $tag,
+                'changed_at'       => date('Y-m-d H:i:s'),
+            ]);
+        }
+    }
+
+    /**
      * Reads the classification/route tags a separate sourcing app writes
      * onto the Shopify order (e.g. "Salibay Local", "Salibay Global",
      * "Salibay Mixed", "Route GSC-AE-DXB") — plain Shopify order tags, a
