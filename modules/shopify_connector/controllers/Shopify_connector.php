@@ -1438,9 +1438,16 @@ class Shopify_connector extends AdminController
         // "COURIER (NONE)" exactly for that filtered view to find it.
         $is_salibay_global = ($order->salibay_classification ?? null) === 'global'
             || ($fulfilling_branch && $fulfilling_branch->branch_type === 'international');
+        // Edge case: the sourcing pipeline's "Ready for International
+        // Fulfillment" tag can arrive (and get flagged by
+        // activate_international_air_freight_leg()) before this shipment
+        // even exists yet — e.g. a very fast sourcing turnaround racing the
+        // very first orders/create webhook. If so, skip the "COURIER (NONE)"
+        // placeholder mode entirely and start straight in AIR (AIR FREIGHT).
+        $already_ready_for_air_freight = !empty($order->salibay_ready_for_intl_fulfillment);
         $shipment_data = [
             'shipping_mode' => $location['shipping_category'] === 'international'
-                ? ($is_salibay_global ? 'COURIER (NONE)' : 'AIR (INTERNATIONAL)')
+                ? ($already_ready_for_air_freight ? 'AIR (AIR FREIGHT)' : ($is_salibay_global ? 'COURIER (NONE)' : 'AIR (INTERNATIONAL)'))
                 : 'Courier',
             'shipping_category' => $location['shipping_category'],
             'tracking_id' => $tracking_number,
