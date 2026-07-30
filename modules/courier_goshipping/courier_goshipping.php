@@ -1610,6 +1610,40 @@ class Courier_Logistic_System {
     }
 
     /**
+     * v38: a few more missing indexes, this time outside courier_goshipping
+     * entirely — a system-wide performance pass found these while auditing
+     * "the whole system feels slow". They're bundled into this module's
+     * migration runner (rather than each owning module's own install.php)
+     * because of this project's deployment pipeline: the production cron
+     * only pulls and copies `modules/*` folders, so a fix living in
+     * application/ or requiring a fresh Setup->Modules reactivation would
+     * never actually reach the live site, whereas courier_goshipping's
+     * versioned admin_init migrations already self-heal on every deploy.
+     * See ensure_index() above — purely additive, safe on live data.
+     *
+     * - tblnotifications / tbltodos: unindexed COUNT(*) subqueries run
+     *   inside Staff_model::get() on literally every single admin page load
+     *   (loading the logged-in staff row), for every user — the single
+     *   biggest steady-state cost found in the whole audit.
+     * - tblpur_order_detail / tblpur_orders / tblwh_packing_list_details:
+     *   warehouse/purchase-order list and detail queries filtering on
+     *   pur_order / approve_status+delivery_status / packing_list_id with
+     *   no index at all.
+     */
+    public function run_db_upgrades_v38() {
+        if (get_option('courier_schema_v38_done')) return;
+
+        $this->ensure_index(db_prefix() . 'notifications', 'idx_touserid_isread', '`touserid`, `isread`');
+        $this->ensure_index(db_prefix() . 'todos', 'idx_staffid_finished', '`staffid`, `finished`');
+
+        $this->ensure_index(db_prefix() . 'pur_order_detail', 'idx_pur_order', '`pur_order`');
+        $this->ensure_index(db_prefix() . 'pur_orders', 'idx_approve_delivery', '`approve_status`, `delivery_status`');
+        $this->ensure_index(db_prefix() . 'wh_packing_list_details', 'idx_packing_list_id', '`packing_list_id`');
+
+        update_option('courier_schema_v38_done', '1');
+    }
+
+    /**
      * v19: add kra_pin to shipment senders and companies tables.
      */
     public function run_db_upgrades_v19() {
