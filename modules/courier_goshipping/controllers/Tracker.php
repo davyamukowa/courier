@@ -87,11 +87,13 @@ class Tracker extends App_Controller
         $statuses        = $this->ShipmentStatus_model->get();
 
         if ($shipment) {
+            $journey = courier_get_shipment_journey($shipment['shipment']->id);
             echo json_encode([
                 'status' => 'success',
                 'data'   => [
                     'shipment_details' => $shipment,
                     'statuses'         => $statuses,
+                    'journey'          => $journey,
                 ],
             ]);
         } else {
