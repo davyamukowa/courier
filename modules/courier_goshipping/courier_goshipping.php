@@ -1542,6 +1542,72 @@ class Courier_Logistic_System {
     }
 
     /**
+     * Adds an index if it doesn't already exist. CI3 has no index_exists()
+     * helper, so this checks information_schema directly — needed because
+     * ALTER TABLE ... ADD INDEX on a name that already exists is a hard
+     * error (unlike the ADD COLUMN/CREATE TABLE checks elsewhere in this
+     * file, which use table_exists()/field_exists()).
+     */
+    private function ensure_index($table, $index_name, $column_expr) {
+        $CI = &get_instance();
+        if (!$CI->db->table_exists($table)) {
+            return;
+        }
+        $exists = $CI->db->query(
+            'SELECT 1 FROM information_schema.STATISTICS WHERE table_schema = DATABASE() AND table_name = ? AND index_name = ? LIMIT 1',
+            [$table, $index_name]
+        )->row();
+        if (!$exists) {
+            $CI->db->query("ALTER TABLE `{$table}` ADD INDEX `{$index_name}` ({$column_expr})");
+        }
+    }
+
+    /**
+     * v37: performance indexes. None of these columns had one — every
+     * lookup on them (branch-scoped shipment lists, the Salibay order-list
+     * datatable's joins, the public tracker's waybill-number search, status-
+     * history reads for the journey timeline) was doing a full table scan.
+     * `branch_id` in particular is filtered on by nearly every list page in
+     * the module (courier_apply_branch_scope()) since branch isolation was
+     * added, so its absence here was likely the single biggest cause of the
+     * system feeling slow as these tables have grown.
+     *
+     * Purely additive — indexes don't change query results, only how fast
+     * MySQL finds them — so this is safe to run against live data and has
+     * no rollback concerns.
+     */
+    public function run_db_upgrades_v37() {
+        if (get_option('courier_schema_v37_done')) return;
+
+        $shipments_table = db_prefix() . '_shipments';
+        $this->ensure_index($shipments_table, 'idx_tracking_id', '`tracking_id`');
+        $this->ensure_index($shipments_table, 'idx_waybill_number', '`waybill_number`');
+        $this->ensure_index($shipments_table, 'idx_branch_id', '`branch_id`');
+        $this->ensure_index($shipments_table, 'idx_parent_shipment_id', '`parent_shipment_id`');
+        $this->ensure_index($shipments_table, 'idx_created_at', '`created_at`');
+
+        foreach (['_pickups', '_manifests', '_agents', '_courier_quotations'] as $suffix) {
+            $this->ensure_index(db_prefix() . $suffix, 'idx_branch_id', '`branch_id`');
+        }
+
+        $this->ensure_index(db_prefix() . '_shipment_status_history', 'idx_shipment_id', '`shipment_id`');
+
+        $orders_table = db_prefix() . 'shopify_orders';
+        $this->ensure_index($orders_table, 'idx_gs_shipment_id', '`gs_shipment_id`');
+        $this->ensure_index($orders_table, 'idx_created_at', '`created_at`');
+        $this->ensure_index($orders_table, 'idx_store_id', '`store_id`');
+        $CI = &get_instance();
+        if ($CI->db->field_exists('branch_id', $orders_table)) {
+            $this->ensure_index($orders_table, 'idx_branch_id', '`branch_id`');
+        }
+
+        $this->ensure_index(db_prefix() . 'shopify_order_items', 'idx_shopify_order_id', '`shopify_order_id`');
+        $this->ensure_index(db_prefix() . 'shopify_order_items', 'idx_gs_sku', '`gs_sku`');
+
+        update_option('courier_schema_v37_done', '1');
+    }
+
+    /**
      * v19: add kra_pin to shipment senders and companies tables.
      */
     public function run_db_upgrades_v19() {
