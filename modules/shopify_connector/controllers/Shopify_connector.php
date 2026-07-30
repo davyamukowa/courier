@@ -825,6 +825,8 @@ class Shopify_connector extends AdminController
         $this->db->insert(db_prefix() . 'shopify_orders', $order_data);
         $shopify_db_order_id = $this->db->insert_id();
 
+        $this->record_sourcing_milestone_tags($shopify_db_order_id, $payload['tags'] ?? '');
+
         // Best-effort — the fulfilment manifest metafield is a nice-to-have
         // enrichment (per-line-item routing detail), never a blocker.
         try {
