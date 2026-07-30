@@ -1025,6 +1025,49 @@ class Shopify_connector extends AdminController
         }
     }
 
+    /**
+     * The waybill created at order time (from the "Salibay Global"/"Route
+     * GSC-..." tags) is really just a placeholder reference until the
+     * external sourcing pipeline actually finishes procuring/warehousing the
+     * item — that's a separate system, entirely out of our scope. Once it
+     * writes "Ready for International Fulfillment" back onto the order, THIS
+     * is the real signal that Go Shipping physically takes custody and the
+     * international air-freight leg begins, so the existing shipment is
+     * switched from the generic "COURIER (NONE)" placeholder mode into
+     * "AIR (AIR FREIGHT)" — same shipment row/waybill number throughout,
+     * just the mode flips on to reflect that the parcel is actually moving
+     * now. The `salibay_ready_for_intl_fulfillment` flag makes this
+     * one-shot: repeated orders/updated deliveries for the same order won't
+     * re-trigger it (e.g. if the shipment's mode is later changed by staff
+     * for a legitimate operational reason, this must never stomp on that).
+     */
+    private function activate_international_air_freight_leg($order)
+    {
+        $this->db->where('id', $order->id)->update(db_prefix() . 'shopify_orders', [
+            'salibay_ready_for_intl_fulfillment' => 1,
+        ]);
+
+        if (empty($order->gs_shipment_id)) {
+            // Shipment doesn't exist yet (tag arrived before create_courier_
+            // shipment() ran) — nothing to flip yet. create_courier_shipment()
+            // itself checks salibay_ready_for_intl_fulfillment when it later
+            // runs, so the shipment is born already in AIR (AIR FREIGHT) mode.
+            return;
+        }
+
+        $shipment = $this->db->where('id', $order->gs_shipment_id)->get(db_prefix() . '_shipments')->row();
+        if (!$shipment || $shipment->shipping_mode === 'AIR (AIR FREIGHT)') {
+            return;
+        }
+
+        $this->db->where('id', $shipment->id)->update(db_prefix() . '_shipments', [
+            'shipping_category' => 'international',
+            'shipping_mode'     => 'AIR (AIR FREIGHT)',
+        ]);
+
+        log_activity("Shopify Webhook: shipment #{$shipment->id} activated to AIR (AIR FREIGHT) — sourcing pipeline marked SHF-{$order->shopify_order_id} ready for international fulfillment.");
+    }
+
     private function handle_order_cancelled($payload, $store)
     {
         $shopify_order_id = $payload['id'] ?? null;
