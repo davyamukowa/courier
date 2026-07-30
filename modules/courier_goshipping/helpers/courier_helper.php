@@ -180,6 +180,83 @@ if (!function_exists('courier_resolve_branch_from_route_tag')) {
 }
 
 /**
+ * Builds the full sourcing-to-doorstep journey for a shipment, for the
+ * client portal tracker: the external sourcing pipeline's own progress tags
+ * (courier_get_shipment_journey_source_events()) merged with Go Shipping's
+ * own shipment status history, across BOTH legs of a two-leg international
+ * order (the international air-freight leg and its linked domestic last-mile
+ * leg — see run_db_upgrades_v36()/parent_shipment_id) if one exists. Works
+ * the same whether $shipment_id is the leg the customer happens to be
+ * tracking or its sibling — the family is always resolved first.
+ *
+ * Returns a flat array of ['label' => string, 'changed_at' => 'Y-m-d H:i:s']
+ * sorted newest-first, ready to hand straight to the tracker view.
+ */
+if (!function_exists('courier_get_shipment_journey')) {
+    function courier_get_shipment_journey($shipment_id)
+    {
+        $CI = &get_instance();
+        $shipments_table = db_prefix() . '_shipments';
+
+        $shipment = $CI->db->where('id', (int) $shipment_id)->get($shipments_table)->row();
+        if (!$shipment) {
+            return [];
+        }
+
+        $leg_ids = [(int) $shipment_id];
+        if (!empty($shipment->parent_shipment_id)) {
+            $leg_ids[] = (int) $shipment->parent_shipment_id;
+        }
+        $child = $CI->db->where('parent_shipment_id', (int) $shipment_id)->get($shipments_table)->row();
+        if ($child) {
+            $leg_ids[] = (int) $child->id;
+        }
+        $leg_ids = array_values(array_unique($leg_ids));
+
+        $events = [];
+
+        $status_desc_col = $CI->db->field_exists('status_description', db_prefix() . '_shipment_statuses')
+            ? 'ss.status_description'
+            : 'ss.description';
+
+        $history = $CI->db->select("h.changed_at, ss.status_name, {$status_desc_col} AS status_description")
+            ->from(db_prefix() . '_shipment_status_history h')
+            ->join(db_prefix() . '_shipment_statuses ss', 'ss.id = h.status_id', 'left')
+            ->where_in('h.shipment_id', $leg_ids)
+            ->get()
+            ->result();
+
+        foreach ($history as $row) {
+            $events[] = [
+                'label'      => $row->status_description ?: ucfirst(str_replace('_', ' ', $row->status_name)),
+                'changed_at' => $row->changed_at,
+            ];
+        }
+
+        if ($CI->db->table_exists(db_prefix() . 'shopify_orders')) {
+            $order = $CI->db->where_in('gs_shipment_id', $leg_ids)->get(db_prefix() . 'shopify_orders')->row();
+            if ($order && $CI->db->table_exists(db_prefix() . 'courier_sourcing_events')) {
+                $sourcing_events = $CI->db->where('shopify_order_id', $order->id)
+                    ->get(db_prefix() . 'courier_sourcing_events')
+                    ->result();
+                foreach ($sourcing_events as $row) {
+                    $events[] = [
+                        'label'      => $row->tag,
+                        'changed_at' => $row->changed_at,
+                    ];
+                }
+            }
+        }
+
+        usort($events, function ($a, $b) {
+            return strcmp($b['changed_at'], $a['changed_at']);
+        });
+
+        return $events;
+    }
+}
+
+/**
  * Applies branch isolation to the current CI query builder: restricts to the
  * staff's assigned branches unless they're an admin or hold 'view_all_branches'.
  * Call this right before ->get()/->count_all_results() on a table/alias that
