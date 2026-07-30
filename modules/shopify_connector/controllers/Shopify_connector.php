@@ -1760,7 +1760,7 @@ class Shopify_connector extends AdminController
      */
     private function parse_salibay_tags($tags_string)
     {
-        $result = ['classification' => null, 'route_tag' => null, 'needs_manual_review' => false];
+        $result = ['classification' => null, 'route_tag' => null, 'needs_manual_review' => false, 'ready_for_international_fulfillment' => false];
         if (empty($tags_string) || !is_string($tags_string)) {
             return $result;
         }
@@ -1782,6 +1782,15 @@ class Shopify_connector extends AdminController
                 // reason that has nothing to do with sourcing. Only the
                 // "Salibay"-prefixed tag is our classification signal.
                 $result['classification'] = 'manual_review';
+            } elseif ($lower === 'ready for international fulfillment') {
+                // Written by the external sourcing pipeline once IT reaches
+                // "Delivered" (its own procurement stages — Review, Needs
+                // sourcing, Warehouse assigned, ... — are entirely out of our
+                // scope and never read here). This is the actual signal for
+                // Go Shipping's own international air-freight leg to start —
+                // see handle_order_updated()/activate_international_air_
+                // freight_leg().
+                $result['ready_for_international_fulfillment'] = true;
             } elseif (preg_match('/^route\s+(.+)$/i', $tag, $m)) {
                 $result['route_tag'] = trim($m[1]);
             }
