@@ -200,6 +200,10 @@
         .timeline-item h4 { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
         .timeline-item p { font-size: 13px; color: #666; margin: 0; }
         .timeline-item .tl-time { font-size: 11px; color: #999; }
+        /* Full-journey list is built dynamically (arbitrary event count),
+           unlike the fixed 8-step tracker above it — always visible once
+           populated, not toggled by status_id. */
+        #journey-timeline .timeline-item { display: block; }
 
         .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; }
         @media(max-width: 600px) { .data-grid { grid-template-columns: 1fr; } }
