@@ -2191,6 +2191,29 @@ class Shipments extends AdminController
             return;
         }
 
+        // Two-leg international journey (see run_db_upgrades_v36() and
+        // Shopify_connector_model::create_domestic_leg_from_international()):
+        // surface a link to whichever other leg exists, so staff looking at
+        // either waybill can jump straight to the other one instead of
+        // hunting for it.
+        $data['linked_leg'] = null;
+        $shipment_row = $data['shipment_details']['shipment'];
+        if (!empty($shipment_row->parent_shipment_id)) {
+            $data['linked_leg'] = [
+                'relation' => 'parent',
+                'shipment' => $this->db->select('id, waybill_number, shipping_category, shipping_mode')
+                    ->where('id', $shipment_row->parent_shipment_id)
+                    ->get(db_prefix() . '_shipments')->row(),
+            ];
+        } else {
+            $child = $this->db->select('id, waybill_number, shipping_category, shipping_mode')
+                ->where('parent_shipment_id', $id)
+                ->get(db_prefix() . '_shipments')->row();
+            if ($child) {
+                $data['linked_leg'] = ['relation' => 'child', 'shipment' => $child];
+            }
+        }
+
         $tracking_id = $data['shipment_details']['shipment']->tracking_id ?? '';
         $data['barcode'] = $tracking_id ? $this->generate_barcode($tracking_id) : '';
         $data['statuses'] = $this->ShipmentStatus_model->get();
