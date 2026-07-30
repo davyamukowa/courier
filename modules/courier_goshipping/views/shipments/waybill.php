@@ -344,12 +344,12 @@
                     <?php if ($linked_leg['relation'] === 'parent'): ?>
                         This is the <strong>domestic last-mile leg</strong> that continues from international shipment
                         <a href="<?php echo admin_url('courier_goshipping/shipments/waybill/' . $linked_leg['shipment']->id); ?>">
-                            <strong><?php echo e($linked_leg['shipment']->waybill_number); ?></strong>
+                            <strong><?php echo htmlspecialchars($linked_leg['shipment']->waybill_number); ?></strong>
                         </a>.
                     <?php else: ?>
                         This international shipment continued as a separate <strong>domestic last-mile leg</strong>:
                         <a href="<?php echo admin_url('courier_goshipping/shipments/waybill/' . $linked_leg['shipment']->id); ?>">
-                            <strong><?php echo e($linked_leg['shipment']->waybill_number); ?></strong>
+                            <strong><?php echo htmlspecialchars($linked_leg['shipment']->waybill_number); ?></strong>
                         </a>.
                     <?php endif; ?>
                 </div>
