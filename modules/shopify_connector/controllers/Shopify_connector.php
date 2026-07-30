@@ -942,6 +942,8 @@ class Shopify_connector extends AdminController
             return;
         }
 
+        $this->record_sourcing_milestone_tags($order->id, $payload['tags'] ?? '');
+
         if ($this->db->field_exists('salibay_classification', db_prefix() . 'shopify_orders')) {
             $salibay_tags = $this->parse_salibay_tags($payload['tags'] ?? '');
             $classification_changed = $salibay_tags['classification'] && $salibay_tags['classification'] !== $order->salibay_classification;
