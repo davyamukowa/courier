@@ -53,6 +53,17 @@ hooks()->add_action('dashboard_stats', 'pos_system_dashboard_stats');
 
 function pos_system_maybe_install()
 {
+    // The table_exists()/field_exists() checks below were running on EVERY
+    // admin page load, site-wide (this hook isn't scoped to POS pages) — 2-3
+    // uncached SHOW COLUMNS queries added to every single request forever.
+    // Once verified for the current POS_SYSTEM_VERSION, skip entirely; only
+    // re-verify if the version constant changes (a real upgrade) or the
+    // flag is missing (fresh install / first run after this fix).
+    $verified_flag = 'pos_system_schema_v' . POS_SYSTEM_VERSION . '_verified';
+    if (get_option($verified_flag)) {
+        return;
+    }
+
     $CI = &get_instance();
     // Re-run install when base tables are missing OR when newer feature tables
     // (e.g. pos_profiles) haven't been created yet. All CREATE TABLEs use
@@ -71,6 +82,7 @@ function pos_system_maybe_install()
     if ($needs_install) {
         @include POS_SYSTEM_PATH . 'install.php';
     }
+    update_option($verified_flag, '1');
 }
 
 function pos_system_load_language()
