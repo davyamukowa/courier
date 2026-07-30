@@ -1510,6 +1510,38 @@ class Courier_Logistic_System {
     }
 
     /**
+     * v36: schema for the two-leg international journey — an international
+     * air-freight leg (origin country -> Nairobi) that, once it clears
+     * customs, spawns a second domestic courier leg (Nairobi -> customer)
+     * as its own separate tbl_shipments row rather than mutating the same
+     * row in place, so each leg keeps its own waybill number and status
+     * history.
+     *
+     * - `_shipments.parent_shipment_id`: on the domestic leg, points back at
+     *   the international leg it continues from. Null for every ordinary,
+     *   single-leg shipment (ie. everything today).
+     * - `shopify_orders.salibay_ready_for_intl_fulfillment`: one-shot guard
+     *   so activate_international_air_freight_leg() only fires once per
+     *   order even though orders/updated webhooks keep re-delivering.
+     */
+    public function run_db_upgrades_v36() {
+        if (get_option('courier_schema_v36_done')) return;
+        $CI = &get_instance();
+
+        $shipments_table = db_prefix() . '_shipments';
+        if ($CI->db->table_exists($shipments_table) && !$CI->db->field_exists('parent_shipment_id', $shipments_table)) {
+            $CI->db->query('ALTER TABLE `' . $shipments_table . '` ADD `parent_shipment_id` INT NULL DEFAULT NULL AFTER `id`');
+        }
+
+        $orders_table = db_prefix() . 'shopify_orders';
+        if ($CI->db->table_exists($orders_table) && !$CI->db->field_exists('salibay_ready_for_intl_fulfillment', $orders_table)) {
+            $CI->db->query('ALTER TABLE `' . $orders_table . '` ADD `salibay_ready_for_intl_fulfillment` TINYINT(1) NOT NULL DEFAULT 0');
+        }
+
+        update_option('courier_schema_v36_done', '1');
+    }
+
+    /**
      * v19: add kra_pin to shipment senders and companies tables.
      */
     public function run_db_upgrades_v19() {
