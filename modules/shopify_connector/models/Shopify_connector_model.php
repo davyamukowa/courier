@@ -213,6 +213,114 @@ class Shopify_connector_model extends App_Model
         return $shipment_id;
     }
 
+    /**
+     * Once an international air-freight leg reaches "Arrived at Destination"
+     * (status_id 6 — see Shipments::update_status()), the parcel has cleared
+     * Nairobi and needs a separate local courier leg for last-mile delivery
+     * to the customer. That's a genuinely different physical handoff (own
+     * branch, own staff/rider, own vehicle) so it gets its own tbl_shipments
+     * row and waybill number rather than mutating the international one —
+     * `parent_shipment_id` links the two for the waybill UI to show both legs.
+     *
+     * Only ever acts on shipments that are actually linked to a Salibay/
+     * Shopify order (found via shopify_orders.gs_shipment_id) — this must
+     * never fire for the module's ordinary freight-forwarding air shipments,
+     * which have no such link and aren't part of this two-leg flow.
+     *
+     * Idempotent: a second call for the same international shipment is a
+     * no-op if a domestic leg already exists for it.
+     */
+    public function create_domestic_leg_from_international($international_shipment_id)
+    {
+        $order = $this->db->where('gs_shipment_id', $international_shipment_id)->get(db_prefix() . 'shopify_orders')->row();
+        if (!$order) {
+            return false;
+        }
+
+        $existing_child = $this->db->where('parent_shipment_id', $international_shipment_id)->get(db_prefix() . '_shipments')->row();
+        if ($existing_child) {
+            return false;
+        }
+
+        $intl_shipment = $this->db->where('id', $international_shipment_id)->get(db_prefix() . '_shipments')->row();
+        if (!$intl_shipment || empty($intl_shipment->recipient_id)) {
+            return false;
+        }
+
+        $CI = &get_instance();
+        $CI->load->helper('courier_goshipping/courier');
+
+        // Last-mile is always handled from the local/Kenya branch — the
+        // org-wide default branch (is_default=1) IS that branch, per
+        // courier_get_fallback_branch_id()'s existing "domestic fallback"
+        // role used everywhere else in this module.
+        $local_branch_id = courier_get_fallback_branch_id();
+        $branch_info = courier_get_invoice_info($local_branch_id);
+        $branch_name_parts = explode(' ', trim($branch_info['name'] ?: 'Go Shipping Cargo'), 2);
+
+        $sender_data = [
+            'first_name'   => $branch_name_parts[0],
+            'last_name'    => $branch_name_parts[1] ?? '',
+            'phone_number' => $branch_info['phone'] ?: (get_option('company_phonenumber') ?: '000000000'),
+            'email'        => $branch_info['email'] ?: (get_option('smtp_email') ?: 'warehouse@example.com'),
+            'address'      => trim(strip_tags(str_replace(['<br />', '<br/>', '<br>'], ', ', $branch_info['address'] ?: format_organization_info())), ', ') ?: 'Main Warehouse',
+            'zipcode'      => '00100',
+            'address_type' => 'postal_code',
+        ];
+
+        // Same customer as the international leg — copy the recipient
+        // fields across (a fresh row, since create_courier_shipment_db()
+        // always inserts one; the two legs don't share a recipient_id).
+        $recipient_data = $this->db->where('id', $intl_shipment->recipient_id)->get(db_prefix() . '_shipment_recipients')->row_array();
+        unset($recipient_data['id']);
+        if (empty($recipient_data)) {
+            return false;
+        }
+
+        // "D" suffix keeps this waybill visually distinct from — and never
+        // colliding with — the international leg's number, which is built
+        // from the same date + order id.
+        $tracking_number = 'GS' . date('Ymd') . str_pad((string) $order->id, 6, '0', STR_PAD_LEFT) . 'D';
+
+        $status_row = $this->db->where('status_name', 'created')->get(db_prefix() . '_shipment_statuses')->row();
+
+        $shipment_data = [
+            'shipping_mode'     => 'Courier',
+            'shipping_category' => 'domestic',
+            'tracking_id'       => $tracking_number,
+            'waybill_number'    => $tracking_number,
+            'company_type'      => 'company',
+            'status_id'         => $status_row ? (int) $status_row->id : 1,
+            'staff_id'          => 0,
+            'packaging_charges' => 0.00,
+            'created_at'        => date('Y-m-d H:i:s'),
+            'parent_shipment_id' => (int) $international_shipment_id,
+        ];
+        if ($this->db->field_exists('branch_id', db_prefix() . '_shipments')) {
+            $shipment_data['branch_id'] = $local_branch_id;
+        }
+
+        $packages_data = array_map(function ($p) {
+            unset($p['id'], $p['shipment_id']);
+            return $p;
+        }, $this->db->where('shipment_id', $international_shipment_id)->get(db_prefix() . '_shipment_packages')->result_array());
+
+        $new_shipment_id = $this->create_courier_shipment_db($shipment_data, $sender_data, $recipient_data, $packages_data);
+
+        if ($new_shipment_id) {
+            // gs_shipment_id now tracks the active/current leg — status
+            // pushes to Shopify (push_shopify_fulfillment_status()) key off
+            // it, and the real "Delivered" event belongs to this domestic
+            // leg (the international leg only got the parcel to Nairobi).
+            $this->db->where('id', $order->id)->update(db_prefix() . 'shopify_orders', [
+                'gs_shipment_id' => $new_shipment_id,
+            ]);
+            log_activity("Domestic last-mile leg #{$tracking_number} created from international shipment #{$international_shipment_id} for Salibay order SHF-{$order->shopify_order_id}");
+        }
+
+        return $new_shipment_id;
+    }
+
     public function create_reservation_record($data)
     {
         $this->db->insert(db_prefix() . 'shopify_stock_reservations', $data);
