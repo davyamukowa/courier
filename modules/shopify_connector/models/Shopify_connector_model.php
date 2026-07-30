@@ -301,7 +301,10 @@ class Shopify_connector_model extends App_Model
         }
 
         $packages_data = array_map(function ($p) {
-            unset($p['id'], $p['shipment_id']);
+            // A fresh leg starts with no proof-of-delivery of its own — the
+            // international leg's POD (if any) was for arrival at Nairobi,
+            // not final customer delivery.
+            unset($p['id'], $p['shipment_id'], $p['pod']);
             return $p;
         }, $this->db->where('shipment_id', $international_shipment_id)->get(db_prefix() . '_shipment_packages')->result_array());
 
