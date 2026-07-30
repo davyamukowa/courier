@@ -1825,6 +1825,27 @@ $tab_urls = [
                     $('#status-' + i).show();
                 }
 
+                // Full journey — sourcing pipeline milestones + both shipment
+                // legs (international air-freight + domestic last-mile, if
+                // this order has one), newest first. Separate from the fixed
+                // 8-step tracker above: an arbitrary-length detailed log
+                // rather than a fixed progress indicator.
+                const journey = data.data.journey || [];
+                const jc = document.getElementById('journey-timeline');
+                jc.innerHTML = '';
+                if (journey.length) {
+                    journey.forEach(function (ev) {
+                        const item = document.createElement('div');
+                        item.className = 'timeline-item';
+                        item.innerHTML = '<h4>' + escapeHtml(ev.label) + '</h4>' +
+                            '<p class="tl-time">' + fmtDate(ev.changed_at) + '</p>';
+                        jc.appendChild(item);
+                    });
+                    $('#journey-section').show();
+                } else {
+                    $('#journey-section').hide();
+                }
+
                 // Stops
                 if (shipment.status_id >= 5 && d.shipment_stops && d.shipment_stops.length) {
                     const sc = document.getElementById('stops-container');
