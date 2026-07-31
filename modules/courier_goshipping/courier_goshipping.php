@@ -1644,6 +1644,30 @@ class Courier_Logistic_System {
     }
 
     /**
+     * v39: indexes for the Fulfilment dashboard metrics
+     * (get_fulfilment_metrics()) — this runs on every single Fulfilment page
+     * load AND is polled every 20s (previously every 3s) by every staff
+     * member with a Fulfilment tab open, so these tables' scan cost gets
+     * multiplied constantly rather than just once per page view. Both
+     * tables grow directly with Salibay order volume — exactly why this
+     * only started hurting once real order/webhook traffic ramped up.
+     *
+     * - shopify_orders.order_status: WHERE order_status IN ('confirmed',
+     *   'processing') for pending_dispatch, unindexed.
+     * - shopify_webhook_events.status: WHERE status='pending'/'failed',
+     *   unindexed — this table gets a new row on every webhook delivery
+     *   (order create/update/tag change), so it grows continuously.
+     */
+    public function run_db_upgrades_v39() {
+        if (get_option('courier_schema_v39_done')) return;
+
+        $this->ensure_index(db_prefix() . 'shopify_orders', 'idx_order_status', '`order_status`');
+        $this->ensure_index(db_prefix() . 'shopify_webhook_events', 'idx_status', '`status`');
+
+        update_option('courier_schema_v39_done', '1');
+    }
+
+    /**
      * v19: add kra_pin to shipment senders and companies tables.
      */
     public function run_db_upgrades_v19() {
