@@ -1853,7 +1853,11 @@ class Fulfilment extends AdminController
             'last_sync' => ($store && !empty($store->last_inventory_sync_at)) ? $store->last_inventory_sync_at : null,
         ];
 
-        $metrics['orders_today'] = (int) $this->db->query("SELECT COUNT(*) AS c FROM {$prefix}shopify_orders WHERE DATE(created_at)=CURDATE(){$branch_where}")->row()->c;
+        // Sargable range instead of DATE(created_at)=CURDATE() — wrapping an
+        // indexed column in a function prevents MySQL from using its index
+        // at all, forcing a full table scan that gets slower every day as
+        // shopify_orders grows.
+        $metrics['orders_today'] = (int) $this->db->query("SELECT COUNT(*) AS c FROM {$prefix}shopify_orders WHERE created_at >= CURDATE() AND created_at < CURDATE() + INTERVAL 1 DAY{$branch_where}")->row()->c;
         $metrics['pending_dispatch'] = (int) $this->db->query("SELECT COUNT(*) AS c FROM {$prefix}shopify_orders WHERE order_status IN ('confirmed','processing'){$branch_where}")->row()->c;
         $metrics['linked_shipments'] = (int) $this->db->query("SELECT COUNT(*) AS c FROM {$prefix}shopify_orders WHERE gs_shipment_id IS NOT NULL{$branch_where}")->row()->c;
         $metrics['tracked_skus'] = (int) $this->db->query("SELECT COUNT(*) AS c FROM {$prefix}shopify_product_mappings WHERE is_active = 1")->row()->c;
