@@ -2191,8 +2191,8 @@ class Shipments extends AdminController
             return;
         }
 
-        // Two-leg international journey (see run_db_upgrades_v36() and
-        // Shopify_connector_model::create_domestic_leg_from_international()):
+        // Two-leg international journey (see run_db_upgrades_v36()/v41() and
+        // Shopify_connector_model::create_international_leg_shipment()):
         // surface a link to whichever other leg exists, so staff looking at
         // either waybill can jump straight to the other one instead of
         // hunting for it.
