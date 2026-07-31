@@ -342,12 +342,12 @@
                 <div class="alert alert-info" style="margin-bottom:15px;">
                     <i class="fa fa-exchange"></i>
                     <?php if ($linked_leg['relation'] === 'parent'): ?>
-                        This is the <strong>domestic last-mile leg</strong> that continues from international shipment
+                        This is the <strong>international air-freight leg</strong> for order shipment
                         <a href="<?php echo admin_url('courier_goshipping/shipments/waybill/' . $linked_leg['shipment']->id); ?>">
                             <strong><?php echo htmlspecialchars($linked_leg['shipment']->waybill_number); ?></strong>
-                        </a>.
+                        </a> — once it arrives at the Go Shipping warehouse, last-mile tracking resumes on that shipment.
                     <?php else: ?>
-                        This international shipment continued as a separate <strong>domestic last-mile leg</strong>:
+                        This order also has a separate <strong>international air-freight leg</strong>:
                         <a href="<?php echo admin_url('courier_goshipping/shipments/waybill/' . $linked_leg['shipment']->id); ?>">
                             <strong><?php echo htmlspecialchars($linked_leg['shipment']->waybill_number); ?></strong>
                         </a>.
