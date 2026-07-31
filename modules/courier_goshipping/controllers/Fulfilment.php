@@ -1915,6 +1915,14 @@ class Fulfilment extends AdminController
               AND (COALESCE(i.qty, 0) - COALESCE(i.reserved, 0)) <= p.reorder_point
         ")->row()->c;
 
+        if ($has_cache_table) {
+            $this->db->replace($cache_table, [
+                'scope_key'    => $scope_key,
+                'metrics_json' => json_encode($metrics),
+                'computed_at'  => date('Y-m-d H:i:s'),
+            ]);
+        }
+
         return $metrics;
     }
 
