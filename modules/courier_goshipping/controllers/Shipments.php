@@ -3054,21 +3054,32 @@ class Shipments extends AdminController
                 log_message('error', 'Shopify fulfillment push crashed: ' . $e->getMessage());
             }
 
-            // A Salibay-sourced international shipment reaching "Arrived at
-            // Destination" means it's cleared Nairobi and the international
-            // leg's job is done — spin up the separate local courier leg for
-            // last-mile delivery. No-op for ordinary (non-Salibay) freight
-            // shipments and safe to run more than once (idempotent — see
-            // create_domestic_leg_from_international()). Deliberately after
-            // the fulfillment push above, so that push still targets the
-            // international leg's own shipment id before gs_shipment_id gets
-            // reassigned to the new domestic leg.
-            if ($new_status_id === 6) {
+            // An international air-freight leg (parent_shipment_id set —
+            // see run_db_upgrades_v41()) reaching "Arrived Go Shipping
+            // Warehouse" (status 13) means the freight-forwarding job is
+            // done and the ORIGINAL order shipment (already existing since
+            // order time — nothing new is created here) should pick up
+            // last-mile tracking. Auto-advance it to "Received" (3) only if
+            // it's still sitting at Created/Picked Up (1/2) — never
+            // overwrite further progress staff may have already logged on
+            // it independently.
+            if ($new_status_id === 13) {
                 try {
-                    $this->load->model('shopify_connector/shopify_connector_model');
-                    $this->shopify_connector_model->create_domestic_leg_from_international((int) $id);
+                    $leg = $this->db->select('parent_shipment_id')->where('id', (int) $id)->get(db_prefix() . '_shipments')->row();
+                    if ($leg && !empty($leg->parent_shipment_id)) {
+                        $parent = $this->db->select('id, status_id')->where('id', $leg->parent_shipment_id)->get(db_prefix() . '_shipments')->row();
+                        if ($parent && (int) $parent->status_id <= 2) {
+                            $this->db->where('id', $parent->id)->update(db_prefix() . '_shipments', ['status_id' => 3]);
+                            $this->db->insert(db_prefix() . '_shipment_status_history', [
+                                'shipment_id' => $parent->id,
+                                'status_id'   => 3,
+                                'changed_at'  => date('Y-m-d H:i:s'),
+                                'notes'       => 'Auto-advanced: linked international leg arrived at Go Shipping warehouse.',
+                            ]);
+                        }
+                    }
                 } catch (\Throwable $e) {
-                    log_message('error', 'Domestic last-mile leg creation crashed: ' . $e->getMessage());
+                    log_message('error', 'Auto-advancing original shipment after international leg arrival crashed: ' . $e->getMessage());
                 }
             }
 
