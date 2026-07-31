@@ -1776,6 +1776,58 @@ class Courier_Logistic_System {
     }
 
     /**
+     * v42: backfill — one-shot international-leg creation only fires the
+     * instant salibay_ready_for_intl_fulfillment flips 0->1 (see
+     * Shopify_connector::activate_international_air_freight_leg()). Any
+     * order that already had that flag set to 1 BEFORE this feature existed
+     * will never see that transition again, so its international leg would
+     * otherwise never get created. Finds every such order and creates the
+     * missing leg for it, exactly like the real trigger would have.
+     */
+    public function run_db_upgrades_v42() {
+        if (get_option('courier_schema_v42_done')) return;
+        $CI = &get_instance();
+
+        $orders_table = db_prefix() . 'shopify_orders';
+        $shipments_table = db_prefix() . '_shipments';
+        if (!$CI->db->table_exists($orders_table)
+            || !$CI->db->field_exists('salibay_ready_for_intl_fulfillment', $orders_table)
+            || !$CI->db->table_exists($shipments_table)
+        ) {
+            update_option('courier_schema_v42_done', '1');
+            return;
+        }
+
+        $CI->load->helper('courier_goshipping/courier');
+        $CI->load->model('shopify_connector/shopify_connector_model');
+
+        $orders = $CI->db->where('salibay_ready_for_intl_fulfillment', 1)
+            ->where('gs_shipment_id IS NOT NULL')
+            ->get($orders_table)
+            ->result();
+
+        foreach ($orders as $order) {
+            $existing_leg = $CI->db->where('parent_shipment_id', $order->gs_shipment_id)->get($shipments_table)->row();
+            if ($existing_leg) {
+                continue;
+            }
+
+            $shipment = $CI->db->where('id', $order->gs_shipment_id)->get($shipments_table)->row();
+            if (!$shipment) {
+                continue;
+            }
+
+            $branch_id = !empty($shipment->branch_id) ? (int) $shipment->branch_id : courier_get_fallback_branch_id();
+            $leg_id = $CI->shopify_connector_model->create_international_leg_shipment($order, $branch_id);
+            if ($leg_id) {
+                log_activity("Backfill: international air-freight leg #{$leg_id} created for SHF-{$order->shopify_order_id}.");
+            }
+        }
+
+        update_option('courier_schema_v42_done', '1');
+    }
+
+    /**
      * Prunes old, purely-diagnostic rows that grow unbounded with order
      * volume and are never needed once they age out — NOT the same as
      * shipment_status_history/courier_sourcing_events, which are real
