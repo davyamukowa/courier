@@ -1060,15 +1060,29 @@ class Shopify_connector extends AdminController
      * external sourcing pipeline actually finishes procuring/warehousing the
      * item — that's a separate system, entirely out of our scope. Once it
      * writes "Ready for International Fulfillment" back onto the order, THIS
-     * is the real signal that Go Shipping physically takes custody and the
-     * international air-freight leg begins, so the existing shipment is
-     * switched from the generic "COURIER (NONE)" placeholder mode into
-     * "AIR (AIR FREIGHT)" — same shipment row/waybill number throughout,
-     * just the mode flips on to reflect that the parcel is actually moving
-     * now. The `salibay_ready_for_intl_fulfillment` flag makes this
-     * one-shot: repeated orders/updated deliveries for the same order won't
-     * re-trigger it (e.g. if the shipment's mode is later changed by staff
-     * for a legitimate operational reason, this must never stomp on that).
+     * is the real signal that Go Shipping physically takes custody, so two
+     * things happen:
+     *
+     * 1. The order's own original shipment is switched from the generic
+     *    "COURIER (NONE)" placeholder mode into "AIR (AIR FREIGHT)" — same
+     *    shipment row/waybill number throughout, this record stays the
+     *    permanent customer-facing one (never replaced/reassigned), it just
+     *    now correctly reflects the branch it's shipping from.
+     * 2. A SEPARATE new shipment is created for the actual international
+     *    air-freight leg itself — see
+     *    Shopify_connector_model::create_international_leg_shipment(). Its
+     *    own dedicated stages (At Origin Airport -> In Transit (Air) ->
+     *    Arrived Destination Airport -> Arrived Go Shipping Warehouse) are
+     *    what staff actually update as the parcel physically moves; once it
+     *    reaches Arrived Go Shipping Warehouse, Shipments::update_status()
+     *    auto-advances the original shipment so staff can pick up last-mile
+     *    tracking on it.
+     *
+     * The `salibay_ready_for_intl_fulfillment` flag makes this one-shot:
+     * repeated orders/updated deliveries for the same order won't re-trigger
+     * it (e.g. if the shipment's mode is later changed by staff for a
+     * legitimate operational reason, this must never stomp on that, and the
+     * international leg must never be created twice).
      */
     private function activate_international_air_freight_leg($order)
     {
@@ -1078,23 +1092,33 @@ class Shopify_connector extends AdminController
 
         if (empty($order->gs_shipment_id)) {
             // Shipment doesn't exist yet (tag arrived before create_courier_
-            // shipment() ran) — nothing to flip yet. create_courier_shipment()
-            // itself checks salibay_ready_for_intl_fulfillment when it later
-            // runs, so the shipment is born already in AIR (AIR FREIGHT) mode.
+            // shipment() ran) — nothing to flip/create yet. create_courier_
+            // shipment() itself checks salibay_ready_for_intl_fulfillment
+            // when it later runs, so the shipment is born already in
+            // AIR (AIR FREIGHT) mode; the international leg gets created on
+            // the next orders/updated delivery once gs_shipment_id exists.
             return;
         }
 
         $shipment = $this->db->where('id', $order->gs_shipment_id)->get(db_prefix() . '_shipments')->row();
-        if (!$shipment || $shipment->shipping_mode === 'AIR (AIR FREIGHT)') {
+        if (!$shipment) {
             return;
         }
 
-        $this->db->where('id', $shipment->id)->update(db_prefix() . '_shipments', [
-            'shipping_category' => 'international',
-            'shipping_mode'     => 'AIR (AIR FREIGHT)',
-        ]);
+        if ($shipment->shipping_mode !== 'AIR (AIR FREIGHT)') {
+            $this->db->where('id', $shipment->id)->update(db_prefix() . '_shipments', [
+                'shipping_category' => 'international',
+                'shipping_mode'     => 'AIR (AIR FREIGHT)',
+            ]);
+            log_activity("Shopify Webhook: shipment #{$shipment->id} activated to AIR (AIR FREIGHT) — sourcing pipeline marked SHF-{$order->shopify_order_id} ready for international fulfillment.");
+        }
 
-        log_activity("Shopify Webhook: shipment #{$shipment->id} activated to AIR (AIR FREIGHT) — sourcing pipeline marked SHF-{$order->shopify_order_id} ready for international fulfillment.");
+        $this->load->model('shopify_connector/shopify_connector_model');
+        $branch_id = !empty($shipment->branch_id) ? (int) $shipment->branch_id : courier_get_fallback_branch_id();
+        $leg_id = $this->shopify_connector_model->create_international_leg_shipment($order, $branch_id);
+        if ($leg_id) {
+            log_activity("Shopify Webhook: international air-freight leg #{$leg_id} created for SHF-{$order->shopify_order_id}.");
+        }
     }
 
     private function handle_order_cancelled($payload, $store)
