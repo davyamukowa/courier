@@ -87,24 +87,31 @@ class Fulfilment extends AdminController
         ";
         $base_sql .= $this->branch_scope_sql_clause('so', $shopify_orders_has_branch);
 
+        // FULLTEXT + BOOLEAN MODE prefix search instead of 10 OR'd LIKE
+        // '%term%' conditions across 3 joined tables — the old query could
+        // never use an index (leading wildcard) and got slower in direct
+        // proportion to order volume. Trade-off: this matches from the
+        // start of a word, not anywhere inside it (searching a customer's
+        // exact order-number/email/name/waybill prefix still works exactly
+        // as before; searching an arbitrary substring in the middle of a
+        // value, e.g. last 4 digits of a long tracking number, won't).
+        // order_status/financial_status stay plain LIKE — single table, no
+        // join, short enum-like strings, genuinely cheap either way.
         $where = '';
         $params = [];
         if ($search !== '') {
-            $where = ' AND (
-                so.shopify_order_number LIKE ?
-                OR so.customer_email LIKE ?
-                OR so.tracking_number LIKE ?
-                OR so.order_status LIKE ?
-                OR so.financial_status LIKE ?
-                OR
-                s.waybill_number LIKE ?
-                OR s.tracking_id LIKE ?
-                OR recipient.first_name LIKE ?
-                OR recipient.last_name LIKE ?
-                OR so.customer_name LIKE ?
-            )';
-            $like = '%' . $search . '%';
-            $params = [$like, $like, $like, $like, $like, $like, $like, $like, $like, $like];
+            $boolean_term = $this->build_boolean_search_term($search);
+            if ($boolean_term !== '') {
+                $where = ' AND (
+                    MATCH(so.shopify_order_number, so.customer_email, so.customer_name, so.tracking_number) AGAINST (? IN BOOLEAN MODE)
+                    OR MATCH(s.waybill_number, s.tracking_id) AGAINST (? IN BOOLEAN MODE)
+                    OR MATCH(recipient.first_name, recipient.last_name) AGAINST (? IN BOOLEAN MODE)
+                    OR so.order_status LIKE ?
+                    OR so.financial_status LIKE ?
+                )';
+                $like = '%' . $search . '%';
+                $params = [$boolean_term, $boolean_term, $boolean_term, $like, $like];
+            }
         }
 
         $total_records = (int) $this->db->query("SELECT COUNT(*) AS c {$base_sql}")->row()->c;
