@@ -2117,6 +2117,28 @@ class Fulfilment extends AdminController
         return " AND {$alias}.branch_id IN (" . implode(',', array_map('intval', $ids)) . ')';
     }
 
+    /**
+     * Turns free-typed search text into a safe MySQL BOOLEAN MODE search
+     * string for MATCH() AGAINST() — strips characters that are operators in
+     * boolean mode (+ - > < ( ) ~ * " @, which would otherwise change the
+     * search's meaning or throw a syntax error) and requires every word as a
+     * prefix match (+word*), so multi-word searches narrow results (AND)
+     * rather than the old behaviour of loosely OR-matching a single
+     * substring across many columns.
+     */
+    private function build_boolean_search_term($raw)
+    {
+        $words = preg_split('/\s+/', trim((string) $raw));
+        $terms = [];
+        foreach ($words as $word) {
+            $clean = preg_replace('/[+\-><()~*"@]+/', '', $word);
+            if ($clean !== '') {
+                $terms[] = '+' . $clean . '*';
+            }
+        }
+        return implode(' ', $terms);
+    }
+
     private function order_badge_class($status)
     {
         switch (strtolower((string) $status)) {
