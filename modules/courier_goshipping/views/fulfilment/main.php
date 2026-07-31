@@ -171,9 +171,13 @@
         }
 
         // New Salibay orders arrive instantly via webhook — this just makes
-        // the already-open dashboard/orders page reflect that within a few
-        // seconds, without staff needing to hit refresh themselves.
-        setInterval(pollMetrics, 3000);
+        // the already-open dashboard/orders page reflect that without staff
+        // needing to hit refresh themselves. 20s instead of 3s: this runs
+        // ~11 COUNT/aggregate queries per poll, multiplied by every staff
+        // member with a Fulfilment tab open — at 3s that's real, constant
+        // load against tables (shopify_orders, shopify_webhook_events) that
+        // now grow continuously with Salibay volume. Still feels live.
+        setInterval(pollMetrics, 20000);
     });
 })();
 </script>
