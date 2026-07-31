@@ -1732,6 +1732,49 @@ class Courier_Logistic_System {
     }
 
     /**
+     * v41: dedicated statuses for the international air-freight leg — a
+     * SEPARATE shipment record (created alongside, not instead of, the
+     * original order's own shipment — see
+     * Shopify_connector::activate_international_air_freight_leg() /
+     * Shopify_connector_model::create_international_leg_shipment()) that
+     * tracks the parcel specifically from the sourcing branch's airport to
+     * Go Shipping's own Nairobi warehouse. IDs 10-13 are new and additive —
+     * the original 9 statuses (used by every existing shipment, including
+     * the order's own "domestic/last-mile" record) are completely
+     * untouched. A leg-type shipment is any row with parent_shipment_id
+     * set; Shipments::waybill() filters which status set to show (ids
+     * 1-9 vs 9,10-13) based on that, so this doesn't clutter the normal
+     * shipment status dropdown/stepper for anything else.
+     */
+    public function run_db_upgrades_v41() {
+        if (get_option('courier_schema_v41_done')) return;
+        $CI = &get_instance();
+
+        $statuses_table = db_prefix() . '_shipment_statuses';
+        if ($CI->db->table_exists($statuses_table)) {
+            $new_statuses = [
+                10 => ['at_origin_airport', 'At Origin Airport'],
+                11 => ['in_transit_air', 'In Transit (Air)'],
+                12 => ['arrived_destination_airport', 'Arrived Destination Airport'],
+                13 => ['arrived_warehouse', 'Arrived Go Shipping Warehouse'],
+            ];
+            foreach ($new_statuses as $id => $row) {
+                $exists = $CI->db->where('id', $id)->get($statuses_table)->row();
+                if (!$exists) {
+                    $CI->db->insert($statuses_table, [
+                        'id' => $id,
+                        'status_name' => $row[0],
+                        'description' => $row[1],
+                        'active' => 1,
+                    ]);
+                }
+            }
+        }
+
+        update_option('courier_schema_v41_done', '1');
+    }
+
+    /**
      * Prunes old, purely-diagnostic rows that grow unbounded with order
      * volume and are never needed once they age out — NOT the same as
      * shipment_status_history/courier_sourcing_events, which are real
