@@ -1830,13 +1830,37 @@ class Fulfilment extends AdminController
     private function get_fulfilment_metrics()
     {
         $prefix = db_prefix();
-        $store = $this->shopify_connector_model->get_store();
         $branch_where = '';
+        $scope_key = 'all';
         if (!courier_staff_can_view_all_branches()) {
             $ids = courier_get_staff_branch_ids();
             $ids = !empty($ids) ? $ids : [0];
-            $branch_where = ' AND branch_id IN (' . implode(',', array_map('intval', $ids)) . ')';
+            $ids = array_map('intval', $ids);
+            sort($ids);
+            $branch_where = ' AND branch_id IN (' . implode(',', $ids) . ')';
+            $scope_key = 'branch_' . implode('_', $ids);
         }
+
+        // Short-TTL cache keyed by branch scope: this function runs on every
+        // Fulfilment page load AND every dashboard poll from every open tab —
+        // at real order volume that's a lot of duplicate work computed
+        // within the same few seconds by different viewers. Never a single
+        // global cache row — a branch-restricted staff member must never
+        // see another branch's numbers.
+        $cache_table = $prefix . 'courier_metrics_cache';
+        $cache_ttl_seconds = 15;
+        $has_cache_table = $this->db->table_exists($cache_table);
+        if ($has_cache_table) {
+            $cached = $this->db->where('scope_key', $scope_key)->get($cache_table)->row();
+            if ($cached && strtotime($cached->computed_at) >= time() - $cache_ttl_seconds) {
+                $decoded = json_decode($cached->metrics_json, true);
+                if (is_array($decoded)) {
+                    return $decoded;
+                }
+            }
+        }
+
+        $store = $this->shopify_connector_model->get_store();
 
         $metrics = [
             'orders_total' => (int) $this->db->query("SELECT COUNT(*) AS c FROM {$prefix}shopify_orders WHERE 1=1{$branch_where}")->row()->c,
