@@ -1567,6 +1567,21 @@ class Courier_Logistic_System {
         }
     }
 
+    /** Same as ensure_index() but for a FULLTEXT index (different ALTER syntax). */
+    private function ensure_fulltext_index($table, $index_name, $column_expr) {
+        $CI = &get_instance();
+        if (!$CI->db->table_exists($table)) {
+            return;
+        }
+        $exists = $CI->db->query(
+            'SELECT 1 FROM information_schema.STATISTICS WHERE table_schema = DATABASE() AND table_name = ? AND index_name = ? LIMIT 1',
+            [$table, $index_name]
+        )->row();
+        if (!$exists) {
+            $CI->db->query("ALTER TABLE `{$table}` ADD FULLTEXT INDEX `{$index_name}` ({$column_expr})");
+        }
+    }
+
     /**
      * v37: performance indexes. None of these columns had one — every
      * lookup on them (branch-scoped shipment lists, the Salibay order-list
