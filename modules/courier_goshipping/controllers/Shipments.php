@@ -3074,7 +3074,6 @@ class Shipments extends AdminController
                                 'shipment_id' => $parent->id,
                                 'status_id'   => 3,
                                 'changed_at'  => date('Y-m-d H:i:s'),
-                                'notes'       => 'Auto-advanced: linked international leg arrived at Go Shipping warehouse.',
                             ]);
                         }
                     }
