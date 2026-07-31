@@ -2216,7 +2216,22 @@ class Shipments extends AdminController
 
         $tracking_id = $data['shipment_details']['shipment']->tracking_id ?? '';
         $data['barcode'] = $tracking_id ? $this->generate_barcode($tracking_id) : '';
-        $data['statuses'] = $this->ShipmentStatus_model->get();
+        // A shipment with parent_shipment_id set IS the international
+        // air-freight leg (see run_db_upgrades_v41()) — it gets its own
+        // dedicated status set (9=cancelled, 10-13=leg-specific stages)
+        // instead of the normal 9-step domestic/order stepper, so staff
+        // can't select a status that doesn't apply to this leg.
+        $all_statuses = $this->ShipmentStatus_model->get();
+        if (!empty($shipment_row->parent_shipment_id)) {
+            $leg_ids = [9, 10, 11, 12, 13];
+            $data['statuses'] = array_values(array_filter($all_statuses, function ($s) use ($leg_ids) {
+                return in_array((int) $s->id, $leg_ids, true);
+            }));
+        } else {
+            $data['statuses'] = array_values(array_filter($all_statuses, function ($s) {
+                return (int) $s->id <= 9;
+            }));
+        }
         $data['current_date'] = date('F j, Y');
         $data['fleet_report'] = $this->get_shipment_fleet_report((int) $id);
 
