@@ -1113,6 +1113,7 @@ class Shopify_connector extends AdminController
             log_activity("Shopify Webhook: shipment #{$shipment->id} activated to AIR (AIR FREIGHT) — sourcing pipeline marked SHF-{$order->shopify_order_id} ready for international fulfillment.");
         }
 
+        $this->load->helper('courier_goshipping/courier');
         $this->load->model('shopify_connector/shopify_connector_model');
         $branch_id = !empty($shipment->branch_id) ? (int) $shipment->branch_id : courier_get_fallback_branch_id();
         $leg_id = $this->shopify_connector_model->create_international_leg_shipment($order, $branch_id);
