@@ -1686,6 +1686,101 @@ class Courier_Logistic_System {
     }
 
     /**
+     * v40: scaling groundwork for higher Salibay order volume (anticipating
+     * ~3000 orders/day) — two independent things bundled here:
+     *
+     * 1. A small keyed cache table for Fulfilment::get_fulfilment_metrics(),
+     *    which recomputes ~11 aggregate queries on every page load AND every
+     *    20s poll from every open Fulfilment tab. Keyed by branch scope
+     *    (never a single global row — a branch-restricted staff member must
+     *    never see another branch's cached numbers) with a short TTL, so
+     *    within any TTL window only the FIRST request for a given scope
+     *    actually recomputes; every other concurrent viewer reuses it. No
+     *    real cron needed — see get_fulfilment_metrics() in Fulfilment.php.
+     *
+     * 2. FULLTEXT indexes backing a rewritten Salibay order-list search
+     *    (get_salibay_order_list_datatable()) — the old query OR'd 10 plain
+     *    LIKE '%term%' conditions across 3 joined tables, which can never
+     *    use a normal index (leading wildcard) and gets slower in direct
+     *    proportion to table size. FULLTEXT + BOOLEAN MODE prefix matching
+     *    scales far better; the trade-off is it matches from the start of a
+     *    word rather than anywhere inside it (e.g. a customer's exact email
+     *    domain typed alone won't match, but searching from the start of the
+     *    order number/email/name/waybill number — the overwhelmingly common
+     *    case — still works exactly as before).
+     */
+    public function run_db_upgrades_v40() {
+        if (get_option('courier_schema_v40_done')) return;
+        $CI = &get_instance();
+
+        $cache_table = db_prefix() . 'courier_metrics_cache';
+        if (!$CI->db->table_exists($cache_table)) {
+            $CI->db->query('CREATE TABLE `' . $cache_table . '` (
+                `scope_key` VARCHAR(191) NOT NULL,
+                `metrics_json` TEXT NOT NULL,
+                `computed_at` DATETIME NOT NULL,
+                PRIMARY KEY (`scope_key`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=' . $CI->db->char_set . ';');
+        }
+
+        $this->ensure_fulltext_index(db_prefix() . 'shopify_orders', 'ft_search', '`shopify_order_number`, `customer_email`, `customer_name`, `tracking_number`');
+        $this->ensure_fulltext_index(db_prefix() . '_shipments', 'ft_search', '`waybill_number`, `tracking_id`');
+        $this->ensure_fulltext_index(db_prefix() . '_shipment_recipients', 'ft_search', '`first_name`, `last_name`');
+
+        update_option('courier_schema_v40_done', '1');
+    }
+
+    /**
+     * Prunes old, purely-diagnostic rows that grow unbounded with order
+     * volume and are never needed once they age out — NOT the same as
+     * shipment_status_history/courier_sourcing_events, which are real
+     * business/audit history (shown on customer waybills/tracking) and are
+     * deliberately never touched here. Runs at most once/day (gated by a
+     * timestamp option, not a real OS cron — this project's deploy pipeline
+     * can't add one, so "opportunistic, gated by elapsed time" is the
+     * portable equivalent). Retention windows are configurable via Perfex
+     * options (Settings, or set directly) so this can be tuned without a
+     * code change; sensible defaults apply if unset.
+     */
+    public function run_scheduled_log_pruning() {
+        $last_run = get_option('courier_log_pruning_last_run');
+        if ($last_run && strtotime($last_run) > strtotime('-1 day')) {
+            return;
+        }
+
+        $CI = &get_instance();
+
+        $info_retention_days  = (int) (get_option('courier_integration_log_retention_days') ?: 60);
+        $error_retention_days = (int) (get_option('courier_error_log_retention_days') ?: 180);
+        $webhook_retention_days = (int) (get_option('courier_webhook_event_retention_days') ?: 90);
+
+        $logs_table = db_prefix() . 'shopify_integration_logs';
+        if ($CI->db->table_exists($logs_table)) {
+            $CI->db->query(
+                "DELETE FROM `{$logs_table}` WHERE log_level != 'error' AND created_at < ? LIMIT 5000",
+                [date('Y-m-d H:i:s', strtotime("-{$info_retention_days} days"))]
+            );
+            $CI->db->query(
+                "DELETE FROM `{$logs_table}` WHERE log_level = 'error' AND created_at < ? LIMIT 5000",
+                [date('Y-m-d H:i:s', strtotime("-{$error_retention_days} days"))]
+            );
+        }
+
+        $webhook_table = db_prefix() . 'shopify_webhook_events';
+        if ($CI->db->table_exists($webhook_table)) {
+            // Only rows that finished successfully — 'failed'/'retrying'/
+            // 'pending' are left alone regardless of age since they may
+            // still need attention.
+            $CI->db->query(
+                "DELETE FROM `{$webhook_table}` WHERE status = 'done' AND created_at < ? LIMIT 5000",
+                [date('Y-m-d H:i:s', strtotime("-{$webhook_retention_days} days"))]
+            );
+        }
+
+        update_option('courier_log_pruning_last_run', date('Y-m-d H:i:s'));
+    }
+
+    /**
      * v19: add kra_pin to shipment senders and companies tables.
      */
     public function run_db_upgrades_v19() {
