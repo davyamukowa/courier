@@ -47,11 +47,15 @@
                                 </td>
                                 <td><?php echo _dt($rider->created_at); ?></td>
                                 <td>
-                                    <?php echo form_open(admin_url('courier_goshipping/fulfilment/toggle_rider_status/' . $rider->id)); ?>
+                                    <?php echo form_open(admin_url('courier_goshipping/fulfilment/toggle_rider_status/' . $rider->id), ['style' => 'display:inline-block;']); ?>
                                         <button type="submit" class="btn btn-default btn-xs" onclick="return confirm('<?php echo $rider->status === 'active' ? 'Suspend' : 'Reactivate'; ?> this rider account?');">
                                             <?php echo $rider->status === 'active' ? 'Suspend' : 'Reactivate'; ?>
                                         </button>
                                     <?php echo form_close(); ?>
+                                    <button type="button" class="btn btn-default btn-xs" data-toggle="modal" data-target="#reset_rider_password_modal"
+                                            onclick="document.getElementById('reset_rider_password_form').action='<?php echo admin_url('courier_goshipping/fulfilment/reset_rider_password/' . $rider->id); ?>'; document.getElementById('reset_rider_password_name').textContent='<?php echo htmlspecialchars(addslashes($rider->name)); ?>';">
+                                        Reset Password
+                                    </button>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
