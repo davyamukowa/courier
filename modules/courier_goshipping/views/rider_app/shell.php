@@ -206,10 +206,13 @@
 <body>
 
     <div id="install_banner">
-        <span>📲 Install this app for faster access to your deliveries.</span>
+        <span style="display:flex;align-items:center;gap:8px;"><svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="M8 11l4 4 4-4"/><path d="M5 19h14"/></svg> Install this app for faster access to your deliveries.</span>
         <button onclick="installApp()">Install</button>
     </div>
-    <div id="offline_banner" class="offline-banner">📡 You're offline — actions will sync automatically once you're back online.</div>
+    <div id="offline_banner" class="offline-banner">
+        <svg class="icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 2l20 20"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M5 12.5a10 10 0 0 1 3-2"/><path d="M12.5 8.03A10 10 0 0 1 19 10.5"/><path d="M2 8.5a15 15 0 0 1 4-2.5"/><path d="M16.5 6a15 15 0 0 1 5.5 2.5"/><circle cx="12" cy="19.5" r="1" fill="currentColor" stroke="none"/></svg>
+        You're offline — actions will sync automatically once you're back online.
+    </div>
     <div id="toast_stack" class="toast-stack"></div>
 
     <!-- ── Login ────────────────────────────────────────────────────────────── -->
