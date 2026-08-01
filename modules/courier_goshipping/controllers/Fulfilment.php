@@ -268,6 +268,28 @@ class Fulfilment extends AdminController
         redirect(admin_url('courier_goshipping/fulfilment/riders'));
     }
 
+    /**
+     * Admin-side rider password reset. Riders authenticate entirely inside
+     * tbl_courier_riders (see Rider_model) — a rider is ALSO backed by a
+     * login-blocked (active=0) staff row purely so the rest of the app's
+     * staff_id/driver_id plumbing has something to point at, but that staff
+     * row's password has nothing to do with the rider's actual PWA login.
+     * Resetting it via Setup -> Staff (or any staff password reset) silently
+     * does nothing for the rider's real credentials — this is the one place
+     * that actually changes what the rider app checks against.
+     */
+    public function reset_rider_password($rider_id)
+    {
+        if (!$this->can_manage_fulfilment()) {
+            access_denied('Salibay Fulfilment');
+        }
+
+        $this->load->model('Rider_model');
+        $result = $this->Rider_model->admin_reset_password((int) $rider_id, $this->input->post('new_password'));
+        set_alert($result['success'] ? 'success' : 'danger', $result['success'] ? 'Rider password reset.' : $result['message']);
+        redirect(admin_url('courier_goshipping/fulfilment/riders'));
+    }
+
     public function settings()
     {
         if (!$this->can_manage_fulfilment()) {
