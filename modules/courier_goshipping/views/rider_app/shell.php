@@ -254,7 +254,7 @@
             </div>
             <div class="topbar-actions"><button class="refresh-btn" onclick="loadDashboard()">⟳</button></div>
         </div>
-        <div style="padding:0 20px;">
+        <div>
             <div id="unlinked_notice" class="info-box" style="background:#3b2f0a; color:#fde68a; display:none;">
                 Your account isn't linked to a driver profile yet — ask your dispatcher to confirm your phone number matches your driver record, then log out and back in.
             </div>
@@ -279,7 +279,7 @@
             <h2>My Deliveries</h2>
             <div class="topbar-actions"><button class="refresh-btn" onclick="refreshDeliveriesTab()">⟳</button></div>
         </div>
-        <div style="padding:0 20px;">
+        <div>
             <div class="segmented">
                 <button id="deliveries_tab_active" class="active" onclick="switchDeliveriesTab('active')">Active</button>
                 <button id="deliveries_tab_history" onclick="switchDeliveriesTab('history')">History</button>
@@ -298,13 +298,13 @@
             <h2>My Pickups</h2>
             <div class="topbar-actions"><button class="refresh-btn" onclick="loadPickups()">⟳</button></div>
         </div>
-        <div style="padding:0 20px;" id="pickups_list"></div>
+        <div id="pickups_list"></div>
     </div>
 
     <!-- ── Profile ──────────────────────────────────────────────────────────── -->
     <div class="screen" id="screen_profile">
         <div class="topbar"><h2>Profile</h2></div>
-        <div style="padding:0 20px;">
+        <div>
             <div class="card">
                 <div><strong id="profile_name"></strong></div>
                 <div class="muted" id="profile_phone"></div>
