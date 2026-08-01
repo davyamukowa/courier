@@ -128,6 +128,7 @@ class Rider_api extends App_Controller
             'id'     => (int) $rider->id,
             'name'   => $rider->name,
             'phone'  => $rider->phone,
+            'email'  => $rider->email,
             'linked' => !empty($rider->staff_id),
         ];
     }
