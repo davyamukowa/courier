@@ -7,10 +7,10 @@
     <title>Go Shipping Rider</title>
     <script src="https://cdn.jsdelivr.net/npm/signature_pad"></script>
     <link rel="manifest" href="<?php echo site_url('courier_goshipping/rider/manifest'); ?>">
-    <meta name="theme-color" content="#0d47a1">
+    <meta name="theme-color" content="#f4f6f9">
     <link rel="apple-touch-icon" href="<?php echo site_url('courier_goshipping/rider/icon/192'); ?>">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="GS Rider">
     <meta name="mobile-web-app-capable" content="yes">
 
