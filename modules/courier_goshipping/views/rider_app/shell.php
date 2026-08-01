@@ -610,6 +610,37 @@
         });
     }
 
+    function doForgotPassword() {
+        var errBox = document.getElementById('forgot_error');
+        var okBox = document.getElementById('forgot_success');
+        errBox.style.display = 'none';
+        okBox.style.display = 'none';
+
+        var email = document.getElementById('forgot_email').value.trim();
+        if (!email) {
+            errBox.textContent = 'Please enter your email address.';
+            errBox.style.display = 'block';
+            return;
+        }
+
+        var btn = document.getElementById('forgot_btn');
+        btn.disabled = true; btn.textContent = 'Sending...';
+        post(API.forgotPassword, { email: email }).then(function (res) {
+            btn.disabled = false; btn.textContent = 'Send Reset Link';
+            if (!res.data.success) {
+                errBox.textContent = res.data.message || 'Could not send reset link.';
+                errBox.style.display = 'block';
+                return;
+            }
+            okBox.textContent = res.data.message || 'If that email is on file, a password reset link has been sent.';
+            okBox.style.display = 'block';
+        }).catch(function () {
+            btn.disabled = false; btn.textContent = 'Send Reset Link';
+            errBox.textContent = 'Network error — please check your connection and try again.';
+            errBox.style.display = 'block';
+        });
+    }
+
     function doLogout() {
         post(API.logout, { token: token }).catch(function () {});
         localStorage.removeItem(TOKEN_KEY);
