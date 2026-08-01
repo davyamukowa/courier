@@ -46,11 +46,28 @@ class Rider_api extends App_Controller
                 `name`          VARCHAR(255) NOT NULL,
                 `phone`         VARCHAR(30) NOT NULL,
                 `password_hash` VARCHAR(255) NOT NULL,
+                `email`         VARCHAR(255) NULL DEFAULT NULL,
                 `staff_id`      INT NULL DEFAULT NULL,
                 `status`        ENUM(\'active\',\'suspended\') NOT NULL DEFAULT \'active\',
                 `created_at`    DATETIME NOT NULL,
                 PRIMARY KEY (`id`),
                 UNIQUE KEY `phone` (`phone`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=' . $this->db->char_set . ';');
+        }
+        if (!$this->db->field_exists('email', db_prefix() . '_courier_riders')) {
+            $this->db->query('ALTER TABLE `' . db_prefix() . '_courier_riders` ADD COLUMN `email` VARCHAR(255) NULL DEFAULT NULL AFTER `password_hash`');
+        }
+        if (!$this->db->table_exists(db_prefix() . '_courier_rider_password_resets')) {
+            $this->db->query('CREATE TABLE `' . db_prefix() . '_courier_rider_password_resets` (
+                `id`         INT NOT NULL AUTO_INCREMENT,
+                `rider_id`   INT NOT NULL,
+                `token_hash` VARCHAR(64) NOT NULL,
+                `created_at` DATETIME NOT NULL,
+                `expires_at` DATETIME NOT NULL,
+                `used_at`    DATETIME NULL DEFAULT NULL,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `token_hash` (`token_hash`),
+                FOREIGN KEY (`rider_id`) REFERENCES `' . db_prefix() . '_courier_riders`(`id`) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=' . $this->db->char_set . ';');
         }
         if (!$this->db->table_exists(db_prefix() . '_courier_rider_tokens')) {
