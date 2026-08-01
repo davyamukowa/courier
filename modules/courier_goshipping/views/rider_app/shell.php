@@ -482,6 +482,8 @@
         stats: <?php echo json_encode(site_url('courier_goshipping/rider-api/stats')); ?>,
         changePassword: <?php echo json_encode(site_url('courier_goshipping/rider-api/change_password')); ?>,
         updateEmail: <?php echo json_encode(site_url('courier_goshipping/rider-api/update_email')); ?>,
+        updateProfile: <?php echo json_encode(site_url('courier_goshipping/rider-api/update_profile')); ?>,
+        updatePhoto: <?php echo json_encode(site_url('courier_goshipping/rider-api/update_photo')); ?>,
         forgotPassword: <?php echo json_encode(site_url('courier_goshipping/rider-api/forgot_password')); ?>
     };
     var SW_URL = <?php echo json_encode(site_url('courier_goshipping/rider/sw')); ?>;
