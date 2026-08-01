@@ -34,7 +34,12 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: var(--bg); color: var(--ink);
             padding-top: env(safe-area-inset-top);
-            padding-bottom: calc(70px + env(safe-area-inset-bottom));
+            /* Generous clearance above the fixed bottom-nav — the nav's own
+               real height (icon+label+padding+safe-area) varies enough
+               across devices that a tight buffer left the last item on a
+               tall screen (e.g. Profile's Log Out button) partially hidden
+               behind it. */
+            padding-bottom: calc(96px + env(safe-area-inset-bottom));
             min-height: 100%;
             -webkit-font-smoothing: antialiased;
         }
