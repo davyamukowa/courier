@@ -256,7 +256,7 @@
                 <h2>Dashboard</h2>
                 <div class="hi" id="dash_hi"></div>
             </div>
-            <div class="topbar-actions"><button class="refresh-btn" onclick="loadDashboard()">⟳</button></div>
+            <div class="topbar-actions"><button class="refresh-btn" onclick="loadDashboard()"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v5h5"/><path d="M20 20v-5h-5"/><path d="M5.5 9a7 7 0 0 1 12-3.5L20 8"/><path d="M18.5 15a7 7 0 0 1-12 3.5L4 16"/></svg></button></div>
         </div>
         <div>
             <div id="unlinked_notice" class="warn-box" style="display:none;">
@@ -281,7 +281,7 @@
     <div class="screen" id="screen_deliveries">
         <div class="topbar">
             <h2>My Deliveries</h2>
-            <div class="topbar-actions"><button class="refresh-btn" onclick="refreshDeliveriesTab()">⟳</button></div>
+            <div class="topbar-actions"><button class="refresh-btn" onclick="refreshDeliveriesTab()"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v5h5"/><path d="M20 20v-5h-5"/><path d="M5.5 9a7 7 0 0 1 12-3.5L20 8"/><path d="M18.5 15a7 7 0 0 1-12 3.5L4 16"/></svg></button></div>
         </div>
         <div>
             <div class="segmented">
@@ -300,7 +300,7 @@
     <div class="screen" id="screen_pickups">
         <div class="topbar">
             <h2>My Pickups</h2>
-            <div class="topbar-actions"><button class="refresh-btn" onclick="loadPickups()">⟳</button></div>
+            <div class="topbar-actions"><button class="refresh-btn" onclick="loadPickups()"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v5h5"/><path d="M20 20v-5h-5"/><path d="M5.5 9a7 7 0 0 1 12-3.5L20 8"/><path d="M18.5 15a7 7 0 0 1-12 3.5L4 16"/></svg></button></div>
         </div>
         <div id="pickups_list"></div>
     </div>
