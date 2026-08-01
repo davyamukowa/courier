@@ -1829,6 +1829,74 @@ class Courier_Logistic_System {
     }
 
     /**
+     * v43: reworks the two-leg design based on real staff testing feedback
+     * — v40-v42's "separate shipment row with its own waybill number" for
+     * the international leg was the wrong shape. The correct one: ONE
+     * waybill number throughout (the order's original shipment), carrying
+     * a SECOND, independent status track (`international_status_id`) for
+     * the air-freight stages, alongside its normal `status_id` for
+     * domestic/last-mile — not two different tracking numbers.
+     *
+     * This migration:
+     * 1. Adds `international_status_id` to `_shipments`.
+     * 2. Finds every international-leg shipment row created by the old
+     *    v40-v42 approach (identified by `parent_shipment_id` — nothing
+     *    else ever set that column), copies its current status onto the
+     *    parent's new `international_status_id`, re-points its status
+     *    history rows onto the parent (so the customer portal's merged
+     *    journey timeline keeps every event with correct timestamps), then
+     *    deletes the now-redundant leg shipment row and its packages.
+     * 3. `parent_shipment_id` itself is left in place (harmless, unused
+     *    going forward) rather than dropped — nothing reads it anymore
+     *    after this migration, so leaving the column costs nothing and
+     *    avoids a data-loss-risk DROP COLUMN.
+     */
+    public function run_db_upgrades_v43() {
+        if (get_option('courier_schema_v43_done')) return;
+        $CI = &get_instance();
+
+        $shipments_table = db_prefix() . '_shipments';
+        if (!$CI->db->table_exists($shipments_table)) {
+            update_option('courier_schema_v43_done', '1');
+            return;
+        }
+
+        if (!$CI->db->field_exists('international_status_id', $shipments_table)) {
+            $CI->db->query("ALTER TABLE `{$shipments_table}` ADD `international_status_id` INT NULL DEFAULT NULL AFTER `status_id`");
+        }
+
+        $history_table = db_prefix() . '_shipment_packages';
+        $status_history_table = db_prefix() . '_shipment_status_history';
+
+        $legs = $CI->db->where('parent_shipment_id IS NOT NULL')->get($shipments_table)->result();
+        foreach ($legs as $leg) {
+            $parent_id = (int) $leg->parent_shipment_id;
+            $parent = $CI->db->where('id', $parent_id)->get($shipments_table)->row();
+            if (!$parent) {
+                continue;
+            }
+
+            $CI->db->where('id', $parent_id)->update($shipments_table, [
+                'international_status_id' => (int) $leg->status_id,
+            ]);
+
+            if ($CI->db->table_exists($status_history_table)) {
+                $CI->db->where('shipment_id', $leg->id)->update($status_history_table, [
+                    'shipment_id' => $parent_id,
+                ]);
+            }
+
+            if ($CI->db->table_exists($history_table)) {
+                $CI->db->where('shipment_id', $leg->id)->delete($history_table);
+            }
+
+            $CI->db->where('id', $leg->id)->delete($shipments_table);
+        }
+
+        update_option('courier_schema_v43_done', '1');
+    }
+
+    /**
      * Prunes old, purely-diagnostic rows that grow unbounded with order
      * volume and are never needed once they age out — NOT the same as
      * shipment_status_history/courier_sourcing_events, which are real
