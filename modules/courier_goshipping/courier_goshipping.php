@@ -2397,6 +2397,33 @@ class Courier_Logistic_System {
             'Rider App: Forgot Password',
             'rider_forgot_password'
         );
+
+        create_email_template(
+            'Your order is on its way — Waybill {waybill_number} - {company_name}',
+            '<p>Dear {recipient_name},</p>
+<p>Great news — your order has been picked up by {company_name} and a waybill has been created for it.</p>
+<p><strong>Waybill Number:</strong> {waybill_number}</p>
+<p><a href="{tracking_link}" style="display:inline-block;padding:12px 20px;background:#0a2a52;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold;">Track Your Order</a></p>
+<p>You can also copy and paste this link into your browser — it will automatically load your tracking details:<br>{tracking_link}</p>
+<p>We\'ll keep you updated as your order progresses.</p>
+<p>Best regards,<br>{company_name}</p>',
+            'courier',
+            'Salibay: Order Shipment Created',
+            'salibay_order_shipment_created'
+        );
+
+        create_email_template(
+            'Your order is on its way for delivery — Waybill {waybill_number} - {company_name}',
+            '<p>Dear {recipient_name},</p>
+<p>Your order is now out with our rider and on its way to you.</p>
+<p><strong>Waybill Number:</strong> {waybill_number}</p>
+<p><a href="{tracking_link}" style="display:inline-block;padding:12px 20px;background:#0a2a52;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold;">Track Your Order</a></p>
+<p>You can also copy and paste this link into your browser — it will automatically load your tracking details:<br>{tracking_link}</p>
+<p>Best regards,<br>{company_name}</p>',
+            'courier',
+            'Salibay: Shipment In Transit',
+            'salibay_shipment_in_transit'
+        );
     }
 
     public function migrate_legacy_defaults() {
