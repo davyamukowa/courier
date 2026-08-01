@@ -57,6 +57,15 @@ class Rider_api extends App_Controller
         if (!$this->db->field_exists('email', db_prefix() . '_courier_riders')) {
             $this->db->query('ALTER TABLE `' . db_prefix() . '_courier_riders` ADD COLUMN `email` VARCHAR(255) NULL DEFAULT NULL AFTER `password_hash`');
         }
+        // KYC fields — national_id is required for NEW registrations (enforced
+        // in Rider_model::register(), not at the DB level, since existing
+        // riders predate this field and a NOT NULL column would break them).
+        if (!$this->db->field_exists('national_id', db_prefix() . '_courier_riders')) {
+            $this->db->query('ALTER TABLE `' . db_prefix() . '_courier_riders` ADD COLUMN `national_id` VARCHAR(50) NULL DEFAULT NULL AFTER `email`');
+        }
+        if (!$this->db->field_exists('photo_url', db_prefix() . '_courier_riders')) {
+            $this->db->query('ALTER TABLE `' . db_prefix() . '_courier_riders` ADD COLUMN `photo_url` VARCHAR(255) NULL DEFAULT NULL AFTER `national_id`');
+        }
         if (!$this->db->table_exists(db_prefix() . '_courier_rider_password_resets')) {
             $this->db->query('CREATE TABLE `' . db_prefix() . '_courier_rider_password_resets` (
                 `id`         INT NOT NULL AUTO_INCREMENT,
