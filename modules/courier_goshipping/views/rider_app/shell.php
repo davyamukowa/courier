@@ -329,10 +329,32 @@
     <div class="screen" id="screen_profile">
         <div class="topbar"><h2>Profile</h2></div>
         <div>
-            <div class="card">
+            <div class="card" style="text-align:center;">
+                <div style="position:relative; width:84px; height:84px; margin:0 auto 10px;">
+                    <img id="profile_photo_preview" src="" style="display:none; width:84px; height:84px; border-radius:50%; object-fit:cover; border:2px solid var(--border);">
+                    <div id="profile_photo_placeholder" style="width:84px; height:84px; border-radius:50%; background:var(--surface-sunken); display:flex; align-items:center; justify-content:center; color:var(--ink-faint);">
+                        <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1.2-4 4-6 7-6s5.8 2 7 6"/></svg>
+                    </div>
+                    <button type="button" onclick="document.getElementById('profile_photo_input').click()" style="position:absolute; bottom:0; right:0; width:28px; height:28px; margin:0; padding:0; border-radius:50%; background:var(--navy); color:#fff; display:flex; align-items:center; justify-content:center; border:2px solid var(--surface);">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h3l2-2h6l2 2h3v12H4Z"/><circle cx="12" cy="13" r="3.5"/></svg>
+                    </button>
+                    <input type="file" id="profile_photo_input" accept="image/*" capture="environment" style="display:none;" onchange="onProfilePhotoSelected(event)">
+                </div>
                 <div><strong id="profile_name"></strong></div>
                 <div class="muted" id="profile_phone"></div>
-                <div class="muted" id="profile_link_status" style="margin-top:6px;"></div>
+                <div class="muted" id="profile_link_status" style="margin-top:6px; justify-content:center;"></div>
+                <div class="error-box" id="profile_photo_error"></div>
+            </div>
+            <div class="card">
+                <label for="profile_edit_name" style="margin-top:0;">Full name</label>
+                <input type="text" id="profile_edit_name" placeholder="e.g. John Otieno">
+                <label for="profile_edit_phone">Phone number</label>
+                <input type="tel" id="profile_edit_phone" placeholder="e.g. 0723434533">
+                <label for="profile_edit_national_id">National ID number</label>
+                <input type="text" id="profile_edit_national_id" placeholder="e.g. 12345678">
+                <button class="btn-ghost" onclick="saveProfileDetails()" id="save_profile_btn" style="margin-top:10px;">Save Details</button>
+                <div class="error-box" id="profile_details_error"></div>
+                <div class="info-box" id="profile_details_success"></div>
             </div>
             <div class="card">
                 <label for="profile_email" style="margin-top:0;">Email <span class="muted" style="font-weight:400;">(used for password reset links)</span></label>
