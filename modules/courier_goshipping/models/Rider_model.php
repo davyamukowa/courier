@@ -42,14 +42,21 @@ class Rider_model extends App_Model
     /**
      * @return array{success:bool, message?:string, rider?:object}
      */
-    public function register($name, $phone, $password, $email = null)
+    public function register($name, $phone, $password, $email = null, $national_id = null)
     {
-        $name  = trim((string) $name);
-        $phone = $this->normalize_phone($phone);
-        $email = trim((string) $email);
+        $name        = trim((string) $name);
+        $phone       = $this->normalize_phone($phone);
+        $email       = trim((string) $email);
+        $national_id = trim((string) $national_id);
 
         if ($name === '' || $phone === '' || strlen((string) $password) < 4) {
             return ['success' => false, 'message' => 'Please fill in your name, phone number, and a password of at least 4 characters.'];
+        }
+
+        // KYC requirement for new riders — see run_db_upgrades/self-heal
+        // comment in Rider_api.php for why this isn't a DB-level NOT NULL.
+        if ($national_id === '') {
+            return ['success' => false, 'message' => 'Please enter your National ID number.'];
         }
 
         if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -69,6 +76,7 @@ class Rider_model extends App_Model
             'phone'         => $phone,
             'password_hash' => app_hash_password($password),
             'email'         => $email !== '' ? $email : null,
+            'national_id'   => $national_id,
             'status'        => 'active',
             'created_at'    => date('Y-m-d H:i:s'),
         ]);
