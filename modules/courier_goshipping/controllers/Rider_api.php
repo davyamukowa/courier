@@ -196,6 +196,63 @@ class Rider_api extends App_Controller
         $this->respond(['success' => true]);
     }
 
+    public function update_email()
+    {
+        if (!$this->require_rider()) {
+            return;
+        }
+
+        $result = $this->Rider_model->update_email($this->rider->id, $this->input->post('email'));
+        if (!$result['success']) {
+            $this->fail($result['message']);
+            return;
+        }
+
+        $this->respond(['success' => true]);
+    }
+
+    // ── Password reset via emailed link (public — no token required) ───────
+    public function forgot_password()
+    {
+        $email = trim((string) $this->input->post('email'));
+        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $this->fail('Please enter a valid email address.');
+            return;
+        }
+
+        $result = $this->Rider_model->request_password_reset($email);
+        if ($result) {
+            $reset_link = site_url('courier_goshipping/rider/reset-password/' . $result['token']);
+            try {
+                $this->load->helper('email_templates');
+                mail_template('Rider_forgot_password', 'courier_goshipping', $result['rider']->email, [
+                    'rider_name' => $result['rider']->name,
+                    'reset_link' => $reset_link,
+                ])->send();
+            } catch (\Throwable $e) {
+                log_message('error', 'Rider forgot-password email crashed: ' . $e->getMessage());
+            }
+        }
+
+        // Always the same response, whether or not the email matched an
+        // account — never reveal which emails are registered.
+        $this->respond(['success' => true, 'message' => 'If that email is on file, a password reset link has been sent.']);
+    }
+
+    public function reset_password()
+    {
+        $result = $this->Rider_model->complete_password_reset(
+            $this->input->post('token'),
+            $this->input->post('new_password')
+        );
+        if (!$result['success']) {
+            $this->fail($result['message']);
+            return;
+        }
+
+        $this->respond(['success' => true]);
+    }
+
     // ── Deliveries (shipments assigned to this rider — Salibay and any
     // other shipment an admin assigned directly via "Assign Agent/Staff") ──
     public function deliveries()
