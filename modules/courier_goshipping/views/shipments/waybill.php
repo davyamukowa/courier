@@ -333,6 +333,75 @@
     border-color: #0d47a1;
     border-top: 4px solid #c62828;
 }
+
+/* Two-track status section (International + Domestic) — compact cards
+   instead of raw steppers floating in open space. */
+.gs-tracker-section {
+    margin-top: 16px;
+    padding: 16px 18px 8px;
+    border-radius: 10px;
+    background: #f8fafc;
+    border: 1px solid #e3ebf5;
+}
+.gs-tracker-international {
+    background: #fdf3f2;
+    border-color: #f1d4d1;
+}
+.gs-tracker-domestic {
+    background: #f1f6fd;
+    border-color: #d9e6f7;
+}
+.gs-tracker-heading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-bottom: 14px;
+}
+.gs-tracker-international .gs-tracker-heading { color: #8e1c1c; }
+.gs-tracker-domestic .gs-tracker-heading { color: #0d47a1; }
+.gs-tracker-heading .gs-tracker-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    font-size: 11px;
+    color: #fff;
+}
+.gs-tracker-international .gs-tracker-icon { background: #c62828; }
+.gs-tracker-domestic .gs-tracker-icon { background: #1565c0; }
+
+/* Smaller circles + tighter labels so 4-9 steps fit comfortably without
+   towering over the rest of the page. */
+.gs-compact-stepper.stepper-wrapper {
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+    row-gap: 18px;
+}
+.gs-compact-stepper .step-counter {
+    width: 30px;
+    height: 30px;
+    font-size: 12px;
+}
+.gs-compact-stepper .step-name {
+    font-size: 11.5px;
+    line-height: 1.3;
+    max-width: 90px;
+}
+.gs-compact-stepper .stepper-item::before,
+.gs-compact-stepper .stepper-item::after {
+    top: 15px;
+}
+
+@media (max-width: 767px) {
+    .gs-tracker-section { padding: 14px; }
+    .gs-compact-stepper .step-name { max-width: 70px; font-size: 11px; }
+}
 </style>
 <?php $this->load->view('courier_goshipping/layout/_topnav', ['cgs_active' => 'shipments']); ?>
     <div class="content gs-waybill-page">
