@@ -141,6 +141,11 @@ class Salibay_delivery extends App_Controller
         $this->_advance_shipment_status($shipment->id, 5); // in_transit
         $this->_mirror_salibay_order_status($shipment->id, 'processing');
         $this->_push_shopify_status($shipment->id, 5);
+        try {
+            courier_send_shipment_in_transit_email($shipment->id);
+        } catch (\Throwable $e) {
+            log_message('error', 'Shipment-in-transit customer email crashed: ' . $e->getMessage());
+        }
 
         echo json_encode(['success' => true]);
     }
