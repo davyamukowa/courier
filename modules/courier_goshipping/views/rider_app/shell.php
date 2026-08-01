@@ -592,16 +592,17 @@
         errBox.style.display = 'none';
         var name = document.getElementById('reg_name').value.trim();
         var phone = document.getElementById('reg_phone').value.trim();
+        var nationalId = document.getElementById('reg_national_id').value.trim();
         var email = document.getElementById('reg_email').value.trim();
         var password = document.getElementById('reg_password').value;
-        if (!name || !phone || password.length < 4) {
-            errBox.textContent = 'Please fill in your name, phone number, and a password of at least 4 characters.';
+        if (!name || !phone || !nationalId || password.length < 4) {
+            errBox.textContent = 'Please fill in your name, phone number, National ID, and a password of at least 4 characters.';
             errBox.style.display = 'block';
             return;
         }
         var btn = document.getElementById('register_btn');
         btn.disabled = true; btn.textContent = 'Creating account...';
-        post(API.register, { name: name, phone: phone, password: password, email: email }).then(function (res) {
+        post(API.register, { name: name, phone: phone, password: password, email: email, national_id: nationalId }).then(function (res) {
             btn.disabled = false; btn.textContent = 'Create Account';
             if (!res.data.success) {
                 errBox.textContent = res.data.message || 'Could not create your account.';
