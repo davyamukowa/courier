@@ -82,6 +82,7 @@ $route['courier_goshipping/rider-api/register'] = 'rider_api/register';
 $route['courier_goshipping/rider-api/login'] = 'rider_api/login';
 $route['courier_goshipping/rider-api/logout'] = 'rider_api/logout';
 $route['courier_goshipping/rider-api/me'] = 'rider_api/me';
+$route['courier_goshipping/rider-api/change_password'] = 'rider_api/change_password';
 $route['courier_goshipping/rider-api/deliveries'] = 'rider_api/deliveries';
 $route['courier_goshipping/rider-api/deliveries/history'] = 'rider_api/deliveries_history';
 $route['courier_goshipping/rider-api/deliveries/(:num)/start'] = 'rider_api/delivery_start/$1';
