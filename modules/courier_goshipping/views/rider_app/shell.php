@@ -833,7 +833,7 @@
                         }).catch(function () {});
                 }
             }, function () {
-                document.getElementById('rider_map').innerHTML = '<div style="padding:20px;color:#64748b;font-size:13px;">Could not get your location. Please allow location access.</div>';
+                document.getElementById('rider_map').innerHTML = '<div style="padding:20px;color:#5b6b82;font-size:13px;">Could not get your location. Please allow location access.</div>';
             }, { enableHighAccuracy: true });
         });
     }
