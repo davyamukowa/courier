@@ -203,6 +203,112 @@ if (!function_exists('courier_customer_facing_status_label')) {
 }
 
 /**
+ * Resolves the customer-facing tracking link for a waybill — the tracker
+ * page already auto-fills and auto-submits the tracking box when a `?track=`
+ * query param is present (see tracking.php's auto-track JS), so this is the
+ * one place both customer-notification emails build that link from.
+ */
+if (!function_exists('courier_customer_tracking_link')) {
+    function courier_customer_tracking_link($waybill_number)
+    {
+        return site_url('courier_goshipping/track') . '?track=' . urlencode($waybill_number);
+    }
+}
+
+/**
+ * Loads a shipment's recipient row and returns [shipment, recipient_name,
+ * email] — or null if there's no shipment, no recipient, or no usable email
+ * (including the literal 'no-reply@example.com' placeholder stamped when a
+ * Salibay order arrived with no customer email at all — never send to that).
+ * Shared by both customer-notification senders below.
+ */
+if (!function_exists('courier_resolve_shipment_recipient_email')) {
+    function courier_resolve_shipment_recipient_email($shipment_id)
+    {
+        $CI = &get_instance();
+        $shipment = $CI->db->where('id', (int) $shipment_id)->get(db_prefix() . '_shipments')->row();
+        if (!$shipment || empty($shipment->recipient_id)) {
+            return null;
+        }
+
+        $recipient = $CI->db->where('id', $shipment->recipient_id)->get(db_prefix() . '_shipment_recipients')->row();
+        if (!$recipient || empty($recipient->email) || $recipient->email === 'no-reply@example.com' || !filter_var($recipient->email, FILTER_VALIDATE_EMAIL)) {
+            return null;
+        }
+
+        return [
+            'shipment'       => $shipment,
+            'recipient_name' => trim(($recipient->first_name ?? '') . ' ' . ($recipient->last_name ?? '')) ?: 'Customer',
+            'email'          => $recipient->email,
+        ];
+    }
+}
+
+/**
+ * Emails the customer their waybill/tracking link the moment a Salibay
+ * order's shipment is created (called from both the Shopify webhook
+ * auto-create path and the manual "Create Shipment" button — see
+ * Shopify_connector::create_courier_shipment() / Fulfilment::create_courier_shipment()).
+ * Silently no-ops if there's no usable recipient email — never blocks
+ * shipment creation over a notification failing.
+ */
+if (!function_exists('courier_send_shipment_created_email')) {
+    function courier_send_shipment_created_email($shipment_id)
+    {
+        $resolved = courier_resolve_shipment_recipient_email($shipment_id);
+        if (!$resolved) {
+            return false;
+        }
+
+        $waybill = $resolved['shipment']->waybill_number ?: $resolved['shipment']->tracking_id;
+
+        try {
+            mail_template('Salibay_order_shipment_created', 'courier_goshipping', $resolved['email'], [
+                '{recipient_name}' => $resolved['recipient_name'],
+                '{waybill_number}' => $waybill,
+                '{tracking_link}'  => courier_customer_tracking_link($waybill),
+                '{company_name}'   => get_option('companyname'),
+            ])->send();
+            return true;
+        } catch (\Throwable $e) {
+            log_message('error', 'Salibay shipment-created email crashed: ' . $e->getMessage());
+            return false;
+        }
+    }
+}
+
+/**
+ * Emails the customer once their parcel's domestic last-mile leg actually
+ * starts moving — called when a rider hits "Start Delivery" in the Rider
+ * PWA (Rider_api::delivery_start(), status_id -> 5/in_transit). Same
+ * silent-no-op-on-failure contract as courier_send_shipment_created_email().
+ */
+if (!function_exists('courier_send_shipment_in_transit_email')) {
+    function courier_send_shipment_in_transit_email($shipment_id)
+    {
+        $resolved = courier_resolve_shipment_recipient_email($shipment_id);
+        if (!$resolved) {
+            return false;
+        }
+
+        $waybill = $resolved['shipment']->waybill_number ?: $resolved['shipment']->tracking_id;
+
+        try {
+            mail_template('Salibay_shipment_in_transit', 'courier_goshipping', $resolved['email'], [
+                '{recipient_name}' => $resolved['recipient_name'],
+                '{waybill_number}' => $waybill,
+                '{tracking_link}'  => courier_customer_tracking_link($waybill),
+                '{company_name}'   => get_option('companyname'),
+            ])->send();
+            return true;
+        } catch (\Throwable $e) {
+            log_message('error', 'Salibay shipment-in-transit email crashed: ' . $e->getMessage());
+            return false;
+        }
+    }
+}
+
+/**
  * Builds the full sourcing-to-doorstep journey for a shipment, for the
  * client portal tracker: the external sourcing pipeline's own progress tags
  * (tbl_courier_sourcing_events, captured by
