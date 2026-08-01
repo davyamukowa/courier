@@ -76,7 +76,7 @@
         .btn-ghost   { background: var(--surface-sunken); color: var(--ink); font-weight: 600; }
         .link-btn { background: none; color: var(--blue); font-weight: 600; padding: 10px; }
 
-        .error-box, .info-box {
+        .error-box, .info-box, .warn-box {
             display: none; margin-top: 14px; padding: 11px 14px; border-radius: 8px; font-size: 13px; line-height: 1.5;
         }
         .error-box { background: #fdecec; color: #9b2d26; }
