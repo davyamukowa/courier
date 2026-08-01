@@ -180,20 +180,6 @@ if (!function_exists('courier_resolve_branch_from_route_tag')) {
 }
 
 /**
- * Builds the full sourcing-to-doorstep journey for a shipment, for the
- * client portal tracker: the external sourcing pipeline's own progress tags
- * (tbl_courier_sourcing_events, captured by
- * Shopify_connector::record_sourcing_milestone_tags()) merged with Go
- * Shipping's own shipment status history, across BOTH legs of a two-leg international
- * order (the international air-freight leg and its linked domestic last-mile
- * leg — see run_db_upgrades_v36()/parent_shipment_id) if one exists. Works
- * the same whether $shipment_id is the leg the customer happens to be
- * tracking or its sibling — the family is always resolved first.
- *
- * Returns a flat array of ['label' => string, 'changed_at' => 'Y-m-d H:i:s']
- * sorted newest-first, ready to hand straight to the tracker view.
- */
-/**
  * Customer-friendly wording for the client portal's journey timeline — the
  * international air-freight stages (10-13) in particular read like internal
  * ops jargon ("Arrived Destination Airport") rather than something a
