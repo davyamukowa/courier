@@ -262,6 +262,45 @@ class Rider_model extends App_Model
     }
 
     /**
+     * Self-service profile edit (Profile screen) — name, phone, National ID.
+     * Phone stays unique the same way registration enforces it; note that
+     * changing it does NOT re-run try_link_staff() or move any existing
+     * staff_id link, so a rider who changes their phone keeps whatever
+     * driver profile they were already linked to (deliberately simple —
+     * re-linking on an already-linked account risks silently reassigning
+     * someone else's shipments).
+     * @return array{success:bool, message?:string}
+     */
+    public function update_profile($rider_id, $name, $phone, $national_id)
+    {
+        $name        = trim((string) $name);
+        $phone       = $this->normalize_phone($phone);
+        $national_id = trim((string) $national_id);
+
+        if ($name === '' || $phone === '' || $national_id === '') {
+            return ['success' => false, 'message' => 'Please fill in your name, phone number, and National ID.'];
+        }
+
+        $existing = $this->find_by_phone($phone);
+        if ($existing && (int) $existing->id !== (int) $rider_id) {
+            return ['success' => false, 'message' => 'This phone number is already in use by another account.'];
+        }
+
+        $this->db->where('id', $rider_id)->update($this->riders_table, [
+            'name'        => $name,
+            'phone'       => $phone,
+            'national_id' => $national_id,
+        ]);
+        return ['success' => true];
+    }
+
+    public function update_photo($rider_id, $photo_url)
+    {
+        $this->db->where('id', $rider_id)->update($this->riders_table, ['photo_url' => $photo_url]);
+        return ['success' => true];
+    }
+
+    /**
      * Starts a password reset — generates a one-time token (valid 30 min)
      * for whichever rider owns $email. Returns null (not a failure array)
      * when no match is found, so the caller can respond identically either
