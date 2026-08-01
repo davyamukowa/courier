@@ -3066,34 +3066,6 @@ class Shipments extends AdminController
                 log_message('error', 'Shopify fulfillment push crashed: ' . $e->getMessage());
             }
 
-            // An international air-freight leg (parent_shipment_id set —
-            // see run_db_upgrades_v41()) reaching "Arrived Go Shipping
-            // Warehouse" (status 13) means the freight-forwarding job is
-            // done and the ORIGINAL order shipment (already existing since
-            // order time — nothing new is created here) should pick up
-            // last-mile tracking. Auto-advance it to "Received" (3) only if
-            // it's still sitting at Created/Picked Up (1/2) — never
-            // overwrite further progress staff may have already logged on
-            // it independently.
-            if ($new_status_id === 13) {
-                try {
-                    $leg = $this->db->select('parent_shipment_id')->where('id', (int) $id)->get(db_prefix() . '_shipments')->row();
-                    if ($leg && !empty($leg->parent_shipment_id)) {
-                        $parent = $this->db->select('id, status_id')->where('id', $leg->parent_shipment_id)->get(db_prefix() . '_shipments')->row();
-                        if ($parent && (int) $parent->status_id <= 2) {
-                            $this->db->where('id', $parent->id)->update(db_prefix() . '_shipments', ['status_id' => 3]);
-                            $this->db->insert(db_prefix() . '_shipment_status_history', [
-                                'shipment_id' => $parent->id,
-                                'status_id'   => 3,
-                                'changed_at'  => date('Y-m-d H:i:s'),
-                            ]);
-                        }
-                    }
-                } catch (\Throwable $e) {
-                    log_message('error', 'Auto-advancing original shipment after international leg arrival crashed: ' . $e->getMessage());
-                }
-            }
-
             set_alert('success', 'Status updated successfully.');
             redirect(admin_url('courier_goshipping/shipments/waybill/' . $id));
 
