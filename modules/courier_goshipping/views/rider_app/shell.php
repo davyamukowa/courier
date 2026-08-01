@@ -1061,7 +1061,7 @@
         e.preventDefault();
         deferredInstallPrompt = e;
         document.getElementById('install_banner').style.display = 'flex';
-        document.getElementById('profile_install_btn').style.display = 'block';
+        document.getElementById('profile_install_btn').style.display = 'flex';
     });
     function installApp() {
         if (!deferredInstallPrompt) { return; }
