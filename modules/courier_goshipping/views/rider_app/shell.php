@@ -373,7 +373,7 @@
                 Install App to Home Screen
             </button>
             <button class="btn-ghost" onclick="openModal('change_password_modal')">Change Password</button>
-            <button class="btn-danger" onclick="doLogout()">Log Out</button>
+            <button class="btn-danger" onclick="doLogout()" style="margin-bottom:24px;">Log Out</button>
         </div>
     </div>
 
