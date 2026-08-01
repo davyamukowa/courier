@@ -324,10 +324,10 @@
 
     <!-- ── Bottom nav ───────────────────────────────────────────────────────── -->
     <div class="bottom-nav" id="bottom_nav">
-        <button onclick="navTo('dashboard')" data-nav="dashboard"><span class="ic">🏠</span>Dashboard</button>
-        <button onclick="navTo('deliveries')" data-nav="deliveries"><span class="ic">📦</span>Deliveries</button>
-        <button onclick="navTo('pickups')" data-nav="pickups"><span class="ic">🧾</span>Pickups</button>
-        <button onclick="navTo('profile')" data-nav="profile"><span class="ic">👤</span>Profile</button>
+        <button onclick="navTo('dashboard')" data-nav="dashboard"><span class="ic"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9a1 1 0 0 0 1 1h4v-6h2v6h4a1 1 0 0 0 1-1v-9"/></svg></span>Dashboard</button>
+        <button onclick="navTo('deliveries')" data-nav="deliveries"><span class="ic"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l9-4 9 4-9 4-9-4Z"/><path d="M3 8v9l9 4 9-4V8"/><path d="M12 12v9"/></svg></span>Deliveries</button>
+        <button onclick="navTo('pickups')" data-nav="pickups"><span class="ic"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Z"/><path d="M9 8h6M9 12h6"/></svg></span>Pickups</button>
+        <button onclick="navTo('profile')" data-nav="profile"><span class="ic"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1.2-4 4-6 7-6s5.8 2 7 6"/></svg></span>Profile</button>
     </div>
 
     <!-- ── Deliver modal ────────────────────────────────────────────────────── -->
