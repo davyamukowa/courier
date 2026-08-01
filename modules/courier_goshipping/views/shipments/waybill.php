@@ -336,26 +336,6 @@
 </style>
 <?php $this->load->view('courier_goshipping/layout/_topnav', ['cgs_active' => 'shipments']); ?>
     <div class="content gs-waybill-page">
-        <?php if (!empty($linked_leg['shipment'])): ?>
-        <div class="row">
-            <div class="col-md-12">
-                <div class="alert alert-info" style="margin-bottom:15px;">
-                    <i class="fa fa-exchange"></i>
-                    <?php if ($linked_leg['relation'] === 'parent'): ?>
-                        This is the <strong>international air-freight leg</strong> for order shipment
-                        <a href="<?php echo admin_url('courier_goshipping/shipments/waybill/' . $linked_leg['shipment']->id); ?>">
-                            <strong><?php echo htmlspecialchars($linked_leg['shipment']->waybill_number); ?></strong>
-                        </a> — once it arrives at the Go Shipping warehouse, last-mile tracking resumes on that shipment.
-                    <?php else: ?>
-                        This order also has a separate <strong>international air-freight leg</strong>:
-                        <a href="<?php echo admin_url('courier_goshipping/shipments/waybill/' . $linked_leg['shipment']->id); ?>">
-                            <strong><?php echo htmlspecialchars($linked_leg['shipment']->waybill_number); ?></strong>
-                        </a>.
-                    <?php endif; ?>
-                </div>
-            </div>
-        </div>
-        <?php endif; ?>
         <div class="row">
             <?php
             $wb_type = $this->session->userdata('type') ?: 'domestic';
