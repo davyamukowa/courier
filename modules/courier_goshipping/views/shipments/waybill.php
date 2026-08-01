@@ -543,46 +543,52 @@
                         </script>
 
                         <?php if (!empty($international_active)): ?>
-                        <h4 style="margin-top:20px; font-size:14px; font-weight:700; color:#8e1c1c; text-transform:uppercase; letter-spacing:0.5px;">
-                            <i class="fa fa-plane"></i> International
-                        </h4>
-                        <div class="stepper-wrapper">
-                            <?php
-                            $intl_status_id = (int) ($shipment_details['shipment']->international_status_id ?? 0);
-                            $intl_counter = 1;
-                            foreach ($international_statuses as $status):
-                                ?>
-                                <div class="stepper-item <?= ($status->id <= $intl_status_id) ? 'completed' : ''; ?> <?= ($status->id == $intl_status_id) ? 'active' : ''; ?>">
-                                    <div class="step-counter"><?= $intl_counter; ?></div>
-                                    <div class="step-name"><?= $status->description; ?></div>
-                                </div>
+                        <div class="gs-tracker-section gs-tracker-international">
+                            <div class="gs-tracker-heading">
+                                <span class="gs-tracker-icon"><i class="fa fa-plane"></i></span> International
+                            </div>
+                            <div class="stepper-wrapper gs-compact-stepper">
                                 <?php
-                                $intl_counter++;
-                            endforeach;
-                            ?>
-                        </div>
-                        <h4 style="margin-top:24px; font-size:14px; font-weight:700; color:#0d47a1; text-transform:uppercase; letter-spacing:0.5px;">
-                            <i class="fa fa-truck"></i> Domestic
-                        </h4>
-                        <?php endif; ?>
-                        <div style="margin-top:20px;" class="stepper-wrapper">
-                            <?php
-                            $displayCounter = 1; // Initialize a counter for display purposes
-                            foreach ($statuses as $status):
-                                // Check if we should skip the pickup step
-                                if ($status->id != 2 || !empty($shipment_details['shipment']->pickup_id)):
-                                    // Adjust the display counter based on the pickup condition
-                                    $displayId = (!empty($shipment_details['shipment']->pickup_id) || $status->id != 2) ? $displayCounter : $displayCounter - 1;
+                                $intl_status_id = (int) ($shipment_details['shipment']->international_status_id ?? 0);
+                                $intl_counter = 1;
+                                foreach ($international_statuses as $status):
                                     ?>
-                                    <div class="stepper-item <?= ($status->id <= $shipment_details['shipment']->status_id) ? 'completed' : ''; ?> <?= ($status->id == $shipment_details['shipment']->status_id) ? 'active' : ''; ?>">
-                                        <div class="step-counter"><?= $displayId; ?></div>
+                                    <div class="stepper-item <?= ($status->id <= $intl_status_id) ? 'completed' : ''; ?> <?= ($status->id == $intl_status_id) ? 'active' : ''; ?>">
+                                        <div class="step-counter"><?= $intl_counter; ?></div>
                                         <div class="step-name"><?= $status->description; ?></div>
                                     </div>
                                     <?php
-                                    $displayCounter++; // Increment the display counter for the next step
-                                endif;
-                            endforeach;
-                            ?>
+                                    $intl_counter++;
+                                endforeach;
+                                ?>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+                        <div class="gs-tracker-section gs-tracker-domestic">
+                            <?php if (!empty($international_active)): ?>
+                            <div class="gs-tracker-heading">
+                                <span class="gs-tracker-icon"><i class="fa fa-truck"></i></span> Domestic
+                            </div>
+                            <?php endif; ?>
+                            <div class="stepper-wrapper gs-compact-stepper">
+                                <?php
+                                $displayCounter = 1; // Initialize a counter for display purposes
+                                foreach ($statuses as $status):
+                                    // Check if we should skip the pickup step
+                                    if ($status->id != 2 || !empty($shipment_details['shipment']->pickup_id)):
+                                        // Adjust the display counter based on the pickup condition
+                                        $displayId = (!empty($shipment_details['shipment']->pickup_id) || $status->id != 2) ? $displayCounter : $displayCounter - 1;
+                                        ?>
+                                        <div class="stepper-item <?= ($status->id <= $shipment_details['shipment']->status_id) ? 'completed' : ''; ?> <?= ($status->id == $shipment_details['shipment']->status_id) ? 'active' : ''; ?>">
+                                            <div class="step-counter"><?= $displayId; ?></div>
+                                            <div class="step-name"><?= $status->description; ?></div>
+                                        </div>
+                                        <?php
+                                        $displayCounter++; // Increment the display counter for the next step
+                                    endif;
+                                endforeach;
+                                ?>
+                            </div>
                         </div>
 
                         <?php
