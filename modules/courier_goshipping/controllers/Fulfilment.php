@@ -2451,6 +2451,12 @@ class Fulfilment extends AdminController
 
         $invoice_id = $this->create_shipment_invoice($shipment_id, $order, $recipient_data, $packages_data, $tracking_number);
 
+        try {
+            courier_send_shipment_created_email($shipment_id);
+        } catch (\Throwable $e) {
+            log_message('error', 'Shipment-created customer email crashed: ' . $e->getMessage());
+        }
+
         return [
             'success' => true,
             'message' => 'Shipment created successfully.',
