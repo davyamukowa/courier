@@ -700,7 +700,35 @@
         linkStatusEl.style.cssText = 'margin-top:6px; display:flex; align-items:center; gap:6px; color:' + (currentRider.linked ? '#1c8a4b' : '#8a5b12') + ';';
         linkStatusEl.innerHTML = (currentRider.linked ? Icons.checkCircle : Icons.alert) +
             '<span>' + (currentRider.linked ? 'Linked to your driver profile' : 'Not linked yet — contact your dispatcher') + '</span>';
+        document.getElementById('profile_email').value = currentRider.email || '';
         navTo('dashboard');
+    }
+
+    function saveProfileEmail() {
+        var errBox = document.getElementById('profile_email_error');
+        var okBox = document.getElementById('profile_email_success');
+        errBox.style.display = 'none';
+        okBox.style.display = 'none';
+
+        var email = document.getElementById('profile_email').value.trim();
+        var btn = document.getElementById('save_email_btn');
+        btn.disabled = true; btn.textContent = 'Saving...';
+        post(API.updateEmail, { token: token, email: email }).then(function (res) {
+            btn.disabled = false; btn.textContent = 'Save Email';
+            if (!res.data.success) {
+                errBox.textContent = res.data.message || 'Could not save your email.';
+                errBox.style.display = 'block';
+                return;
+            }
+            currentRider.email = email;
+            okBox.textContent = 'Email saved.';
+            okBox.style.display = 'block';
+            toast('Email saved.', 'success');
+        }).catch(function () {
+            btn.disabled = false; btn.textContent = 'Save Email';
+            errBox.textContent = 'Network error — please check your connection and try again.';
+            errBox.style.display = 'block';
+        });
     }
 
     // ── Dashboard ────────────────────────────────────────────────────────────
