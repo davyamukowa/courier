@@ -212,7 +212,7 @@
     <div id="toast_stack" class="toast-stack"></div>
 
     <!-- ── Login ────────────────────────────────────────────────────────────── -->
-    <div class="screen active" id="screen_login">
+    <div class="screen active auth-screen" id="screen_login">
         <div class="brand">
             <div class="brand-badge">GS</div>
             <h1>Go Shipping Rider</h1>
@@ -228,7 +228,7 @@
     </div>
 
     <!-- ── Register ─────────────────────────────────────────────────────────── -->
-    <div class="screen" id="screen_register">
+    <div class="screen auth-screen" id="screen_register">
         <div class="brand">
             <div class="brand-badge">GS</div>
             <h1>Create Rider Account</h1>
