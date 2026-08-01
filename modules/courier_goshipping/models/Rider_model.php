@@ -168,6 +168,50 @@ class Rider_model extends App_Model
         }
     }
 
+    /**
+     * Rider self-service password change (Profile screen in the app) —
+     * requires the current password, unlike the admin reset below.
+     * @return array{success:bool, message?:string}
+     */
+    public function change_password($rider_id, $current_password, $new_password)
+    {
+        $rider = $this->find($rider_id);
+        if (!$rider) {
+            return ['success' => false, 'message' => 'Account not found.'];
+        }
+        if (!app_hasher()->CheckPassword((string) $current_password, $rider->password_hash)) {
+            return ['success' => false, 'message' => 'Your current password is incorrect.'];
+        }
+        if (strlen((string) $new_password) < 4) {
+            return ['success' => false, 'message' => 'New password must be at least 4 characters.'];
+        }
+
+        $this->db->where('id', $rider_id)->update($this->riders_table, [
+            'password_hash' => app_hash_password($new_password),
+        ]);
+        return ['success' => true];
+    }
+
+    /**
+     * Admin-initiated password reset (Riders admin page) — no current
+     * password needed, for when a rider is locked out and can't self-serve.
+     * @return array{success:bool, message?:string}
+     */
+    public function admin_reset_password($rider_id, $new_password)
+    {
+        if (!$this->find($rider_id)) {
+            return ['success' => false, 'message' => 'Rider not found.'];
+        }
+        if (strlen((string) $new_password) < 4) {
+            return ['success' => false, 'message' => 'New password must be at least 4 characters.'];
+        }
+
+        $this->db->where('id', $rider_id)->update($this->riders_table, [
+            'password_hash' => app_hash_password($new_password),
+        ]);
+        return ['success' => true];
+    }
+
     public function issue_token($rider_id)
     {
         $token = bin2hex(random_bytes(32));
