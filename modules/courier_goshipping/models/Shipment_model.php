@@ -282,6 +282,9 @@ class Shipment_model extends App_Model
         if ($this->db->field_exists('parent_shipment_id', db_prefix() . '_shipments')) {
             $base_cols .= ', s.parent_shipment_id';
         }
+        if ($this->db->field_exists('international_status_id', db_prefix() . '_shipments')) {
+            $base_cols .= ', s.international_status_id';
+        }
 
         // FALSE = do not let CI3 split/escape the string — COALESCE() contains commas
         // that CI3's Active Record would incorrectly split into separate columns
