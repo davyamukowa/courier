@@ -314,7 +314,10 @@
                 <div class="muted" id="profile_phone"></div>
                 <div class="muted" id="profile_link_status" style="margin-top:6px;"></div>
             </div>
-            <button class="btn-ghost" onclick="installApp()" id="profile_install_btn" style="display:none;">📲 Install App to Home Screen</button>
+            <button class="btn-ghost" onclick="installApp()" id="profile_install_btn" style="display:none; align-items:center; justify-content:center; gap:8px;">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="M8 11l4 4 4-4"/><path d="M5 19h14"/></svg>
+                Install App to Home Screen
+            </button>
             <button class="btn-danger" onclick="doLogout()">Log Out</button>
         </div>
     </div>
