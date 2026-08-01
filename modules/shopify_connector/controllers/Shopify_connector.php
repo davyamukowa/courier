@@ -1535,6 +1535,10 @@ class Shopify_connector extends AdminController
             }
             $this->db->update($shopify_orders_table, $order_update);
 
+            if ($already_ready_for_air_freight) {
+                $this->shopify_connector_model->activate_international_status($shipment_id);
+            }
+
             log_activity("Shipment #{$tracking_number} created for Shopify order SHF-{$order_id}");
             $this->write_integration_log('info', 'shipment', 'Courier shipment created successfully', [
                 'shopify_db_order_id' => $order_id,
