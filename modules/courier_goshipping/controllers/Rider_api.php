@@ -226,8 +226,8 @@ class Rider_api extends App_Controller
             try {
                 $this->load->helper('email_templates');
                 mail_template('Rider_forgot_password', 'courier_goshipping', $result['rider']->email, [
-                    'rider_name' => $result['rider']->name,
-                    'reset_link' => $reset_link,
+                    '{rider_name}' => $result['rider']->name,
+                    '{reset_link}' => $reset_link,
                 ])->send();
             } catch (\Throwable $e) {
                 log_message('error', 'Rider forgot-password email crashed: ' . $e->getMessage());
