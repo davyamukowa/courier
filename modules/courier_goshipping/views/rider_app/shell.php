@@ -81,6 +81,7 @@
         }
         .error-box { background: #fdecec; color: #9b2d26; }
         .info-box { background: #eef6ee; color: #2c6e3f; }
+        .warn-box { background: #fdf3e0; color: #8a5b12; }
 
         .topbar {
             display: flex; align-items: center; justify-content: space-between;
