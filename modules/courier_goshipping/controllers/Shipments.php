@@ -2191,47 +2191,26 @@ class Shipments extends AdminController
             return;
         }
 
-        // Two-leg international journey (see run_db_upgrades_v36()/v41() and
-        // Shopify_connector_model::create_international_leg_shipment()):
-        // surface a link to whichever other leg exists, so staff looking at
-        // either waybill can jump straight to the other one instead of
-        // hunting for it.
-        $data['linked_leg'] = null;
         $shipment_row = $data['shipment_details']['shipment'];
-        if (!empty($shipment_row->parent_shipment_id)) {
-            $data['linked_leg'] = [
-                'relation' => 'parent',
-                'shipment' => $this->db->select('id, waybill_number, shipping_category, shipping_mode')
-                    ->where('id', $shipment_row->parent_shipment_id)
-                    ->get(db_prefix() . '_shipments')->row(),
-            ];
-        } else {
-            $child = $this->db->select('id, waybill_number, shipping_category, shipping_mode')
-                ->where('parent_shipment_id', $id)
-                ->get(db_prefix() . '_shipments')->row();
-            if ($child) {
-                $data['linked_leg'] = ['relation' => 'child', 'shipment' => $child];
-            }
-        }
 
         $tracking_id = $data['shipment_details']['shipment']->tracking_id ?? '';
         $data['barcode'] = $tracking_id ? $this->generate_barcode($tracking_id) : '';
-        // A shipment with parent_shipment_id set IS the international
-        // air-freight leg (see run_db_upgrades_v41()) — it gets its own
-        // dedicated status set (9=cancelled, 10-13=leg-specific stages)
-        // instead of the normal 9-step domestic/order stepper, so staff
-        // can't select a status that doesn't apply to this leg.
+
+        // One waybill, two independent tracks (see run_db_upgrades_v41()/v43()):
+        // the normal 9-step domestic stepper (statuses) always applies, and
+        // — only once international tracking has been activated on this
+        // shipment (international_status_id set) — a second dedicated
+        // 4-stage international stepper (international_statuses) is shown
+        // above it. No "Cancelled" step in the international stepper.
         $all_statuses = $this->ShipmentStatus_model->get();
-        if (!empty($shipment_row->parent_shipment_id)) {
-            $leg_ids = [9, 10, 11, 12, 13];
-            $data['statuses'] = array_values(array_filter($all_statuses, function ($s) use ($leg_ids) {
-                return in_array((int) $s->id, $leg_ids, true);
-            }));
-        } else {
-            $data['statuses'] = array_values(array_filter($all_statuses, function ($s) {
-                return (int) $s->id <= 9;
-            }));
-        }
+        $data['statuses'] = array_values(array_filter($all_statuses, function ($s) {
+            return (int) $s->id <= 9;
+        }));
+        $data['international_statuses'] = array_values(array_filter($all_statuses, function ($s) {
+            return (int) $s->id >= 10;
+        }));
+        $data['international_active'] = !empty($shipment_row->international_status_id);
+
         $data['current_date'] = date('F j, Y');
         $data['fleet_report'] = $this->get_shipment_fleet_report((int) $id);
 
