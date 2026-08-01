@@ -151,7 +151,8 @@ class Rider_api extends App_Controller
             $this->input->post('name'),
             $this->input->post('phone'),
             $this->input->post('password'),
-            $this->input->post('email')
+            $this->input->post('email'),
+            $this->input->post('national_id')
         );
         if (!$result['success']) {
             $this->fail($result['message']);
