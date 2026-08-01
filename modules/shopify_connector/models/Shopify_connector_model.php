@@ -214,113 +214,34 @@ class Shopify_connector_model extends App_Model
     }
 
     /**
-     * Creates the SEPARATE international air-freight leg the moment the
-     * sourcing pipeline marks an order "Ready for International Fulfillment"
-     * — see Shopify_connector::activate_international_air_freight_leg().
+     * Activates international-leg tracking on the order's OWN shipment —
+     * one waybill number throughout, per staff feedback after testing the
+     * earlier separate-shipment approach (v40-v42). Sets
+     * `international_status_id` to 10 (At Origin Airport) alongside the
+     * shipment's normal `status_id` (used for domestic/last-mile) — the two
+     * tracks are independent, and Shipments::update_status() blocks
+     * progressing the domestic one until this reaches 13 (Arrived Go
+     * Shipping Warehouse).
      *
-     * The order's own original shipment (created at order time,
-     * `$order->gs_shipment_id`) is left completely alone and stays the
-     * permanent, customer-facing record — same as before this two-leg work
-     * ever existed, it just eventually gets its status progressed for
-     * last-mile once the parcel is physically at the warehouse. THIS new
-     * shipment is purely the freight-forwarding leg: From [the resolved
-     * source branch, e.g. USA Branch] To [Go Shipping's own Nairobi
-     * warehouse] — not the end customer, since that's not this leg's actual
-     * physical destination. `parent_shipment_id` links it back to the
-     * original for the waybill UI's linked-leg banner and for
-     * Shipments::update_status() to auto-advance the original once this leg
-     * reaches "Arrived Go Shipping Warehouse" (status 13).
-     *
-     * Uses the dedicated international-leg status set (9, 10-13 — see
-     * run_db_upgrades_v41()), starting at 10 (At Origin Airport), since by
-     * definition the parcel is already at/near the source branch's airport
-     * the moment this tag fires.
-     *
-     * Idempotent: a second call for the same order is a no-op if an
-     * international leg already exists for its original shipment.
+     * Idempotent: a no-op if international tracking is already active.
      */
-    public function create_international_leg_shipment($order, $branch_id)
+    public function activate_international_status($shipment_id)
     {
-        if (empty($order->gs_shipment_id)) {
+        $shipment = $this->db->where('id', $shipment_id)->get(db_prefix() . '_shipments')->row();
+        if (!$shipment || !empty($shipment->international_status_id)) {
             return false;
         }
 
-        $existing_leg = $this->db->where('parent_shipment_id', $order->gs_shipment_id)->get(db_prefix() . '_shipments')->row();
-        if ($existing_leg) {
-            return false;
-        }
+        $this->db->where('id', $shipment_id)->update(db_prefix() . '_shipments', [
+            'international_status_id' => 10, // At Origin Airport
+        ]);
+        $this->db->insert(db_prefix() . '_shipment_status_history', [
+            'shipment_id' => $shipment_id,
+            'status_id'   => 10,
+            'changed_at'  => date('Y-m-d H:i:s'),
+        ]);
 
-        $original_shipment = $this->db->where('id', $order->gs_shipment_id)->get(db_prefix() . '_shipments')->row();
-        if (!$original_shipment) {
-            return false;
-        }
-
-        $CI = &get_instance();
-        $CI->load->helper('courier_goshipping/courier');
-
-        // Sender: the resolved source branch (USA/Dubai/UK/China Branch) —
-        // same resolution the original shipment already used.
-        $source_branch_info = courier_get_invoice_info($branch_id);
-        $source_name_parts = explode(' ', trim($source_branch_info['name'] ?: 'Go Shipping Warehouse'), 2);
-        $sender_data = [
-            'first_name'   => $source_name_parts[0],
-            'last_name'    => $source_name_parts[1] ?? '',
-            'phone_number' => $source_branch_info['phone'] ?: (get_option('company_phonenumber') ?: '000000000'),
-            'email'        => $source_branch_info['email'] ?: (get_option('smtp_email') ?: 'warehouse@example.com'),
-            'address'      => trim(strip_tags(str_replace(['<br />', '<br/>', '<br>'], ', ', $source_branch_info['address'] ?: format_organization_info())), ', ') ?: 'Main Warehouse',
-            'zipcode'      => '00100',
-            'address_type' => 'postal_code',
-        ];
-
-        // Recipient: Go Shipping's own Nairobi warehouse (the org-wide
-        // fallback/default branch) — this leg's actual physical
-        // destination, not the end customer.
-        $local_branch_id = courier_get_fallback_branch_id();
-        $local_branch_info = courier_get_invoice_info($local_branch_id);
-        $local_name_parts = explode(' ', trim($local_branch_info['name'] ?: 'Go Shipping Cargo'), 2);
-        $recipient_data = [
-            'first_name'   => $local_name_parts[0],
-            'last_name'    => $local_name_parts[1] ?? '',
-            'phone_number' => $local_branch_info['phone'] ?: (get_option('company_phonenumber') ?: '000000000'),
-            'email'        => $local_branch_info['email'] ?: (get_option('smtp_email') ?: 'warehouse@example.com'),
-            'address'      => trim(strip_tags(str_replace(['<br />', '<br/>', '<br>'], ', ', $local_branch_info['address'] ?: format_organization_info())), ', ') ?: 'Main Warehouse',
-            'zipcode'      => '00100',
-            'address_type' => 'postal_code',
-        ];
-
-        // "I" suffix keeps this waybill visually distinct from the original
-        // order's own shipment number (same date + order id base).
-        $tracking_number = 'GS' . date('Ymd') . str_pad((string) $order->id, 6, '0', STR_PAD_LEFT) . 'I';
-
-        $shipment_data = [
-            'shipping_mode'      => 'AIR (AIR FREIGHT)',
-            'shipping_category'  => 'international',
-            'tracking_id'        => $tracking_number,
-            'waybill_number'     => $tracking_number,
-            'company_type'       => 'company',
-            'status_id'          => 10, // At Origin Airport
-            'staff_id'           => 0,
-            'packaging_charges'  => 0.00,
-            'created_at'         => date('Y-m-d H:i:s'),
-            'parent_shipment_id' => (int) $order->gs_shipment_id,
-        ];
-        if ($this->db->field_exists('branch_id', db_prefix() . '_shipments')) {
-            $shipment_data['branch_id'] = $branch_id;
-        }
-
-        $packages_data = array_map(function ($p) {
-            // A fresh leg starts with no proof-of-delivery of its own.
-            unset($p['id'], $p['shipment_id'], $p['pod']);
-            return $p;
-        }, $this->db->where('shipment_id', $order->gs_shipment_id)->get(db_prefix() . '_shipment_packages')->result_array());
-
-        $new_shipment_id = $this->create_courier_shipment_db($shipment_data, $sender_data, $recipient_data, $packages_data);
-
-        if ($new_shipment_id) {
-            log_activity("International air-freight leg #{$tracking_number} created for Salibay order SHF-{$order->shopify_order_id} (original shipment #{$order->gs_shipment_id} untouched).");
-        }
-
-        return $new_shipment_id;
+        return true;
     }
 
     public function create_reservation_record($data)
