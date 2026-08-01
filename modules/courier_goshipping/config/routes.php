@@ -77,6 +77,7 @@ $route['courier_goshipping/rider'] = 'rider_app/index';
 $route['courier_goshipping/rider/manifest'] = 'rider_app/manifest';
 $route['courier_goshipping/rider/sw'] = 'rider_app/sw';
 $route['courier_goshipping/rider/icon/(:num)'] = 'rider_app/icon/$1';
+$route['courier_goshipping/rider/reset-password/(:any)'] = 'rider_app/reset_password/$1';
 
 $route['courier_goshipping/rider-api/register'] = 'rider_api/register';
 $route['courier_goshipping/rider-api/login'] = 'rider_api/login';
