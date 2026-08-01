@@ -598,6 +598,41 @@
         showScreen('login');
     }
 
+    function submitChangePassword() {
+        var errBox = document.getElementById('change_password_error');
+        var okBox = document.getElementById('change_password_success');
+        errBox.style.display = 'none';
+        okBox.style.display = 'none';
+
+        var currentPassword = document.getElementById('cp_current_password').value;
+        var newPassword = document.getElementById('cp_new_password').value;
+        if (!currentPassword || newPassword.length < 4) {
+            errBox.textContent = 'Please enter your current password and a new password of at least 4 characters.';
+            errBox.style.display = 'block';
+            return;
+        }
+
+        var btn = document.getElementById('confirm_change_password_btn');
+        btn.disabled = true; btn.textContent = 'Updating...';
+        post(API.changePassword, { token: token, current_password: currentPassword, new_password: newPassword }).then(function (res) {
+            btn.disabled = false; btn.textContent = 'Update Password';
+            if (!res.data.success) {
+                errBox.textContent = res.data.message || 'Could not update your password.';
+                errBox.style.display = 'block';
+                return;
+            }
+            document.getElementById('cp_current_password').value = '';
+            document.getElementById('cp_new_password').value = '';
+            okBox.textContent = 'Password updated.';
+            okBox.style.display = 'block';
+            toast('Password updated.', 'success');
+        }).catch(function () {
+            btn.disabled = false; btn.textContent = 'Update Password';
+            errBox.textContent = 'Network error — please check your connection and try again.';
+            errBox.style.display = 'block';
+        });
+    }
+
     function enterApp() {
         document.getElementById('bottom_nav').classList.add('active');
         document.getElementById('profile_name').textContent = currentRider.name;
