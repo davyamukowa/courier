@@ -332,6 +332,13 @@
                 <div class="muted" id="profile_phone"></div>
                 <div class="muted" id="profile_link_status" style="margin-top:6px;"></div>
             </div>
+            <div class="card">
+                <label for="profile_email" style="margin-top:0;">Email <span class="muted" style="font-weight:400;">(used for password reset links)</span></label>
+                <input type="text" id="profile_email" placeholder="e.g. john@example.com">
+                <button class="btn-ghost" onclick="saveProfileEmail()" id="save_email_btn" style="margin-top:10px;">Save Email</button>
+                <div class="error-box" id="profile_email_error"></div>
+                <div class="info-box" id="profile_email_success"></div>
+            </div>
             <button class="btn-ghost" onclick="installApp()" id="profile_install_btn" style="display:none; align-items:center; justify-content:center; gap:8px;">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="M8 11l4 4 4-4"/><path d="M5 19h14"/></svg>
                 Install App to Home Screen
