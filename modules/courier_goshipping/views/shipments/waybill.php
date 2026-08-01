@@ -542,6 +542,29 @@
                         }
                         </script>
 
+                        <?php if (!empty($international_active)): ?>
+                        <h4 style="margin-top:20px; font-size:14px; font-weight:700; color:#8e1c1c; text-transform:uppercase; letter-spacing:0.5px;">
+                            <i class="fa fa-plane"></i> International
+                        </h4>
+                        <div class="stepper-wrapper">
+                            <?php
+                            $intl_status_id = (int) ($shipment_details['shipment']->international_status_id ?? 0);
+                            $intl_counter = 1;
+                            foreach ($international_statuses as $status):
+                                ?>
+                                <div class="stepper-item <?= ($status->id <= $intl_status_id) ? 'completed' : ''; ?> <?= ($status->id == $intl_status_id) ? 'active' : ''; ?>">
+                                    <div class="step-counter"><?= $intl_counter; ?></div>
+                                    <div class="step-name"><?= $status->description; ?></div>
+                                </div>
+                                <?php
+                                $intl_counter++;
+                            endforeach;
+                            ?>
+                        </div>
+                        <h4 style="margin-top:24px; font-size:14px; font-weight:700; color:#0d47a1; text-transform:uppercase; letter-spacing:0.5px;">
+                            <i class="fa fa-truck"></i> Domestic
+                        </h4>
+                        <?php endif; ?>
                         <div style="margin-top:20px;" class="stepper-wrapper">
                             <?php
                             $displayCounter = 1; // Initialize a counter for display purposes
