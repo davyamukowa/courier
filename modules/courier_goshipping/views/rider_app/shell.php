@@ -719,14 +719,94 @@
 
     function enterApp() {
         document.getElementById('bottom_nav').classList.add('active');
+        renderProfile();
+        navTo('dashboard');
+    }
+
+    function renderProfile() {
         document.getElementById('profile_name').textContent = currentRider.name;
         document.getElementById('profile_phone').textContent = currentRider.phone;
         var linkStatusEl = document.getElementById('profile_link_status');
-        linkStatusEl.style.cssText = 'margin-top:6px; display:flex; align-items:center; gap:6px; color:' + (currentRider.linked ? '#1c8a4b' : '#8a5b12') + ';';
+        linkStatusEl.style.cssText = 'margin-top:6px; display:flex; align-items:center; justify-content:center; gap:6px; color:' + (currentRider.linked ? '#1c8a4b' : '#8a5b12') + ';';
         linkStatusEl.innerHTML = (currentRider.linked ? Icons.checkCircle : Icons.alert) +
             '<span>' + (currentRider.linked ? 'Linked to your driver profile' : 'Not linked yet — contact your dispatcher') + '</span>';
         document.getElementById('profile_email').value = currentRider.email || '';
-        navTo('dashboard');
+        document.getElementById('profile_edit_name').value = currentRider.name || '';
+        document.getElementById('profile_edit_phone').value = currentRider.phone || '';
+        document.getElementById('profile_edit_national_id').value = currentRider.national_id || '';
+
+        var photoImg = document.getElementById('profile_photo_preview');
+        var placeholder = document.getElementById('profile_photo_placeholder');
+        if (currentRider.photo_url) {
+            photoImg.src = currentRider.photo_url;
+            photoImg.style.display = 'block';
+            placeholder.style.display = 'none';
+        } else {
+            photoImg.style.display = 'none';
+            placeholder.style.display = 'flex';
+        }
+    }
+
+    function saveProfileDetails() {
+        var errBox = document.getElementById('profile_details_error');
+        var okBox = document.getElementById('profile_details_success');
+        errBox.style.display = 'none';
+        okBox.style.display = 'none';
+
+        var name = document.getElementById('profile_edit_name').value.trim();
+        var phone = document.getElementById('profile_edit_phone').value.trim();
+        var nationalId = document.getElementById('profile_edit_national_id').value.trim();
+        if (!name || !phone || !nationalId) {
+            errBox.textContent = 'Please fill in your name, phone number, and National ID.';
+            errBox.style.display = 'block';
+            return;
+        }
+
+        var btn = document.getElementById('save_profile_btn');
+        btn.disabled = true; btn.textContent = 'Saving...';
+        post(API.updateProfile, { token: token, name: name, phone: phone, national_id: nationalId }).then(function (res) {
+            btn.disabled = false; btn.textContent = 'Save Details';
+            if (!res.data.success) {
+                errBox.textContent = res.data.message || 'Could not save your details.';
+                errBox.style.display = 'block';
+                return;
+            }
+            currentRider = res.data.rider;
+            renderProfile();
+            okBox.textContent = 'Details saved.';
+            okBox.style.display = 'block';
+            toast('Details saved.', 'success');
+        }).catch(function () {
+            btn.disabled = false; btn.textContent = 'Save Details';
+            errBox.textContent = 'Network error — please check your connection and try again.';
+            errBox.style.display = 'block';
+        });
+    }
+
+    function onProfilePhotoSelected(event) {
+        var file = event.target.files[0];
+        if (!file) { return; }
+
+        var errBox = document.getElementById('profile_photo_error');
+        errBox.style.display = 'none';
+
+        var reader = new FileReader();
+        reader.onload = function () {
+            post(API.updatePhoto, { token: token, photo: reader.result }).then(function (res) {
+                if (!res.data.success) {
+                    errBox.textContent = res.data.message || 'Could not upload photo.';
+                    errBox.style.display = 'block';
+                    return;
+                }
+                currentRider = res.data.rider;
+                renderProfile();
+                toast('Profile photo updated.', 'success');
+            }).catch(function () {
+                errBox.textContent = 'Network error — please check your connection and try again.';
+                errBox.style.display = 'block';
+            });
+        };
+        reader.readAsDataURL(file);
     }
 
     function saveProfileEmail() {
