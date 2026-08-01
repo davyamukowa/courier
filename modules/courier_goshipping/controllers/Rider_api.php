@@ -134,11 +134,13 @@ class Rider_api extends App_Controller
     private function rider_public($rider)
     {
         return [
-            'id'     => (int) $rider->id,
-            'name'   => $rider->name,
-            'phone'  => $rider->phone,
-            'email'  => $rider->email,
-            'linked' => !empty($rider->staff_id),
+            'id'          => (int) $rider->id,
+            'name'        => $rider->name,
+            'phone'       => $rider->phone,
+            'email'       => $rider->email,
+            'national_id' => $rider->national_id,
+            'photo_url'   => !empty($rider->photo_url) ? base_url('modules/courier_goshipping/' . $rider->photo_url) : null,
+            'linked'      => !empty($rider->staff_id),
         ];
     }
 
