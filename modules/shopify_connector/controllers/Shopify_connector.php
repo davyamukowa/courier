@@ -1585,6 +1585,17 @@ class Shopify_connector extends AdminController
                 ], $order->store_id);
             }
 
+            // Let the customer know their waybill/tracking link right away —
+            // never blocks shipment creation if it fails (see the function).
+            try {
+                courier_send_shipment_created_email($shipment_id);
+            } catch (\Throwable $e) {
+                $this->write_integration_log('error', 'shipment', 'Shipment-created customer email crashed: ' . $e->getMessage(), [
+                    'shopify_db_order_id' => $order_id,
+                    'shipment_id' => $shipment_id
+                ], $order->store_id);
+            }
+
             // Deliberately NOT pushing the Shopify fulfillment here. A waybill
             // existing doesn't mean the parcel has actually moved — Shopify
             // should stay "Unfulfilled" until the courier confirms pickup or
