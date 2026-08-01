@@ -289,7 +289,7 @@
                 <button id="deliveries_tab_history" onclick="switchDeliveriesTab('history')">History</button>
             </div>
             <div class="search-box">
-                <span class="ic">🔎</span>
+                <span class="ic"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4.5-4.5"/></svg></span>
                 <input type="text" id="deliveries_search" placeholder="Search by waybill or recipient..." oninput="renderDeliveriesList()">
             </div>
             <div id="deliveries_list"></div>
