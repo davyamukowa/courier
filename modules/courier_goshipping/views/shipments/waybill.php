@@ -600,10 +600,6 @@
                                style="background:linear-gradient(135deg,#c62828,#8e1c1c); color:#fff; border-color:#8e1c1c;">
                                 <i class="fa fa-file-pdf-o" style="margin-right:5px;"></i> Download PDF
                             </a>
-                            <a class="custom-button" href="javascript:void(0);" onclick="openSendWaybillModal();"
-                               style="background:#fff; color:#0d47a1; border-color:#1565c0;">
-                                <i class="fa fa-envelope" style="margin-right:5px;"></i> Send by Email
-                            </a>
                             <a class="custom-button" href="#" data-toggle="modal" data-target="#update_status"
                                style="background:#c62828; color:#fff; border-color:#c62828;">
                                 <i class="fa fa-refresh" style="margin-right:5px;"></i> Update Status
