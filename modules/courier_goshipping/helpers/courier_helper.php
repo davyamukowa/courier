@@ -220,7 +220,7 @@ if (!function_exists('courier_get_shipment_journey')) {
             ? 'ss.status_description'
             : 'ss.description';
 
-        $history = $CI->db->select("h.changed_at, ss.status_name, {$status_desc_col} AS status_description")
+        $history = $CI->db->select("h.status_id, h.changed_at, ss.status_name, {$status_desc_col} AS status_description")
             ->from(db_prefix() . '_shipment_status_history h')
             ->join(db_prefix() . '_shipment_statuses ss', 'ss.id = h.status_id', 'left')
             ->where_in('h.shipment_id', $leg_ids)
@@ -229,7 +229,7 @@ if (!function_exists('courier_get_shipment_journey')) {
 
         foreach ($history as $row) {
             $events[] = [
-                'label'      => $row->status_description ?: ucfirst(str_replace('_', ' ', $row->status_name)),
+                'label'      => courier_customer_facing_status_label((int) $row->status_id, $row->status_description, $row->status_name),
                 'changed_at' => $row->changed_at,
             ];
         }
