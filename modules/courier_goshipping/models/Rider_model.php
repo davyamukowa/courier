@@ -30,26 +30,45 @@ class Rider_model extends App_Model
         return $this->db->where('id', (int) $id)->get($this->riders_table)->row();
     }
 
+    public function find_by_email($email)
+    {
+        $email = trim((string) $email);
+        if ($email === '') {
+            return null;
+        }
+        return $this->db->where('email', $email)->get($this->riders_table)->row();
+    }
+
     /**
      * @return array{success:bool, message?:string, rider?:object}
      */
-    public function register($name, $phone, $password)
+    public function register($name, $phone, $password, $email = null)
     {
         $name  = trim((string) $name);
         $phone = $this->normalize_phone($phone);
+        $email = trim((string) $email);
 
         if ($name === '' || $phone === '' || strlen((string) $password) < 4) {
             return ['success' => false, 'message' => 'Please fill in your name, phone number, and a password of at least 4 characters.'];
+        }
+
+        if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return ['success' => false, 'message' => 'Please enter a valid email address, or leave it blank.'];
         }
 
         if ($this->find_by_phone($phone)) {
             return ['success' => false, 'message' => 'An account with this phone number already exists. Please log in instead.'];
         }
 
+        if ($email !== '' && $this->find_by_email($email)) {
+            return ['success' => false, 'message' => 'An account with this email already exists. Please log in instead.'];
+        }
+
         $this->db->insert($this->riders_table, [
             'name'          => $name,
             'phone'         => $phone,
             'password_hash' => app_hash_password($password),
+            'email'         => $email !== '' ? $email : null,
             'status'        => 'active',
             'created_at'    => date('Y-m-d H:i:s'),
         ]);
