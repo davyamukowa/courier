@@ -3079,6 +3079,78 @@ class Shipments extends AdminController
         }
     }
 
+    /**
+     * Progresses the international air-freight track (international_status_id
+     * — 9=cancelled, 10=At Origin Airport, 11=In Transit (Air),
+     * 12=Arrived Destination Airport, 13=Arrived Go Shipping Warehouse) —
+     * completely independent of the shipment's normal domestic status_id.
+     * Only valid on a shipment where international tracking has actually
+     * been activated (see Shopify_connector_model::activate_international_status()).
+     *
+     * When this reaches 13, shipping_mode/category revert to a domestic
+     * courier job (the parcel is now physically at our warehouse) and the
+     * domestic status_id is nudged to "Received" if it hasn't moved past
+     * Created/Picked Up yet — after that, update_status() unblocks and
+     * staff progress last-mile tracking on the same waybill as normal.
+     */
+    public function update_international_status($id)
+    {
+        $this->db->trans_begin();
+
+        try {
+            $new_status_id = (int) $this->input->post('status_id');
+
+            $shipment = $this->db->select('id, status_id, international_status_id')
+                ->where('id', (int) $id)
+                ->get(db_prefix() . '_shipments')->row();
+            if (!$shipment || empty($shipment->international_status_id)) {
+                throw new Exception('This shipment does not have international tracking activated.');
+            }
+
+            $this->db->where('id', $id)->update(db_prefix() . '_shipments', [
+                'international_status_id' => $new_status_id,
+            ]);
+
+            $acting_staff_id = get_staff_user_id();
+            $acting_staff = $this->db->select('firstname, lastname')->where('staffid', $acting_staff_id)->get(db_prefix() . 'staff')->row();
+            $this->db->insert(db_prefix() . '_shipment_status_history', [
+                'shipment_id'         => $id,
+                'status_id'           => $new_status_id,
+                'changed_at'          => date('Y-m-d H:i:s'),
+                'changed_by_staff_id' => $acting_staff_id,
+                'changed_by_label'    => $acting_staff ? trim($acting_staff->firstname . ' ' . $acting_staff->lastname) : null,
+            ]);
+
+            if ($new_status_id === 13) {
+                $this->db->where('id', $id)->update(db_prefix() . '_shipments', [
+                    'shipping_category' => 'domestic',
+                    'shipping_mode'     => 'Courier',
+                ]);
+                if ((int) $shipment->status_id <= 2) {
+                    $this->db->where('id', $id)->update(db_prefix() . '_shipments', ['status_id' => 3]);
+                    $this->db->insert(db_prefix() . '_shipment_status_history', [
+                        'shipment_id' => $id,
+                        'status_id'   => 3,
+                        'changed_at'  => date('Y-m-d H:i:s'),
+                    ]);
+                }
+            }
+
+            $this->db->trans_commit();
+
+            log_activity('International Shipment Status Updated [ID: ' . $id . ', Status ID: ' . $new_status_id . ']');
+
+            set_alert('success', 'International status updated successfully.');
+            redirect(admin_url('courier_goshipping/shipments/waybill/' . $id));
+
+        } catch (Exception $exception) {
+            $this->db->trans_rollback();
+            set_alert('danger', 'An error occurred: ' . $exception->getMessage());
+            redirect(admin_url('courier_goshipping/shipments/waybill/' . $id));
+            log_message('error', $exception->getMessage());
+        }
+    }
+
 
     public function generate_manifest()
     {
