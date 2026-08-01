@@ -243,6 +243,8 @@
         <input type="text" id="reg_name" placeholder="e.g. John Otieno">
         <label for="reg_phone">Phone number</label>
         <input type="tel" id="reg_phone" placeholder="e.g. 0723434533">
+        <label for="reg_national_id">National ID number</label>
+        <input type="text" id="reg_national_id" placeholder="e.g. 12345678">
         <label for="reg_email">Email (optional — needed for password reset)</label>
         <input type="text" id="reg_email" placeholder="e.g. john@example.com">
         <label for="reg_password">Create a password</label>
