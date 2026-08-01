@@ -1060,29 +1060,28 @@ class Shopify_connector extends AdminController
      * external sourcing pipeline actually finishes procuring/warehousing the
      * item — that's a separate system, entirely out of our scope. Once it
      * writes "Ready for International Fulfillment" back onto the order, THIS
-     * is the real signal that Go Shipping physically takes custody, so two
-     * things happen:
+     * is the real signal that Go Shipping physically takes custody, so the
+     * order's own shipment (one waybill number throughout — see
+     * Shopify_connector_model::activate_international_status()) gets:
      *
-     * 1. The order's own original shipment is switched from the generic
-     *    "COURIER (NONE)" placeholder mode into "AIR (AIR FREIGHT)" — same
-     *    shipment row/waybill number throughout, this record stays the
-     *    permanent customer-facing one (never replaced/reassigned), it just
-     *    now correctly reflects the branch it's shipping from.
-     * 2. A SEPARATE new shipment is created for the actual international
-     *    air-freight leg itself — see
-     *    Shopify_connector_model::create_international_leg_shipment(). Its
-     *    own dedicated stages (At Origin Airport -> In Transit (Air) ->
-     *    Arrived Destination Airport -> Arrived Go Shipping Warehouse) are
-     *    what staff actually update as the parcel physically moves; once it
-     *    reaches Arrived Go Shipping Warehouse, Shipments::update_status()
-     *    auto-advances the original shipment so staff can pick up last-mile
-     *    tracking on it.
+     * 1. Its `shipping_mode`/`shipping_category` switched from the generic
+     *    "COURIER (NONE)" placeholder into "AIR (AIR FREIGHT)"/international
+     *    — same waybill number throughout, this record stays the permanent
+     *    customer-facing one.
+     * 2. A second, independent `international_status_id` track activated
+     *    (starting at 10, At Origin Airport) alongside its normal
+     *    `status_id` (domestic/last-mile) — staff update the international
+     *    stages as the parcel physically moves through airports;
+     *    Shipments::update_status() blocks progressing the domestic track
+     *    until the international one reaches 13 (Arrived Go Shipping
+     *    Warehouse), at which point shipping_mode/category also revert to
+     *    domestic since the parcel is now a local job.
      *
      * The `salibay_ready_for_intl_fulfillment` flag makes this one-shot:
      * repeated orders/updated deliveries for the same order won't re-trigger
      * it (e.g. if the shipment's mode is later changed by staff for a
-     * legitimate operational reason, this must never stomp on that, and the
-     * international leg must never be created twice).
+     * legitimate operational reason, this must never stomp on that, and
+     * international tracking must never be re-activated after the fact).
      */
     private function activate_international_air_freight_leg($order)
     {
@@ -1092,10 +1091,10 @@ class Shopify_connector extends AdminController
 
         if (empty($order->gs_shipment_id)) {
             // Shipment doesn't exist yet (tag arrived before create_courier_
-            // shipment() ran) — nothing to flip/create yet. create_courier_
+            // shipment() ran) — nothing to flip/activate yet. create_courier_
             // shipment() itself checks salibay_ready_for_intl_fulfillment
             // when it later runs, so the shipment is born already in
-            // AIR (AIR FREIGHT) mode; the international leg gets created on
+            // AIR (AIR FREIGHT) mode; international tracking activates on
             // the next orders/updated delivery once gs_shipment_id exists.
             return;
         }
@@ -1113,12 +1112,9 @@ class Shopify_connector extends AdminController
             log_activity("Shopify Webhook: shipment #{$shipment->id} activated to AIR (AIR FREIGHT) — sourcing pipeline marked SHF-{$order->shopify_order_id} ready for international fulfillment.");
         }
 
-        $this->load->helper('courier_goshipping/courier');
         $this->load->model('shopify_connector/shopify_connector_model');
-        $branch_id = !empty($shipment->branch_id) ? (int) $shipment->branch_id : courier_get_fallback_branch_id();
-        $leg_id = $this->shopify_connector_model->create_international_leg_shipment($order, $branch_id);
-        if ($leg_id) {
-            log_activity("Shopify Webhook: international air-freight leg #{$leg_id} created for SHF-{$order->shopify_order_id}.");
+        if ($this->shopify_connector_model->activate_international_status($shipment->id)) {
+            log_activity("Shopify Webhook: international tracking activated on shipment #{$shipment->id} for SHF-{$order->shopify_order_id}.");
         }
     }
 
