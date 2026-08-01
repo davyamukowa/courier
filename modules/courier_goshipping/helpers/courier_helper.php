@@ -193,6 +193,29 @@ if (!function_exists('courier_resolve_branch_from_route_tag')) {
  * Returns a flat array of ['label' => string, 'changed_at' => 'Y-m-d H:i:s']
  * sorted newest-first, ready to hand straight to the tracker view.
  */
+/**
+ * Customer-friendly wording for the client portal's journey timeline — the
+ * international air-freight stages (10-13) in particular read like internal
+ * ops jargon ("Arrived Destination Airport") rather than something a
+ * customer waiting on a parcel wants to read, so they get a warmer
+ * rewrite here. Everything else (normal domestic statuses, sourcing tags)
+ * falls back to its existing description/status_name unchanged, since
+ * those are already reasonably customer-appropriate.
+ */
+if (!function_exists('courier_customer_facing_status_label')) {
+    function courier_customer_facing_status_label($status_id, $description, $status_name)
+    {
+        $friendly = [
+            10 => 'Your order has arrived at the airport and is being prepared for its flight.',
+            11 => 'Your order has been shipped and is currently in the air, on its way to Kenya.',
+            12 => 'Your order has landed in Kenya and is clearing customs.',
+            13 => "Your order has arrived at our warehouse. We'll keep you updated as it heads to you.",
+        ];
+
+        return $friendly[(int) $status_id] ?? ($description ?: ucfirst(str_replace('_', ' ', (string) $status_name)));
+    }
+}
+
 if (!function_exists('courier_get_shipment_journey')) {
     function courier_get_shipment_journey($shipment_id)
     {
