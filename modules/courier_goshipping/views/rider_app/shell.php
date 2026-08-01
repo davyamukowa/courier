@@ -430,7 +430,8 @@
         deliveryStart: <?php echo json_encode(site_url('courier_goshipping/rider-api/deliveries/')); ?>,
         pickups: <?php echo json_encode(site_url('courier_goshipping/rider-api/pickups')); ?>,
         pickupUpdate: <?php echo json_encode(site_url('courier_goshipping/rider-api/pickups/')); ?>,
-        stats: <?php echo json_encode(site_url('courier_goshipping/rider-api/stats')); ?>
+        stats: <?php echo json_encode(site_url('courier_goshipping/rider-api/stats')); ?>,
+        changePassword: <?php echo json_encode(site_url('courier_goshipping/rider-api/change_password')); ?>
     };
     var SW_URL = <?php echo json_encode(site_url('courier_goshipping/rider/sw')); ?>;
 
