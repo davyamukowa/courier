@@ -84,7 +84,7 @@
 
         .topbar {
             display: flex; align-items: center; justify-content: space-between;
-            padding: 4px 2px 18px;
+            padding: 4px 0 18px;
         }
         .topbar h2 { font-size: 19px; color: var(--ink); font-weight: 700; }
         .topbar .hi { font-size: 12.5px; color: var(--ink-soft); margin-top: 2px; }
