@@ -2950,6 +2950,18 @@ class Shipments extends AdminController
 
         try {
             $new_status_id = (int) $this->input->post('status_id');
+
+            // Can't progress domestic/last-mile tracking while this order's
+            // international air-freight leg is still in flight — the parcel
+            // physically isn't at our warehouse yet. See
+            // update_international_status() for the separate action that
+            // progresses the international track; once that reaches 13
+            // (Arrived Go Shipping Warehouse) this gate lifts automatically.
+            $current = $this->db->select('international_status_id')->where('id', (int) $id)->get(db_prefix() . '_shipments')->row();
+            if ($current && !empty($current->international_status_id) && (int) $current->international_status_id < 13) {
+                throw new Exception('Cannot update domestic status until the international leg has arrived at the Go Shipping warehouse.');
+            }
+
             $shipment_data = [
                 'status_id' => $new_status_id,
             ];
