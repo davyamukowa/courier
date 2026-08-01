@@ -585,7 +585,7 @@
             <?php echo form_open($this->uri->uri_string(), ['id' => 'create-pickup-form']); ?>
                 <div class="panel_s">
                     <div class="panel-body">
-                        <div class="gs-waybill-actions" style="margin-bottom:20px; display:flex; justify-content:flex-end; gap:8px; flex-wrap:nowrap; overflow-x:auto; padding-bottom:4px;">
+                        <div class="gs-waybill-actions" style="margin-bottom:20px; display:flex; justify-content:flex-start; gap:8px; flex-wrap:nowrap; overflow-x:auto; padding-bottom:4px;">
                             <a class="custom-button"
                                href="javascript:void(0);" onclick="printWaybill();"
                                style="background:linear-gradient(135deg,#1565c0,#0d47a1); color:#fff; border-color:#0d47a1;">
