@@ -402,6 +402,25 @@
     .gs-tracker-section { padding: 14px; }
     .gs-compact-stepper .step-name { max-width: 70px; font-size: 11px; }
 }
+
+/* Action button row: always one line, scrolls horizontally rather than
+   wrapping if the viewport is too narrow to fit every button. */
+.gs-waybill-actions {
+    scrollbar-width: thin;
+}
+.gs-waybill-actions .custom-button {
+    padding: 0.55rem 1rem;
+    font-size: 0.8125rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.gs-waybill-actions::-webkit-scrollbar {
+    height: 6px;
+}
+.gs-waybill-actions::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
 </style>
 <?php $this->load->view('courier_goshipping/layout/_topnav', ['cgs_active' => 'shipments']); ?>
     <div class="content gs-waybill-page">
