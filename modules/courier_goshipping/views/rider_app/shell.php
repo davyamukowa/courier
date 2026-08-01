@@ -385,6 +385,21 @@
         </div>
     </div>
 
+    <!-- ── Change password modal ────────────────────────────────────────────── -->
+    <div class="modal-backdrop" id="change_password_modal">
+        <div class="modal-sheet">
+            <h3>Change Password</h3>
+            <label for="cp_current_password">Current password</label>
+            <input type="password" id="cp_current_password">
+            <label for="cp_new_password">New password</label>
+            <input type="password" id="cp_new_password" placeholder="At least 4 characters">
+            <button class="btn-success" onclick="submitChangePassword()" id="confirm_change_password_btn">Update Password</button>
+            <button class="btn-ghost" onclick="closeModal('change_password_modal')">Cancel</button>
+            <div class="error-box" id="change_password_error"></div>
+            <div class="info-box" id="change_password_success"></div>
+        </div>
+    </div>
+
 <script>
     // Small line-icon set (stroke-based, currentColor) used in place of emoji
     // throughout the app — kept as plain strings so both server-rendered
