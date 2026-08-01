@@ -2385,6 +2385,18 @@ class Courier_Logistic_System {
             'Courier Waybill Notification to Customer',
             'courier_waybill_to_customer'
         );
+
+        create_email_template(
+            'Reset your Go Shipping Rider password',
+            '<p>Hi {rider_name},</p>
+<p>We received a request to reset the password for your Go Shipping Rider app account. Click the button below to choose a new password:</p>
+<p><a href="{reset_link}" style="display:inline-block;padding:12px 20px;background:#0a2a52;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold;">Reset Password</a></p>
+<p>Or copy and paste this link into your browser:<br>{reset_link}</p>
+<p>This link expires in 30 minutes. If you didn\'t request this, you can safely ignore this email — your password will stay the same.</p>',
+            'courier',
+            'Rider App: Forgot Password',
+            'rider_forgot_password'
+        );
     }
 
     public function migrate_legacy_defaults() {
