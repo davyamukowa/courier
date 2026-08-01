@@ -69,3 +69,28 @@
         </div>
     </div>
 </div>
+
+<!-- Reset rider password modal — one shared modal, form action + name filled in by the row's button (see onclick above) -->
+<div class="modal fade" id="reset_rider_password_modal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <?php echo form_open('', ['id' => 'reset_rider_password_form']); ?>
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">Reset Password for <span id="reset_rider_password_name"></span></h4>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        This sets the rider's actual app login password directly — it's separate from any staff account and does not require their current password.
+                    </div>
+                    <label for="new_password">New password</label>
+                    <input type="text" class="form-control" id="new_password" name="new_password" minlength="4" required placeholder="At least 4 characters">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal"><?php echo _l('close'); ?></button>
+                    <button type="submit" class="btn btn-primary">Reset Password</button>
+                </div>
+            <?php echo form_close(); ?>
+        </div>
+    </div>
+</div>
