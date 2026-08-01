@@ -14,6 +14,14 @@ class Rider_app extends App_Controller
         $this->load->view('rider_app/shell');
     }
 
+    // Reached from the emailed "Reset Password" link — a standalone page
+    // (not part of the SPA shell) since it has to work from a fresh
+    // browser tab/email-app webview with no app state loaded yet.
+    public function reset_password($token = '')
+    {
+        $this->load->view('rider_app/reset_password', ['token' => $token]);
+    }
+
     public function manifest()
     {
         header('Content-Type: application/manifest+json');
