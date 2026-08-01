@@ -223,6 +223,58 @@ class Rider_api extends App_Controller
         $this->respond(['success' => true]);
     }
 
+    public function update_profile()
+    {
+        if (!$this->require_rider()) {
+            return;
+        }
+
+        $result = $this->Rider_model->update_profile(
+            $this->rider->id,
+            $this->input->post('name'),
+            $this->input->post('phone'),
+            $this->input->post('national_id')
+        );
+        if (!$result['success']) {
+            $this->fail($result['message']);
+            return;
+        }
+
+        $this->respond(['success' => true, 'rider' => $this->rider_public($this->Rider_model->find($this->rider->id))]);
+    }
+
+    public function update_photo()
+    {
+        if (!$this->require_rider()) {
+            return;
+        }
+
+        $photo = $this->input->post('photo');
+        if (empty($photo)) {
+            $this->fail('No photo was provided.');
+            return;
+        }
+
+        $photo_data = base64_decode(str_replace(' ', '+', str_replace(['data:image/jpeg;base64,', 'data:image/png;base64,'], '', $photo)));
+        if ($photo_data === false) {
+            $this->fail('Could not read the photo. Please try again.');
+            return;
+        }
+
+        $photos_dir = FCPATH . 'modules/courier_goshipping/assets/riders/photos/';
+        if (!is_dir($photos_dir)) {
+            @mkdir($photos_dir, 0755, true);
+        }
+        $file_name = 'rider_' . $this->rider->id . '_' . uniqid() . '.jpg';
+        if (!file_put_contents($photos_dir . $file_name, $photo_data)) {
+            $this->fail('Could not save the photo. Please try again.');
+            return;
+        }
+
+        $this->Rider_model->update_photo($this->rider->id, 'assets/riders/photos/' . $file_name);
+        $this->respond(['success' => true, 'rider' => $this->rider_public($this->Rider_model->find($this->rider->id))]);
+    }
+
     // ── Password reset via emailed link (public — no token required) ───────
     public function forgot_password()
     {
