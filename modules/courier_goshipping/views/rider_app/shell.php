@@ -227,6 +227,7 @@
         <label for="login_password">Password</label>
         <input type="password" id="login_password" placeholder="••••••••">
         <button class="btn-primary" onclick="doLogin()" id="login_btn">Log In</button>
+        <button class="link-btn" onclick="showScreen('forgot')">Forgot password?</button>
         <button class="link-btn" onclick="showScreen('register')">Don't have an account? Create one</button>
         <div class="error-box" id="login_error"></div>
     </div>
@@ -242,11 +243,28 @@
         <input type="text" id="reg_name" placeholder="e.g. John Otieno">
         <label for="reg_phone">Phone number</label>
         <input type="tel" id="reg_phone" placeholder="e.g. 0723434533">
+        <label for="reg_email">Email (optional — needed for password reset)</label>
+        <input type="text" id="reg_email" placeholder="e.g. john@example.com">
         <label for="reg_password">Create a password</label>
         <input type="password" id="reg_password" placeholder="At least 4 characters">
         <button class="btn-primary" onclick="doRegister()" id="register_btn">Create Account</button>
         <button class="link-btn" onclick="showScreen('login')">Already have an account? Log in</button>
         <div class="error-box" id="register_error"></div>
+    </div>
+
+    <!-- ── Forgot password ──────────────────────────────────────────────────── -->
+    <div class="screen auth-screen" id="screen_forgot">
+        <div class="brand">
+            <div class="brand-badge">GS</div>
+            <h1>Reset Your Password</h1>
+            <p>Enter the email address on your rider account and we'll send you a reset link.</p>
+        </div>
+        <label for="forgot_email">Email</label>
+        <input type="text" id="forgot_email" placeholder="e.g. john@example.com">
+        <button class="btn-primary" onclick="doForgotPassword()" id="forgot_btn">Send Reset Link</button>
+        <button class="link-btn" onclick="showScreen('login')">Back to login</button>
+        <div class="error-box" id="forgot_error"></div>
+        <div class="info-box" id="forgot_success"></div>
     </div>
 
     <!-- ── Dashboard ────────────────────────────────────────────────────────── -->
