@@ -256,7 +256,7 @@
             <div class="topbar-actions"><button class="refresh-btn" onclick="loadDashboard()">⟳</button></div>
         </div>
         <div>
-            <div id="unlinked_notice" class="info-box" style="background:#3b2f0a; color:#fde68a; display:none;">
+            <div id="unlinked_notice" class="warn-box" style="display:none;">
                 Your account isn't linked to a driver profile yet — ask your dispatcher to confirm your phone number matches your driver record, then log out and back in.
             </div>
             <div class="kpi-grid">
