@@ -632,11 +632,11 @@
     function quickActionsHtml(phone, address) {
         var html = '<div class="quick-actions">';
         if (phone) {
-            html += '<a class="icon-btn call" href="' + callHref(phone) + '">📞 Call</a>';
-            html += '<a class="icon-btn whatsapp" href="' + whatsappHref(phone) + '" target="_blank" rel="noopener">💬 WhatsApp</a>';
+            html += '<a class="icon-btn call" href="' + callHref(phone) + '">' + Icons.phone + ' Call</a>';
+            html += '<a class="icon-btn whatsapp" href="' + whatsappHref(phone) + '" target="_blank" rel="noopener">' + Icons.chat + ' WhatsApp</a>';
         }
         if (address) {
-            html += '<a class="icon-btn" href="' + navigateHref(address) + '" target="_blank" rel="noopener">🧭 Navigate</a>';
+            html += '<a class="icon-btn" href="' + navigateHref(address) + '" target="_blank" rel="noopener">' + Icons.compass + ' Navigate</a>';
         }
         html += '</div>';
         return html;
