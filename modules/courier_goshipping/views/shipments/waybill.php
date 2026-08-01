@@ -516,6 +516,12 @@
                                style="background:#c62828; color:#fff; border-color:#c62828;">
                                 <i class="fa fa-refresh" style="margin-right:5px;"></i> Update Status
                             </a>
+                            <?php if (!empty($international_active)): ?>
+                            <a class="custom-button" href="#" data-toggle="modal" data-target="#update_international_status"
+                               style="background:#8e1c1c; color:#fff; border-color:#8e1c1c;">
+                                <i class="fa fa-plane" style="margin-right:5px;"></i> Update International Status
+                            </a>
+                            <?php endif; ?>
                             <?php if (is_admin() || staff_can('edit_shipments', 'courier-shipments')): ?>
                             <a class="custom-button" href="#" data-toggle="modal" data-target="#assign_agent_modal"
                                style="background:#0d47a1; color:#fff; border-color:#0d47a1;">
