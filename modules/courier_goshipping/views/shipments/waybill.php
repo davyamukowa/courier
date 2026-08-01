@@ -1473,6 +1473,41 @@ $('#wb_cpm_submit').on('click', function () {
     </div>
 </div>
 
+<?php if (!empty($international_active)): ?>
+<!-- ── Update International Status Modal ───────────────────────── -->
+<div class="modal fade" id="update_international_status" tabindex="-1" role="dialog" aria-labelledby="intlStatusModalLabel">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <?php echo form_open(admin_url('courier_goshipping/shipments/update_international_status/' . $shipment_details['shipment']->id)); ?>
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span>
+                </button>
+                <h4 class="modal-title" id="intlStatusModalLabel">Update International Status</h4>
+            </div>
+            <div class="modal-body">
+                <select id="international_status_id" name="status_id" class="custom-select">
+                    <?php foreach ($international_statuses as $status): ?>
+                        <option <?= $status->id == ($shipment_details['shipment']->international_status_id ?? null) ? "selected" : ""; ?>
+                                value="<?php echo $status->id; ?>">
+                            <?php echo $status->description; ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <p class="text-muted" style="margin-top:10px; font-size:12px;">
+                    Once this reaches "Arrived Go Shipping Warehouse", domestic status updates unlock and the
+                    shipment switches back to a local courier job.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal"><?php echo _l('close'); ?></button>
+                <button type="submit" class="btn btn-primary">Update International Status</button>
+            </div>
+            <?php echo form_close(); ?>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <script>
     document.addEventListener('DOMContentLoaded', function () {
 
