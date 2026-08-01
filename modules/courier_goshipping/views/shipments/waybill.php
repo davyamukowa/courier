@@ -475,6 +475,10 @@
                         <?php endif; ?>
                         <?php endif; ?>
 
+                        <a href="javascript:void(0);" onclick="openSendWaybillModal();" class="gs-action-btn">
+                            <i class="fa fa-envelope"></i> Send by Email
+                        </a>
+
                         <?php if (empty($salibay_delivery_link) && is_admin()): ?>
                         <div class="courier-nav-divider"></div>
 
