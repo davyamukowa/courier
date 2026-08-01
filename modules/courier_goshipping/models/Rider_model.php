@@ -231,6 +231,86 @@ class Rider_model extends App_Model
         return ['success' => true];
     }
 
+    /**
+     * Self-service — a rider adds/updates the email their "Forgot password"
+     * link goes to. No verification email required for this app's stakes;
+     * it's used purely as a reset-lookup key.
+     * @return array{success:bool, message?:string}
+     */
+    public function update_email($rider_id, $email)
+    {
+        $email = trim((string) $email);
+        if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return ['success' => false, 'message' => 'Please enter a valid email address.'];
+        }
+
+        $existing = $this->find_by_email($email);
+        if ($existing && (int) $existing->id !== (int) $rider_id) {
+            return ['success' => false, 'message' => 'This email is already in use by another account.'];
+        }
+
+        $this->db->where('id', $rider_id)->update($this->riders_table, ['email' => $email]);
+        return ['success' => true];
+    }
+
+    /**
+     * Starts a password reset — generates a one-time token (valid 30 min)
+     * for whichever rider owns $email. Returns null (not a failure array)
+     * when no match is found, so the caller can respond identically either
+     * way and avoid leaking which emails have an account.
+     * @return array{rider:object, token:string}|null
+     */
+    public function request_password_reset($email)
+    {
+        $rider = $this->find_by_email($email);
+        if (!$rider || $rider->status !== 'active') {
+            return null;
+        }
+
+        $token = bin2hex(random_bytes(32));
+        $this->db->insert(db_prefix() . '_courier_rider_password_resets', [
+            'rider_id'   => $rider->id,
+            'token_hash' => hash('sha256', $token),
+            'created_at' => date('Y-m-d H:i:s'),
+            'expires_at' => date('Y-m-d H:i:s', strtotime('+30 minutes')),
+        ]);
+
+        return ['rider' => $rider, 'token' => $token];
+    }
+
+    /**
+     * Completes a password reset started by request_password_reset().
+     * Revokes every existing login session (tokens_table) on success, since
+     * a password reset is exactly the moment to force re-auth everywhere.
+     * @return array{success:bool, message?:string}
+     */
+    public function complete_password_reset($token, $new_password)
+    {
+        if (empty($token)) {
+            return ['success' => false, 'message' => 'Invalid or expired reset link.'];
+        }
+        if (strlen((string) $new_password) < 4) {
+            return ['success' => false, 'message' => 'New password must be at least 4 characters.'];
+        }
+
+        $resets_table = db_prefix() . '_courier_rider_password_resets';
+        $reset = $this->db->where('token_hash', hash('sha256', $token))
+            ->where('used_at IS NULL')
+            ->where('expires_at >=', date('Y-m-d H:i:s'))
+            ->get($resets_table)->row();
+        if (!$reset) {
+            return ['success' => false, 'message' => 'Invalid or expired reset link. Please request a new one.'];
+        }
+
+        $this->db->where('id', $reset->rider_id)->update($this->riders_table, [
+            'password_hash' => app_hash_password($new_password),
+        ]);
+        $this->db->where('id', $reset->id)->update($resets_table, ['used_at' => date('Y-m-d H:i:s')]);
+        $this->db->where('rider_id', $reset->rider_id)->delete($this->tokens_table);
+
+        return ['success' => true];
+    }
+
     public function issue_token($rider_id)
     {
         $token = bin2hex(random_bytes(32));
