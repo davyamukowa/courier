@@ -202,6 +202,20 @@ if (!function_exists('courier_customer_facing_status_label')) {
     }
 }
 
+/**
+ * Builds the full sourcing-to-doorstep journey for a shipment, for the
+ * client portal tracker: the external sourcing pipeline's own progress tags
+ * (tbl_courier_sourcing_events, captured by
+ * Shopify_connector::record_sourcing_milestone_tags()) merged with Go
+ * Shipping's own shipment status history — one waybill throughout, both the
+ * domestic status_id track and the independent international_status_id
+ * track (see run_db_upgrades_v41()/v43()) log into the same
+ * _shipment_status_history table, so this just reads that one shipment's
+ * full history and doesn't need to resolve any linked/sibling shipment.
+ *
+ * Returns a flat array of ['label' => string, 'changed_at' => 'Y-m-d H:i:s']
+ * sorted newest-first, ready to hand straight to the tracker view.
+ */
 if (!function_exists('courier_get_shipment_journey')) {
     function courier_get_shipment_journey($shipment_id)
     {
