@@ -158,6 +158,25 @@ class Rider_api extends App_Controller
         $this->respond(['success' => true, 'rider' => $this->rider_public($this->rider)]);
     }
 
+    public function change_password()
+    {
+        if (!$this->require_rider()) {
+            return;
+        }
+
+        $result = $this->Rider_model->change_password(
+            $this->rider->id,
+            $this->input->post('current_password'),
+            $this->input->post('new_password')
+        );
+        if (!$result['success']) {
+            $this->fail($result['message']);
+            return;
+        }
+
+        $this->respond(['success' => true]);
+    }
+
     // ── Deliveries (shipments assigned to this rider — Salibay and any
     // other shipment an admin assigned directly via "Assign Agent/Staff") ──
     public function deliveries()
