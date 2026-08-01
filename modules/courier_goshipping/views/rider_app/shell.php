@@ -585,9 +585,10 @@
         document.getElementById('bottom_nav').classList.add('active');
         document.getElementById('profile_name').textContent = currentRider.name;
         document.getElementById('profile_phone').textContent = currentRider.phone;
-        document.getElementById('profile_link_status').textContent = currentRider.linked
-            ? '✅ Linked to your driver profile'
-            : '⚠️ Not linked yet — contact your dispatcher';
+        var linkStatusEl = document.getElementById('profile_link_status');
+        linkStatusEl.style.cssText = 'margin-top:6px; display:flex; align-items:center; gap:6px; color:' + (currentRider.linked ? '#1c8a4b' : '#8a5b12') + ';';
+        linkStatusEl.innerHTML = (currentRider.linked ? Icons.checkCircle : Icons.alert) +
+            '<span>' + (currentRider.linked ? 'Linked to your driver profile' : 'Not linked yet — contact your dispatcher') + '</span>';
         navTo('dashboard');
     }
 
