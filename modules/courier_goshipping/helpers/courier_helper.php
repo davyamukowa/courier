@@ -250,11 +250,17 @@ if (!function_exists('courier_resolve_shipment_recipient_email')) {
         $CI = &get_instance();
         $shipment = $CI->db->where('id', (int) $shipment_id)->get(db_prefix() . '_shipments')->row();
         if (!$shipment || empty($shipment->recipient_id)) {
+            log_message('error', "Salibay notification email skipped for shipment #{$shipment_id}: shipment or recipient_id missing.");
             return null;
         }
 
         $recipient = $CI->db->where('id', $shipment->recipient_id)->get(db_prefix() . '_shipment_recipients')->row();
         if (!$recipient || empty($recipient->email) || $recipient->email === 'no-reply@example.com' || !filter_var($recipient->email, FILTER_VALIDATE_EMAIL)) {
+            // Not an error — plenty of orders genuinely have no usable
+            // email (phone-first checkout) — but log it so a "why didn't
+            // my customer get an email" report can be told apart from an
+            // actual send failure.
+            log_message('error', "Salibay notification email skipped for shipment #{$shipment_id}: no usable recipient email (" . ($recipient->email ?? 'none') . ').');
             return null;
         }
 
@@ -263,6 +269,49 @@ if (!function_exists('courier_resolve_shipment_recipient_email')) {
             'recipient_name' => trim(($recipient->first_name ?? '') . ' ' . ($recipient->last_name ?? '')) ?: 'Customer',
             'email'          => $recipient->email,
         ];
+    }
+}
+
+/**
+ * Self-heals the two customer-facing Salibay notification email templates.
+ * `courier_goshipping.php::register_email_templates()` already creates
+ * these on every `admin_init` (idempotent — see `create_email_template()`),
+ * but that only runs when a staff member loads an /admin page. Since a
+ * plain-file-copy cron deploy (see CLAUDE.md's deployment pipeline notes)
+ * can land a brand-new template slug in between staff logins, and orders
+ * arrive via the public Shopify webhook where `admin_init` never fires at
+ * all, call this right before actually needing the templates so the very
+ * first notification after a deploy can't silently no-op on a missing row.
+ */
+if (!function_exists('courier_ensure_notification_email_templates')) {
+    function courier_ensure_notification_email_templates()
+    {
+        create_email_template(
+            'Your order is on its way — Waybill {waybill_number} - {company_name}',
+            '<p>Dear {recipient_name},</p>
+<p>Great news — your order has been picked up by {company_name} and a waybill has been created for it.</p>
+<p><strong>Waybill Number:</strong> {waybill_number}</p>
+<p><a href="{tracking_link}" style="display:inline-block;padding:12px 20px;background:#0a2a52;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold;">Track Your Order</a></p>
+<p>You can also copy and paste this link into your browser — it will automatically load your tracking details:<br>{tracking_link}</p>
+<p>We\'ll keep you updated as your order progresses.</p>
+<p>Best regards,<br>{company_name}</p>',
+            'courier',
+            'Salibay: Order Shipment Created',
+            'salibay_order_shipment_created'
+        );
+
+        create_email_template(
+            'Your order is on its way for delivery — Waybill {waybill_number} - {company_name}',
+            '<p>Dear {recipient_name},</p>
+<p>Your order is now out with our rider and on its way to you.</p>
+<p><strong>Waybill Number:</strong> {waybill_number}</p>
+<p><a href="{tracking_link}" style="display:inline-block;padding:12px 20px;background:#0a2a52;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold;">Track Your Order</a></p>
+<p>You can also copy and paste this link into your browser — it will automatically load your tracking details:<br>{tracking_link}</p>
+<p>Best regards,<br>{company_name}</p>',
+            'courier',
+            'Salibay: Shipment In Transit',
+            'salibay_shipment_in_transit'
+        );
     }
 }
 
