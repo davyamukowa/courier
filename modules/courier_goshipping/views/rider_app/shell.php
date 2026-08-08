@@ -225,7 +225,7 @@
     <!-- ── Login ────────────────────────────────────────────────────────────── -->
     <div class="screen active auth-screen" id="screen_login">
         <div class="brand">
-            <div class="brand-badge">GS</div>
+            <div class="brand-badge"><img src="<?php echo site_url('courier_goshipping/rider/icon/192'); ?>" alt="Go Shipping"></div>
             <h1>Go Shipping Rider</h1>
             <p>Manage your deliveries, pickups, and status updates on the go.</p>
         </div>
@@ -242,7 +242,7 @@
     <!-- ── Register ─────────────────────────────────────────────────────────── -->
     <div class="screen auth-screen" id="screen_register">
         <div class="brand">
-            <div class="brand-badge">GS</div>
+            <div class="brand-badge"><img src="<?php echo site_url('courier_goshipping/rider/icon/192'); ?>" alt="Go Shipping"></div>
             <h1>Create Rider Account</h1>
             <p>Use the same phone number your dispatcher has on file so your deliveries show up automatically.</p>
         </div>
@@ -264,7 +264,7 @@
     <!-- ── Forgot password ──────────────────────────────────────────────────── -->
     <div class="screen auth-screen" id="screen_forgot">
         <div class="brand">
-            <div class="brand-badge">GS</div>
+            <div class="brand-badge"><img src="<?php echo site_url('courier_goshipping/rider/icon/192'); ?>" alt="Go Shipping"></div>
             <h1>Reset Your Password</h1>
             <p>Enter the email address on your rider account and we'll send you a reset link.</p>
         </div>
