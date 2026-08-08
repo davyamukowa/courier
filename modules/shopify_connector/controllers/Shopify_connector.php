@@ -772,7 +772,14 @@ class Shopify_connector extends AdminController
         // STEP 2 — EXTRACT & NORMALISE ORDER DATA
         $shopify_order_number = $payload['order_number'] ?? '';
         $customer_name = $payload['shipping_address']['name'] ?? ($payload['billing_address']['name'] ?? 'Unknown');
-        $customer_email = $payload['email'] ?? '';
+        // Prefer the top-level `email`, but fall back to `contact_email` /
+        // `customer.email` — some order-creation paths (e.g. the Salibay
+        // sourcing app creating orders via the Admin API rather than the
+        // storefront checkout) populate the customer's email in one of
+        // these instead, and without it courier_send_shipment_created_email()
+        // silently skips the tracking-number email (never sends to the
+        // 'no-reply@example.com' placeholder — see courier_helper.php).
+        $customer_email = $payload['email'] ?? ($payload['contact_email'] ?? ($payload['customer']['email'] ?? ''));
         $customer_phone = $payload['phone'] ?? ($payload['shipping_address']['phone'] ?? '');
         $delivery_address = isset($payload['shipping_address']) ? json_encode($payload['shipping_address']) : null;
         $total_price = $payload['total_price'] ?? 0;
