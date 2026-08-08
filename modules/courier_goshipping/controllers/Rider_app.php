@@ -59,7 +59,7 @@ class Rider_app extends App_Controller
         // home-screen shortcut's icon, which the OS snapshots once at
         // install time and never re-fetches; that needs an uninstall +
         // reinstall on the device itself.
-        $cache_name = 'gs-rider-v3';
+        $cache_name = 'gs-rider-v2';
         echo <<<JS
 const CACHE_NAME = '{$cache_name}';
 
