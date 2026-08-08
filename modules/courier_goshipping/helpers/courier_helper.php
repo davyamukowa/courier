@@ -369,13 +369,17 @@ if (!function_exists('courier_send_shipment_in_transit_email')) {
         $waybill = $resolved['shipment']->waybill_number ?: $resolved['shipment']->tracking_id;
 
         try {
-            mail_template('Salibay_shipment_in_transit', 'courier_goshipping', $resolved['email'], [
+            courier_ensure_notification_email_templates();
+            $sent = mail_template('Salibay_shipment_in_transit', 'courier_goshipping', $resolved['email'], [
                 '{recipient_name}' => $resolved['recipient_name'],
                 '{waybill_number}' => $waybill,
                 '{tracking_link}'  => courier_customer_tracking_link($waybill),
                 '{company_name}'   => get_option('companyname'),
             ])->send();
-            return true;
+            if (!$sent) {
+                log_message('error', "Salibay shipment-in-transit email to {$resolved['email']} for shipment #{$shipment_id} was not sent (see activity log for the reason — missing/inactive template or SMTP failure).");
+            }
+            return (bool) $sent;
         } catch (\Throwable $e) {
             log_message('error', 'Salibay shipment-in-transit email crashed: ' . $e->getMessage());
             return false;
