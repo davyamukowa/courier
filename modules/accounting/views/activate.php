@@ -6,10 +6,15 @@
          <div class="col-md-12">
             <div class="panel_s">
                <div class="panel-body">
-               <h4>Accounting Module Activation</h4>
-               <hr class="hr-panel-heading">
-               <p>The accounting module now activates automatically in this development build.</p>
-               <p class="text-muted">Redirecting back to the module activation page...</p>
+			   <h4>Module License Activation</h4>
+			   <hr class="hr-panel-heading">
+			   <p>This module is ready to activate. No Envato username or license key is required.</p>
+			   <br><br>
+			   <?php echo form_open($submit_url, ['autocomplete'=>'off', 'id'=>'verify-form']); ?>
+                        <?php echo form_hidden('original_url', $original_url); ?> 
+                  		<?php echo form_hidden('module_name', $module_name); ?> 
+                  		<button id="submit" type="submit" class="btn btn-info pull-right"><?php echo _l('activate'); ?></button>
+                  	<?php echo form_close(); ?>
                </div>
             </div>
          </div>
@@ -20,7 +25,24 @@
 </div>
 <?php init_tail(); ?>
 <script type="text/javascript">
-   setTimeout(function() {
-      window.location.href = <?php echo json_encode(isset($original_url) ? $original_url : admin_url('modules')); ?>;
-   }, 800);
+   $(function() {
+      manage_verify_form(document.getElementById('verify-form'));
+   });
+
+   function manage_verify_form(form) {
+      var data = $(form).serialize();
+      var url = form.action;
+      $("#submit").prop('disabled', true).prepend('<i class="fa fa-spinner fa-pulse"></i> ');
+      $.post(url, data).done(function(response) {
+         var response = $.parseJSON(response);
+         if(!response.status){
+            alert_float("danger",response.message);
+         }
+         if(response.status){
+            alert_float("success","Activating....");
+            window.location.href = response.original_url;
+         }
+         $("#submit").prop('disabled', false).find('i').remove();
+      });
+   }
 </script>

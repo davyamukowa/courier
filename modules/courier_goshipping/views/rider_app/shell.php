@@ -54,10 +54,12 @@
         .auth-screen { padding-top: 8vh; }
         .brand { text-align: center; margin: 0 0 30px; }
         .brand-badge {
-            width: 56px; height: 56px; border-radius: 14px; margin: 0 auto 16px;
-            background: var(--navy); display: flex; align-items: center; justify-content: center;
-            font-size: 20px; font-weight: 800; color: #fff; letter-spacing: 0.5px;
+            width: 64px; height: 64px; border-radius: 16px; margin: 0 auto 16px;
+            background: var(--surface); display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 1px 4px rgba(10, 42, 82, 0.14);
+            overflow: hidden;
         }
+        .brand-badge img { width: 100%; height: 100%; object-fit: contain; display: block; }
         .brand h1 { font-size: 20px; color: var(--ink); font-weight: 700; }
         .brand p { color: var(--ink-soft); font-size: 13px; margin-top: 6px; line-height: 1.5; }
 

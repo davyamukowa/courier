@@ -185,6 +185,46 @@ if (!$CI->db->field_exists('default_account' ,db_prefix() . 'acc_accounts')) {
     ADD COLUMN `active` INT(11) NOT NULL DEFAULT 1;');
 }
 
+if (!$CI->db->field_exists('key_name' ,db_prefix() . 'acc_accounts')) {
+  $CI->db->query('ALTER TABLE `' . db_prefix() . 'acc_accounts`
+    ADD COLUMN `key_name` VARCHAR(255) NULL AFTER `name`;');
+}
+
+if (!$CI->db->field_exists('number' ,db_prefix() . 'acc_accounts')) {
+  $CI->db->query('ALTER TABLE `' . db_prefix() . 'acc_accounts`
+    ADD COLUMN `number` VARCHAR(45) NULL AFTER `key_name`;');
+}
+
+if (!$CI->db->field_exists('parent_account' ,db_prefix() . 'acc_accounts')) {
+  $CI->db->query('ALTER TABLE `' . db_prefix() . 'acc_accounts`
+    ADD COLUMN `parent_account` INT(11) NULL AFTER `number`;');
+}
+
+if (!$CI->db->field_exists('account_type_id' ,db_prefix() . 'acc_accounts')) {
+  $CI->db->query('ALTER TABLE `' . db_prefix() . 'acc_accounts`
+    ADD COLUMN `account_type_id` INT(11) NOT NULL DEFAULT 0 AFTER `parent_account`;');
+}
+
+if (!$CI->db->field_exists('account_detail_type_id' ,db_prefix() . 'acc_accounts')) {
+  $CI->db->query('ALTER TABLE `' . db_prefix() . 'acc_accounts`
+    ADD COLUMN `account_detail_type_id` INT(11) NOT NULL DEFAULT 0 AFTER `account_type_id`;');
+}
+
+if (!$CI->db->field_exists('balance' ,db_prefix() . 'acc_accounts')) {
+  $CI->db->query('ALTER TABLE `' . db_prefix() . 'acc_accounts`
+    ADD COLUMN `balance` DECIMAL(15,2) NULL AFTER `account_detail_type_id`;');
+}
+
+if (!$CI->db->field_exists('balance_as_of' ,db_prefix() . 'acc_accounts')) {
+  $CI->db->query('ALTER TABLE `' . db_prefix() . 'acc_accounts`
+    ADD COLUMN `balance_as_of` DATE NULL AFTER `balance`;');
+}
+
+if (!$CI->db->field_exists('description' ,db_prefix() . 'acc_accounts')) {
+  $CI->db->query('ALTER TABLE `' . db_prefix() . 'acc_accounts`
+    ADD COLUMN `description` TEXT NULL AFTER `balance_as_of`;');
+}
+
 if (!$CI->db->field_exists('item' ,db_prefix() . 'acc_account_history')) {
   $CI->db->query('ALTER TABLE `' . db_prefix() . 'acc_account_history`
     ADD COLUMN `item` INT(11) NULL,

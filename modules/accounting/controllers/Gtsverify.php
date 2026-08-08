@@ -2,9 +2,10 @@
 if (!defined('BASEPATH')) {
     exit('No direct script access allowed');
 }
+require_once __DIR__ .'/../libraries/gtsslib.php';
 
 /**
- * Development activation stub.
+ * GTSSolution verify
  */
 class Gtsverify extends AdminController{
     public function __construct(){
@@ -26,8 +27,9 @@ class Gtsverify extends AdminController{
     public function activate(){
         $res = array();
         $res['status'] = true;
-        $res['message'] = 'Accounting module activated successfully.';
-        $res['original_url']= $this->input->post('original_url') ?: admin_url('modules');
+        $res['message'] = 'Module activated successfully.';
+        $res['original_url'] = $this->input->post('original_url');
+
         echo json_encode($res);
     }    
 }
