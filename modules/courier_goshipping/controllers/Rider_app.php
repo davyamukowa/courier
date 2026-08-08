@@ -52,7 +52,14 @@ class Rider_app extends App_Controller
         header('Content-Type: application/javascript');
         header('Service-Worker-Allowed: /');
 
-        $cache_name = 'gs-rider-v1';
+        // Bumped whenever app-shell assets (icons, manifest colors, etc.)
+        // change, so already-visited browsers purge their old cached copy
+        // instead of serving a stale icon/manifest indefinitely — see
+        // activate()'s cache cleanup below. Does NOT fix an already-installed
+        // home-screen shortcut's icon, which the OS snapshots once at
+        // install time and never re-fetches; that needs an uninstall +
+        // reinstall on the device itself.
+        $cache_name = 'gs-rider-v3';
         echo <<<JS
 const CACHE_NAME = '{$cache_name}';
 
