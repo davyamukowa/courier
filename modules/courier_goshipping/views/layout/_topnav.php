@@ -229,6 +229,7 @@ $cgs_can_view_reporting_menu = $cgs_can_view_shipments || $cgs_can_view_manifest
                     <a href="<?php echo admin_url('courier_goshipping/fulfilment/settings'); ?>" class="cgs-mega-menu__setup-link"><i class="fa fa-cog cgs-icon-swatch cgs-icon-swatch--purple"></i><span>Connector Settings</span></a>
                     <a href="<?php echo admin_url('courier_goshipping/fulfilment/settings#webhooks'); ?>" class="cgs-mega-menu__setup-link"><i class="fa fa-link cgs-icon-swatch cgs-icon-swatch--teal"></i><span>Webhooks</span></a>
                     <a href="<?php echo admin_url('courier_goshipping/fulfilment/settings#advanced_settings'); ?>" class="cgs-mega-menu__setup-link"><i class="fa fa-sliders cgs-icon-swatch cgs-icon-swatch--orange"></i><span>Advanced Settings</span></a>
+                    <a href="<?php echo site_url('courier_goshipping/rider'); ?>" target="_blank" class="cgs-mega-menu__setup-link"><i class="fa fa-mobile cgs-icon-swatch cgs-icon-swatch--emerald"></i><span>Rider App Link</span></a>
                 </div>
             </div>
         </div>

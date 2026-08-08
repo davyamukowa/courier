@@ -1416,7 +1416,16 @@ class Shopify_connector extends AdminController
         $this->load->helper('courier_goshipping/courier');
         $branch_id = courier_resolve_branch_from_route_tag($order->salibay_route_tag ?? null);
         if (!$branch_id) {
-            $branch_id = $mapping_branch_supported ? $this->resolve_order_branch_id($items) : courier_get_fallback_branch_id();
+            $branch_id = $mapping_branch_supported ? $this->resolve_order_branch_id($items) : null;
+        }
+        // Neither the route tag nor the SKU mapping could pin down a
+        // specific branch. An order already tagged "Salibay Global"/"Mixed"
+        // is known to be internationally sourced regardless — falling back
+        // to the plain org-wide default (Head Office) would print Head
+        // Office as the sender on every document even though the order was
+        // never fulfilled locally, so prefer an international branch here.
+        if (!$branch_id) {
+            $branch_id = courier_get_fallback_branch_id($is_international_sourced);
         }
 
         // 5. Build Senders Data — branch-aware, so a China/Dubai-routed
@@ -2032,11 +2041,16 @@ class Shopify_connector extends AdminController
      * Model A line items' shopify_product_mappings.courier_branch_id (majority
      * vote), falling back to the org-wide default branch when unresolved.
      */
+    /**
+     * @return int|null null when unresolved — callers apply the
+     *   classification-aware org-wide fallback themselves (see
+     *   create_courier_shipment()), not this function.
+     */
     private function resolve_order_branch_id($items)
     {
         $shopify_mappings_table = db_prefix() . 'shopify_product_mappings';
         if (!$this->db->table_exists($shopify_mappings_table) || !$this->db->field_exists('courier_branch_id', $shopify_mappings_table)) {
-            return courier_get_fallback_branch_id();
+            return null;
         }
 
         $skus = array_filter(array_map(function ($item) {
@@ -2059,7 +2073,7 @@ class Shopify_connector extends AdminController
             }
         }
 
-        return courier_get_fallback_branch_id();
+        return null;
     }
 
     /**

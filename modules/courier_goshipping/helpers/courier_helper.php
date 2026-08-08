@@ -121,11 +121,33 @@ if (!function_exists('courier_get_session_branch_id')) {
 /**
  * The org-wide fallback branch (flagged is_default=1 in tbl_courier_branches)
  * used to route orders/shipments when no branch could otherwise be resolved.
+ *
+ * @param bool $prefer_international When true (an order already tagged
+ *   "Salibay Global"/"Mixed" but with no route tag/SKU mapping match — see
+ *   Shopify_connector::create_courier_shipment()), an active international
+ *   branch is preferred over the plain org-wide default. Without this, such
+ *   an order silently fell back to the local Head Office branch, so every
+ *   document (waybill/invoice/manifest) printed Head Office as the sender
+ *   even though the order was already known to be sourced from abroad.
  */
 if (!function_exists('courier_get_fallback_branch_id')) {
-    function courier_get_fallback_branch_id()
+    function courier_get_fallback_branch_id($prefer_international = false)
     {
         $CI = &get_instance();
+
+        if ($prefer_international) {
+            $international = $CI->db->where('branch_type', 'international')
+                ->where('is_active', 1)
+                ->order_by('is_default', 'DESC')
+                ->order_by('id', 'ASC')
+                ->limit(1)
+                ->get(db_prefix() . '_courier_branches')
+                ->row();
+            if ($international) {
+                return (int) $international->id;
+            }
+        }
+
         $row = $CI->db->where('is_default', 1)
             ->where('is_active', 1)
             ->limit(1)

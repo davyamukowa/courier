@@ -790,6 +790,45 @@
         });
     }
 
+    // Camera photos are commonly 3-8MB, which (once base64-inflated ~33%)
+    // blows past PHP's post_max_size and can exhaust memory_limit on the
+    // server, crashing the request before it can return JSON. Downscaling
+    // and re-compressing to a JPEG on-device first keeps uploads to a few
+    // hundred KB regardless of the source camera resolution.
+    function compressImageFile(file, maxDimension, quality) {
+        return new Promise(function (resolve, reject) {
+            var img = new Image();
+            var objectUrl = URL.createObjectURL(file);
+            img.onload = function () {
+                URL.revokeObjectURL(objectUrl);
+                var width = img.naturalWidth;
+                var height = img.naturalHeight;
+                if (width > height && width > maxDimension) {
+                    height = Math.round(height * (maxDimension / width));
+                    width = maxDimension;
+                } else if (height > maxDimension) {
+                    width = Math.round(width * (maxDimension / height));
+                    height = maxDimension;
+                }
+                var canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                var ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                try {
+                    resolve(canvas.toDataURL('image/jpeg', quality));
+                } catch (e) {
+                    reject(e);
+                }
+            };
+            img.onerror = function () {
+                URL.revokeObjectURL(objectUrl);
+                reject(new Error('Could not read the selected image.'));
+            };
+            img.src = objectUrl;
+        });
+    }
+
     function onProfilePhotoSelected(event) {
         var file = event.target.files[0];
         if (!file) { return; }
@@ -797,23 +836,30 @@
         var errBox = document.getElementById('profile_photo_error');
         errBox.style.display = 'none';
 
-        var reader = new FileReader();
-        reader.onload = function () {
-            post(API.updatePhoto, { token: token, photo: reader.result }).then(function (res) {
-                if (!res.data.success) {
-                    errBox.textContent = res.data.message || 'Could not upload photo.';
-                    errBox.style.display = 'block';
-                    return;
-                }
-                currentRider = res.data.rider;
-                renderProfile();
-                toast('Profile photo updated.', 'success');
-            }).catch(function () {
-                errBox.textContent = 'Network error — please check your connection and try again.';
+        if (!/^image\//.test(file.type)) {
+            errBox.textContent = 'Please choose an image file.';
+            errBox.style.display = 'block';
+            event.target.value = '';
+            return;
+        }
+
+        compressImageFile(file, 1280, 0.7).then(function (dataUrl) {
+            return post(API.updatePhoto, { token: token, photo: dataUrl });
+        }).then(function (res) {
+            if (!res.data.success) {
+                errBox.textContent = res.data.message || 'Could not upload photo.';
                 errBox.style.display = 'block';
-            });
-        };
-        reader.readAsDataURL(file);
+                return;
+            }
+            currentRider = res.data.rider;
+            renderProfile();
+            toast('Profile photo updated.', 'success');
+        }).catch(function () {
+            errBox.textContent = 'Network error — please check your connection and try again.';
+            errBox.style.display = 'block';
+        }).finally(function () {
+            event.target.value = '';
+        });
     }
 
     function saveProfileEmail() {

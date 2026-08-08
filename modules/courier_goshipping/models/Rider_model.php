@@ -176,13 +176,21 @@ class Rider_model extends App_Model
 
         try {
             $this->load->model('staff_model');
+            // Prefer the rider's own email (the one they typed at signup,
+            // used for their password-reset link) so the linked staff
+            // record in Setup > Staff shows a recognizable address instead
+            // of a synthetic one. Login stays blocked regardless via
+            // `active = 0` above, so there's no reset-target risk either
+            // way. Only fall back to the synthetic/unreachable address when
+            // the rider didn't provide an email (it's optional at signup).
+            $staff_email = !empty($rider->email) ? $rider->email : ('rider-' . $rider->id . '-' . $rider->phone . '@riders.invalid');
+            if (!empty($rider->email) && $this->db->where('email', $staff_email)->get(db_prefix() . 'staff')->row()) {
+                $staff_email = 'rider-' . $rider->id . '-' . $rider->phone . '@riders.invalid';
+            }
             $staff_id = $this->staff_model->add([
                 'firstname'   => $firstname,
                 'lastname'    => $lastname,
-                // Synthetic and unreachable on purpose — this staff row is
-                // never meant to be logged into; a real address would just
-                // be a dangling password-reset target.
-                'email'       => 'rider-' . $rider->id . '-' . $rider->phone . '@riders.invalid',
+                'email'       => $staff_email,
                 'phonenumber' => $rider->phone,
                 'password'    => bin2hex(random_bytes(32)),
                 'role'        => $role->roleid,

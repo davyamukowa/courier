@@ -32,8 +32,14 @@ class Rider_app extends App_Controller
             'scope'            => site_url('courier_goshipping/rider'),
             'display'          => 'standalone',
             'orientation'      => 'portrait',
-            'background_color' => '#0d1b2a',
-            'theme_color'      => '#0d47a1',
+            // Matches the app shell's actual body background/meta theme-color
+            // (shell.php's --bg / <meta name="theme-color">) — these used to
+            // be a dark navy/blue that had nothing to do with the app's real
+            // (light) chrome, so the OS-generated splash screen (icon +
+            // background_color, shown the instant the icon is tapped, before
+            // any of our HTML/CSS loads) flashed dark then snapped to light.
+            'background_color' => '#f4f6f9',
+            'theme_color'      => '#f4f6f9',
             'icons'            => [
                 ['src' => site_url('courier_goshipping/rider/icon/192'), 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any maskable'],
                 ['src' => site_url('courier_goshipping/rider/icon/512'), 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any maskable'],

@@ -251,28 +251,46 @@ class Rider_api extends App_Controller
 
         $photo = $this->input->post('photo');
         if (empty($photo)) {
-            $this->fail('No photo was provided.');
+            // Also covers the case where the upload exceeded post_max_size:
+            // PHP silently empties $_POST before the request ever reaches
+            // us, so this looks identical to "no photo selected" from here.
+            $this->fail('No photo was provided. If your photo is very large, please try again — it will be resized automatically.');
             return;
         }
 
-        $photo_data = base64_decode(str_replace(' ', '+', str_replace(['data:image/jpeg;base64,', 'data:image/png;base64,'], '', $photo)));
-        if ($photo_data === false) {
-            $this->fail('Could not read the photo. Please try again.');
+        // Belt-and-braces cap in addition to the client-side downscaling —
+        // ~8MB of base64 (~6MB decoded), well under typical PHP memory
+        // limits, so a stray oversized upload fails cleanly instead of
+        // exhausting memory_limit mid-request.
+        if (strlen($photo) > 8 * 1024 * 1024) {
+            $this->fail('That photo is too large. Please try again with a smaller image.');
             return;
         }
 
-        $photos_dir = FCPATH . 'modules/courier_goshipping/assets/riders/photos/';
-        if (!is_dir($photos_dir)) {
-            @mkdir($photos_dir, 0755, true);
-        }
-        $file_name = 'rider_' . $this->rider->id . '_' . uniqid() . '.jpg';
-        if (!file_put_contents($photos_dir . $file_name, $photo_data)) {
-            $this->fail('Could not save the photo. Please try again.');
-            return;
-        }
+        try {
+            $photo_data = base64_decode(str_replace(' ', '+', str_replace(['data:image/jpeg;base64,', 'data:image/png;base64,'], '', $photo)), true);
+            if ($photo_data === false || $photo_data === '') {
+                $this->fail('Could not read the photo. Please try again.');
+                return;
+            }
 
-        $this->Rider_model->update_photo($this->rider->id, 'assets/riders/photos/' . $file_name);
-        $this->respond(['success' => true, 'rider' => $this->rider_public($this->Rider_model->find($this->rider->id))]);
+            $photos_dir = FCPATH . 'modules/courier_goshipping/assets/riders/photos/';
+            if (!is_dir($photos_dir) && !@mkdir($photos_dir, 0755, true) && !is_dir($photos_dir)) {
+                $this->fail('Could not save the photo. Please try again.');
+                return;
+            }
+            $file_name = 'rider_' . $this->rider->id . '_' . uniqid() . '.jpg';
+            if (!file_put_contents($photos_dir . $file_name, $photo_data)) {
+                $this->fail('Could not save the photo. Please try again.');
+                return;
+            }
+
+            $this->Rider_model->update_photo($this->rider->id, 'assets/riders/photos/' . $file_name);
+            $this->respond(['success' => true, 'rider' => $this->rider_public($this->Rider_model->find($this->rider->id))]);
+        } catch (\Throwable $e) {
+            log_message('error', 'Rider photo upload crashed: ' . $e->getMessage());
+            $this->fail('Something went wrong saving your photo. Please try again.', 500);
+        }
     }
 
     // ── Password reset via emailed link (public — no token required) ───────
