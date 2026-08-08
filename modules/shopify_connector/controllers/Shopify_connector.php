@@ -1231,7 +1231,7 @@ class Shopify_connector extends AdminController
         else if (in_array('reference_no', $fields)) $insert_data['reference_no'] = 'SHF-' . ($payload['id'] ?? '');
 
         if (in_array('client_name', $fields)) $insert_data['client_name'] = $payload['shipping_address']['name'] ?? ($payload['billing_address']['name'] ?? 'Unknown');
-        if (in_array('client_email', $fields)) $insert_data['client_email'] = $payload['email'] ?? '';
+        if (in_array('client_email', $fields)) $insert_data['client_email'] = $payload['email'] ?? ($payload['contact_email'] ?? ($payload['customer']['email'] ?? ''));
         if (in_array('client_phone', $fields)) $insert_data['client_phone'] = $payload['phone'] ?? ($payload['shipping_address']['phone'] ?? '');
         if (in_array('status', $fields)) $insert_data['status'] = 'confirmed'; // or '1' depending on system
         if (in_array('date', $fields)) $insert_data['date'] = date('Y-m-d');
