@@ -684,23 +684,10 @@ class Shipments extends AdminController
 
     private function validateCommercialValueItems()
     {
-
-        if ($this->input->post('hasCommercialInvoiceAttachment') !== null) {
-            // Attaching a commercial invoice file is optional — no validation rule
-            // needed. If a file was chosen but fails to save, the upload step in
-            // store() reports that via a flash alert instead of blocking the form.
-        } else {
-
-            $itemCount = count(set_value('commodity_quantity', []));
-
-            for ($i = 0; $i < $itemCount; $i++) {
-                $this->form_validation->set_rules("commodity_quantity[$i]", 'Quantity', 'required|numeric');
-                $this->form_validation->set_rules("commodity_description[$i]", 'Item Description', 'required');
-                $this->form_validation->set_rules("declared_value[$i]", 'Declared Value', 'required|numeric');
-            }
-
-        }
-
+        // Commercial invoice information (whether via file attachment or the
+        // itemized commodity table) is entirely optional — no rules are set
+        // for either mode. store_shipment_data() skips blank/incomplete rows
+        // when saving, so partially-filled or empty tables are safe to submit.
     }
 
     private function validateShipment()
@@ -1216,13 +1203,22 @@ class Shipments extends AdminController
         }
 
         // ── Commercial invoice items ─────────────────────────────────────────
+        // Optional section: skip rows the staff member left blank/incomplete
+        // instead of requiring every field to be filled.
         if (is_array($commercial_value_data) && !empty($commercial_value_data['commodity_quantity'])) {
             foreach ($commercial_value_data['commodity_quantity'] as $i => $quantity) {
+                $description = $commercial_value_data['commodity_description'][$i] ?? '';
+                $declared_value = $commercial_value_data['declared_value'][$i] ?? '';
+
+                if ($quantity === '' || $description === '' || $declared_value === '') {
+                    continue;
+                }
+
                 $this->CommercialValueItems_model->add([
                     'shipment_id'    => $shipment_id,
                     'quantity'       => $quantity,
-                    'description'    => $commercial_value_data['commodity_description'][$i],
-                    'declared_value' => $commercial_value_data['declared_value'][$i],
+                    'description'    => $description,
+                    'declared_value' => $declared_value,
                 ]);
             }
         } elseif (!empty($_FILES['commercial_invoice_file']['name']) && $_FILES['commercial_invoice_file']['error'] === UPLOAD_ERR_OK) {
