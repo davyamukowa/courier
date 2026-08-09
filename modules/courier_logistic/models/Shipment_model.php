@@ -152,28 +152,12 @@ class Shipment_model extends App_Model
 
     public function get_shipments_details($staff_id = null, $type = null, $mode = null, $mode_type = null, $branch_ids = null)
     {
-        // Fetch the shipment details, plus recipient/sender data, in a single
-        // query via LEFT JOINs instead of firing 2 extra queries per row.
-        $this->db->select(
-            's.id,(SELECT p.id FROM ' . db_prefix() . '_pickups p WHERE p.shipment_id = s.id LIMIT 1) AS pickup_id,'
-            . ' s.tracking_id, s.waybill_number, s.shipping_mode, s.invoice_id, s.status_id, s.staff_id,'
-            . ' s.commercial_invoice_url, s.created_at, ss.status_name, ss.description as status_description,'
-            . ' s.sender_id, s.company_id, s.recipient_id, s.recipient_company_id, s.is_portal_request, s.quoted_amount,'
-            . ' st.firstname as assigned_firstname, st.lastname as assigned_lastname, ag.id as assigned_agent_id,'
-            . ' r.first_name as r_first_name, r.address as r_address, r.zipcode as r_zipcode, r.last_name as r_last_name, r.phone_number as r_phone_number, r.email as r_email,'
-            . ' rc.recipient_contact_person_name, rc.recipient_contact_country_id, rc.recipient_contact_state_id, rc.recipient_company_name, rc.recipient_contact_address_type, rc.recipient_contact_address, rc.recipient_contact_zipcode, rc.recipient_contact_person_phone_number, rc.recipient_contact_person_email,'
-            . ' sd.first_name as sd_first_name, sd.address as sd_address, sd.zipcode as sd_zipcode, sd.last_name as sd_last_name, sd.phone_number as sd_phone_number, sd.email as sd_email,'
-            . ' sc.contact_person_name, sc.contact_country_id, sc.contact_state_id, sc.company_name, sc.contact_address_type, sc.contact_address, sc.contact_zipcode, sc.contact_person_phone_number, sc.contact_person_email, sc.kra_pin',
-            FALSE
-        );
+        // Fetch the shipment details
+        $this->db->select('s.id,(SELECT p.id FROM ' . db_prefix() . '_pickups p WHERE p.shipment_id = s.id LIMIT 1) AS pickup_id, s.tracking_id, s.waybill_number, s.shipping_mode, s.invoice_id, s.status_id, s.staff_id, s.commercial_invoice_url, s.created_at, ss.status_name, ss.description as status_description, s.sender_id, s.company_id, s.recipient_id, s.recipient_company_id, s.is_portal_request, s.quoted_amount, st.firstname as assigned_firstname, st.lastname as assigned_lastname, ag.id as assigned_agent_id', FALSE);
         $this->db->from(db_prefix() . '_shipments s');
         $this->db->join(db_prefix() . '_shipment_statuses ss', 'ss.id = s.status_id', 'left');
         $this->db->join(db_prefix() . 'staff st', 'st.staffid = s.staff_id', 'left');
         $this->db->join(db_prefix() . '_agents ag', 'ag.staff_id = s.staff_id', 'left');
-        $this->db->join(db_prefix() . '_shipment_recipients r', 'r.id = s.recipient_id', 'left');
-        $this->db->join(db_prefix() . '_recipient_companies rc', 'rc.id = s.recipient_company_id', 'left');
-        $this->db->join(db_prefix() . '_shipment_senders sd', 'sd.id = s.sender_id', 'left');
-        $this->db->join(db_prefix() . '_shipment_companies sc', 'sc.id = s.company_id', 'left');
         $this->db->order_by('s.created_at', 'DESC');
 
         if (!empty($staff_id)) {
@@ -206,52 +190,36 @@ class Shipment_model extends App_Model
         $shipment_details = [];
 
         foreach ($shipments as $shipment) {
-            if (!empty($shipment->recipient_id)) {
-                $recipient = (object) [
-                    'first_name' => $shipment->r_first_name,
-                    'address' => $shipment->r_address,
-                    'zipcode' => $shipment->r_zipcode,
-                    'last_name' => $shipment->r_last_name,
-                    'phone_number' => $shipment->r_phone_number,
-                    'email' => $shipment->r_email,
-                ];
-            } else {
-                $recipient = (object) [
-                    'recipient_contact_person_name' => $shipment->recipient_contact_person_name,
-                    'recipient_contact_country_id' => $shipment->recipient_contact_country_id,
-                    'recipient_contact_state_id' => $shipment->recipient_contact_state_id,
-                    'recipient_company_name' => $shipment->recipient_company_name,
-                    'recipient_contact_address_type' => $shipment->recipient_contact_address_type,
-                    'recipient_contact_address' => $shipment->recipient_contact_address,
-                    'recipient_contact_zipcode' => $shipment->recipient_contact_zipcode,
-                    'recipient_contact_person_phone_number' => $shipment->recipient_contact_person_phone_number,
-                    'recipient_contact_person_email' => $shipment->recipient_contact_person_email,
-                ];
+            // Fetch the recipient details
+
+            if (!empty($shipment->recipient_id)){
+                $this->db->select('r.first_name,r.address,r.zipcode, r.last_name, r.phone_number, r.email');
+                $this->db->from(db_prefix() . '_shipment_recipients r');
+                $this->db->where('r.id', $shipment->recipient_id);
+
+            } else{
+                $this->db->select('rc.recipient_contact_person_name, rc.recipient_contact_country_id, rc.recipient_contact_state_id, rc.recipient_company_name, rc.recipient_contact_address_type,rc.recipient_contact_address,rc.recipient_contact_zipcode, rc.recipient_contact_person_phone_number, rc.recipient_contact_person_email');
+                $this->db->from(db_prefix() . '_recipient_companies rc');
+                $this->db->where('rc.id', $shipment->recipient_company_id);
             }
 
+            $recipient_query = $this->db->get();
+            $recipient = $recipient_query->row();
+
+            // Fetch the sender details
             if (!empty($shipment->sender_id)) {
-                $sender = (object) [
-                    'first_name' => $shipment->sd_first_name,
-                    'address' => $shipment->sd_address,
-                    'zipcode' => $shipment->sd_zipcode,
-                    'last_name' => $shipment->sd_last_name,
-                    'phone_number' => $shipment->sd_phone_number,
-                    'email' => $shipment->sd_email,
-                ];
+                $this->db->select('s.first_name,s.address,s.zipcode,  s.last_name, s.phone_number, s.email');
+                $this->db->from(db_prefix() . '_shipment_senders s');
+                $this->db->where('s.id', $shipment->sender_id);
             } else {
-                $sender = (object) [
-                    'contact_person_name' => $shipment->contact_person_name,
-                    'contact_country_id' => $shipment->contact_country_id,
-                    'contact_state_id' => $shipment->contact_state_id,
-                    'company_name' => $shipment->company_name,
-                    'contact_address_type' => $shipment->contact_address_type,
-                    'contact_address' => $shipment->contact_address,
-                    'contact_zipcode' => $shipment->contact_zipcode,
-                    'contact_person_phone_number' => $shipment->contact_person_phone_number,
-                    'contact_person_email' => $shipment->contact_person_email,
-                    'kra_pin' => $shipment->kra_pin,
-                ];
+                $this->db->select('sc.contact_person_name, sc.contact_country_id, sc.contact_state_id, sc.company_name, sc.contact_address_type,sc.contact_address,sc.contact_zipcode, sc.contact_person_phone_number, sc.contact_person_email, sc.kra_pin');
+                $this->db->from(db_prefix() . '_shipment_companies sc');
+                $this->db->where('sc.id', $shipment->company_id);
             }
+
+            $sender_query = $this->db->get();
+            $sender = $sender_query->row();
+
 
             $shipment_details[] = [
                 'shipment' => $shipment,
@@ -687,26 +655,12 @@ class Shipment_model extends App_Model
 
     public function filter_shipment_details($staff_id = null, $status_id = null, $filter_staff_id = null, $startDate = null, $endDate = null, $type = null, $mode = null, $mode_type = null, $branch_ids = null)
     {
-        // Fetch the shipment details, plus recipient/sender data, in a single
-        // query via LEFT JOINs instead of firing 3 extra queries per row.
-        $this->db->select(
-            's.id, s.tracking_id, s.waybill_number, s.shipping_mode, s.invoice_id, s.status_id, s.staff_id, s.created_at,'
-            . ' s.fcl_shipment, ss.status_name, ss.description as status_description, s.sender_id, s.company_id,'
-            . ' s.recipient_id, s.recipient_company_id, st.firstname as assigned_firstname, st.lastname as assigned_lastname, ag.id as assigned_agent_id,'
-            . ' r.first_name as r_first_name, r.address as r_address, r.zipcode as r_zipcode, r.country_id as r_country_id, r.last_name as r_last_name, r.phone_number as r_phone_number, r.address_type as r_address_type, r.email as r_email,'
-            . ' rc.recipient_company_name, rc.recipient_contact_person_name, rc.recipient_contact_country_id, rc.recipient_contact_state_id, rc.recipient_contact_address_type, rc.recipient_contact_address, rc.recipient_contact_zipcode, rc.recipient_contact_person_phone_number, rc.recipient_contact_person_email,'
-            . ' sd.first_name as sd_first_name, sd.address as sd_address, sd.zipcode as sd_zipcode, sd.last_name as sd_last_name, sd.phone_number as sd_phone_number, sd.email as sd_email,'
-            . ' sc.contact_person_name, sc.contact_country_id, sc.contact_state_id, sc.company_name, sc.contact_address_type, sc.contact_address, sc.contact_zipcode, sc.contact_person_phone_number, sc.contact_person_email, sc.kra_pin',
-            FALSE
-        );
+        // Fetch the shipment details
+        $this->db->select('s.id, s.tracking_id, s.waybill_number, s.shipping_mode, s.invoice_id, s.status_id, s.staff_id, s.created_at, s.fcl_shipment, ss.status_name, ss.description as status_description, s.sender_id, s.company_id, s.recipient_id, s.recipient_company_id, st.firstname as assigned_firstname, st.lastname as assigned_lastname, ag.id as assigned_agent_id', FALSE);
         $this->db->from(db_prefix() . '_shipments s');
         $this->db->join(db_prefix() . '_shipment_statuses ss', 'ss.id = s.status_id', 'left');
         $this->db->join(db_prefix() . 'staff st', 'st.staffid = s.staff_id', 'left');
         $this->db->join(db_prefix() . '_agents ag', 'ag.staff_id = s.staff_id', 'left');
-        $this->db->join(db_prefix() . '_shipment_recipients r', 'r.id = s.recipient_id', 'left');
-        $this->db->join(db_prefix() . '_recipient_companies rc', 'rc.id = s.recipient_company_id', 'left');
-        $this->db->join(db_prefix() . '_shipment_senders sd', 'sd.id = s.sender_id', 'left');
-        $this->db->join(db_prefix() . '_shipment_companies sc', 'sc.id = s.company_id', 'left');
 
         if (!empty($startDate)) {
             $this->db->where('DATE(s.created_at) >=', $startDate);
@@ -750,95 +704,59 @@ class Shipment_model extends App_Model
             return null; // No shipments found
         }
 
-        // Batch-fetch packages for all shipments in this page (2 queries total,
-        // one per package table) instead of one query per shipment.
-        $fcl_ids = [];
-        $std_ids = [];
-        foreach ($shipments as $shipment) {
-            if ($shipment->fcl_shipment == 1) {
-                $fcl_ids[] = $shipment->id;
-            } else {
-                $std_ids[] = $shipment->id;
-            }
-        }
-
-        $packages_by_shipment = [];
-
-        if (!empty($fcl_ids)) {
-            $this->db->select('p.shipment_id, p.quantity, p.description, p.fcl_option');
-            $this->db->from(db_prefix() . '_shipment_fcl_packages p');
-            $this->db->where_in('p.shipment_id', $fcl_ids);
-            foreach ($this->db->get()->result() as $pkg) {
-                $packages_by_shipment[$pkg->shipment_id][] = $pkg;
-            }
-        }
-
-        if (!empty($std_ids)) {
-            $this->db->select('p.shipment_id, p.quantity, p.description, p.weight, p.length, p.width, p.height, p.weight_volume, p.chargeable_weight');
-            $this->db->from(db_prefix() . '_shipment_packages p');
-            $this->db->where_in('p.shipment_id', $std_ids);
-            foreach ($this->db->get()->result() as $pkg) {
-                $packages_by_shipment[$pkg->shipment_id][] = $pkg;
-            }
-        }
-
         $shipment_details = [];
 
         foreach ($shipments as $shipment) {
-            if (!empty($shipment->recipient_id)) {
-                $recipient = (object) [
-                    'first_name' => $shipment->r_first_name,
-                    'address' => $shipment->r_address,
-                    'zipcode' => $shipment->r_zipcode,
-                    'country_id' => $shipment->r_country_id,
-                    'last_name' => $shipment->r_last_name,
-                    'phone_number' => $shipment->r_phone_number,
-                    'address_type' => $shipment->r_address_type,
-                    'email' => $shipment->r_email,
-                ];
+
+            // Fetch recipient details for the individual recipient
+            if (!empty($shipment->recipient_id)){
+                $this->db->select('r.first_name, r.address, r.zipcode, r.country_id, r.last_name, r.phone_number, r.address_type, r.email');
+                $this->db->from(db_prefix() . '_shipment_recipients r');
+                $this->db->where('r.id', $shipment->recipient_id);
+                $recipient_query = $this->db->get();
+                $recipient = $recipient_query->row();
             } else {
-                $recipient = (object) [
-                    'recipient_company_name' => $shipment->recipient_company_name,
-                    'recipient_contact_person_name' => $shipment->recipient_contact_person_name,
-                    'recipient_contact_country_id' => $shipment->recipient_contact_country_id,
-                    'recipient_contact_state_id' => $shipment->recipient_contact_state_id,
-                    'recipient_contact_address_type' => $shipment->recipient_contact_address_type,
-                    'recipient_contact_address' => $shipment->recipient_contact_address,
-                    'recipient_contact_zipcode' => $shipment->recipient_contact_zipcode,
-                    'recipient_contact_person_phone_number' => $shipment->recipient_contact_person_phone_number,
-                    'recipient_contact_person_email' => $shipment->recipient_contact_person_email,
-                ];
+                // Fetch recipient details for company recipient
+                $this->db->select('rc.recipient_company_name, rc.recipient_contact_person_name, rc.recipient_contact_country_id, rc.recipient_contact_state_id, rc.recipient_company_name, rc.recipient_contact_address_type, rc.recipient_contact_address, rc.recipient_contact_zipcode, rc.recipient_contact_person_phone_number, rc.recipient_contact_person_email');
+                $this->db->from(db_prefix() . '_recipient_companies rc');
+                $this->db->where('rc.id', $shipment->recipient_company_id);
+                $recipient_query = $this->db->get();
+                $recipient = $recipient_query->row();
             }
 
+            // Fetch the sender details
             if (!empty($shipment->sender_id)) {
-                $sender = (object) [
-                    'first_name' => $shipment->sd_first_name,
-                    'address' => $shipment->sd_address,
-                    'zipcode' => $shipment->sd_zipcode,
-                    'last_name' => $shipment->sd_last_name,
-                    'phone_number' => $shipment->sd_phone_number,
-                    'email' => $shipment->sd_email,
-                ];
+                $this->db->select('s.first_name,s.address,s.zipcode,  s.last_name, s.phone_number, s.email');
+                $this->db->from(db_prefix() . '_shipment_senders s');
+                $this->db->where('s.id', $shipment->sender_id);
             } else {
-                $sender = (object) [
-                    'contact_person_name' => $shipment->contact_person_name,
-                    'contact_country_id' => $shipment->contact_country_id,
-                    'contact_state_id' => $shipment->contact_state_id,
-                    'company_name' => $shipment->company_name,
-                    'contact_address_type' => $shipment->contact_address_type,
-                    'contact_address' => $shipment->contact_address,
-                    'contact_zipcode' => $shipment->contact_zipcode,
-                    'contact_person_phone_number' => $shipment->contact_person_phone_number,
-                    'contact_person_email' => $shipment->contact_person_email,
-                    'kra_pin' => $shipment->kra_pin,
-                ];
+                $this->db->select('sc.contact_person_name, sc.contact_country_id, sc.contact_state_id, sc.company_name, sc.contact_address_type,sc.contact_address,sc.contact_zipcode, sc.contact_person_phone_number, sc.contact_person_email, sc.kra_pin');
+                $this->db->from(db_prefix() . '_shipment_companies sc');
+                $this->db->where('sc.id', $shipment->company_id);
             }
+
+            $sender_query = $this->db->get();
+            $sender = $sender_query->row();
+
+            //package details
+            if ($shipment->fcl_shipment == 1) {
+                $this->db->select('p.quantity, p.description, p.fcl_option');
+                $this->db->from(db_prefix() . '_shipment_fcl_packages p');
+            } else {
+
+                $this->db->select('p.quantity, p.description, p.weight, p.length,p.width,p.height,p.weight_volume,p.chargeable_weight');
+                $this->db->from(db_prefix() . '_shipment_packages p');
+            }
+
+            $this->db->where('p.shipment_id', $shipment->id);
+            $packages_query = $this->db->get();
+            $packages = $packages_query->result();
 
             $shipment_details[] = [
                 'shipment' => $shipment,
                 'recipient' => $recipient,
                 'sender' => $sender,
-                'packages' => $packages_by_shipment[$shipment->id] ?? [],
+                'packages' => $packages,
                 'sender_type' => !empty($shipment->sender_id) ? 'individual' : 'company',
                 'recipient_type' => !empty($shipment->recipient_id) ? 'individual' : 'company'
             ];

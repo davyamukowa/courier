@@ -66,7 +66,6 @@ class Courier_Logistic_Module {
         hooks()->add_action('admin_init', [$this, 'run_db_upgrades_v24']);
         hooks()->add_action('admin_init', [$this, 'run_db_upgrades_v25']);
         hooks()->add_action('admin_init', [$this, 'run_db_upgrades_v26']);
-        hooks()->add_action('admin_init', [$this, 'run_db_upgrades_v27']);
         // Register email templates (idempotent — skips if slug already exists)
         hooks()->add_action('admin_init', [$this, 'register_email_templates']);
 
@@ -908,33 +907,6 @@ class Courier_Logistic_Module {
         }
 
         update_option('courier_schema_v26_done', '1');
-    }
-
-    /**
-     * v27: index the filter/sort columns used by every shipment list query
-     * (branch_id, staff_id, shipping_category, created_at) — these were added
-     * as plain columns in earlier migrations with no index.
-     */
-    public function run_db_upgrades_v27() {
-        if (get_option('courier_schema_v27_done')) return;
-        $CI = &get_instance();
-
-        $table = db_prefix() . '_shipments';
-        if ($CI->db->table_exists($table)) {
-            $existing = [];
-            foreach ($CI->db->query("SHOW INDEX FROM `{$table}`")->result() as $row) {
-                $existing[$row->Key_name] = true;
-            }
-
-            if (!isset($existing['idx_shipments_branch_staff'])) {
-                $CI->db->query("ALTER TABLE `{$table}` ADD INDEX `idx_shipments_branch_staff` (`branch_id`, `staff_id`)");
-            }
-            if (!isset($existing['idx_shipments_category_created'])) {
-                $CI->db->query("ALTER TABLE `{$table}` ADD INDEX `idx_shipments_category_created` (`shipping_category`, `created_at`)");
-            }
-        }
-
-        update_option('courier_schema_v27_done', '1');
     }
 
     /**
