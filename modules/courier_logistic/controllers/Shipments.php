@@ -686,20 +686,9 @@ class Shipments extends AdminController
     {
 
         if ($this->input->post('hasCommercialInvoiceAttachment') !== null) {
-            // commercial_invoice_file is a <input type="file"> field, so it lives in
-            // $_FILES, never $_POST. CI3's 'required' rule looks the field name up via
-            // $_POST internally and trim()s it — on PHP 8.1+ that's a deprecation notice
-            // when the key is entirely absent (null) rather than an empty string.
-            if (!isset($_POST['commercial_invoice_file'])) {
-                $_POST['commercial_invoice_file'] = '';
-            }
-            if (empty($_FILES['commercial_invoice_file']['name'])) {
-                $this->form_validation->set_rules('commercial_invoice_file', 'Attachment', 'required');
-            } else {
-                if ($_FILES['commercial_invoice_file']['error'] !== UPLOAD_ERR_OK) {
-                    $this->form_validation->set_rules('commercial_invoice_file', 'Attachment', 'required');
-                }
-            }
+            // Attaching a commercial invoice file is optional — no validation rule
+            // needed. If a file was chosen but fails to save, the upload step in
+            // store() reports that via a flash alert instead of blocking the form.
         } else {
 
             $itemCount = count(set_value('commodity_quantity', []));
@@ -1236,7 +1225,8 @@ class Shipments extends AdminController
                     'declared_value' => $commercial_value_data['declared_value'][$i],
                 ]);
             }
-        } else {
+        } elseif (!empty($_FILES['commercial_invoice_file']['name']) && $_FILES['commercial_invoice_file']['error'] === UPLOAD_ERR_OK) {
+            // Attachment is optional — only attempt the upload if a file was actually chosen.
             $commercial_invoice_url = $this->upload_commercial_invoice_attachment();
             $this->Shipment_model->update($shipment_id, [
                 'commercial_invoice_url' => $commercial_invoice_url,
