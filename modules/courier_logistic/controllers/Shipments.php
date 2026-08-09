@@ -686,6 +686,13 @@ class Shipments extends AdminController
     {
 
         if ($this->input->post('hasCommercialInvoiceAttachment') !== null) {
+            // commercial_invoice_file is a <input type="file"> field, so it lives in
+            // $_FILES, never $_POST. CI3's 'required' rule looks the field name up via
+            // $_POST internally and trim()s it — on PHP 8.1+ that's a deprecation notice
+            // when the key is entirely absent (null) rather than an empty string.
+            if (!isset($_POST['commercial_invoice_file'])) {
+                $_POST['commercial_invoice_file'] = '';
+            }
             if (empty($_FILES['commercial_invoice_file']['name'])) {
                 $this->form_validation->set_rules('commercial_invoice_file', 'Attachment', 'required');
             } else {
