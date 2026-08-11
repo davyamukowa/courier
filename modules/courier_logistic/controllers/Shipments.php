@@ -47,6 +47,30 @@ class Shipments extends AdminController
 
         spl_autoload_register([$this, 'barcodeAutoloader']);
 
+        // Self-heal: run_db_upgrades_v26 (courier_logistic.php) adds branch_id to
+        // these tables early in its own body, but a later failure in that same
+        // migration (e.g. the legacy staff_countries backfill) can prevent it from
+        // ever reaching update_option('courier_schema_v26_done', '1'), so the hook
+        // silently retries every request without ever finishing. Guard here too so
+        // shipment/pickup creation never fails on a missing branch_id column
+        // regardless of whether that migration completes.
+        foreach (['_shipments', '_pickups'] as $suffix) {
+            $table = db_prefix() . $suffix;
+            if ($this->db->table_exists($table) && !$this->db->field_exists('branch_id', $table)) {
+                $this->db->query("ALTER TABLE `{$table}` ADD COLUMN `branch_id` INT NULL DEFAULT NULL");
+            }
+        }
+
+        // Self-heal: the "internal" courier company was seeded at install time
+        // (install.php) with the literal placeholder name "GO Shipping". Rename it
+        // to the actual installed company name once that setting is available; the
+        // WHERE on the placeholder name makes this a no-op after the first run.
+        $installed_company_name = get_option('companyname');
+        if (!empty($installed_company_name) && $this->db->table_exists(db_prefix() . '_courier_companies')) {
+            $this->db->where('type', 'internal');
+            $this->db->where('company_name', 'GO Shipping');
+            $this->db->update(db_prefix() . '_courier_companies', ['company_name' => $installed_company_name]);
+        }
     }
 
 

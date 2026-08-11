@@ -1270,12 +1270,13 @@ echo '<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/selec
                                                     <div class="custom-form-group">
                                                         <label for="shipping_mode" class="custom-label">Shipping
                                                             Mode</label>
+                                                        <?php $_selected_shipping_mode = set_value('shipping_mode', strtoupper('road')); ?>
                                                         <select id="shipping_mode" name="shipping_mode"
                                                                 class="custom-select">
-                                                            <option value="<?php echo strtoupper('air'); ?>">
+                                                            <option value="<?php echo strtoupper('air'); ?>" <?php echo $_selected_shipping_mode === strtoupper('air') ? 'selected' : ''; ?>>
                                                                 Air
                                                             </option>
-                                                            <option value="<?php echo strtoupper('road'); ?>">
+                                                            <option value="<?php echo strtoupper('road'); ?>" <?php echo $_selected_shipping_mode === strtoupper('road') ? 'selected' : ''; ?>>
                                                                 Road Transport
                                                             </option>
                                                         </select>
