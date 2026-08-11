@@ -418,10 +418,6 @@
 
                         <div class="courier-nav-divider"></div>
 
-                        <a href="javascript:void(0);" onclick="printWaybill();" class="gs-action-btn">
-                            <i class="fa fa-print"></i> Print Waybill
-                        </a>
-
                         <a href="javascript:void(0);" onclick="openSendWaybillModal();" class="gs-action-btn">
                             <i class="fa fa-envelope"></i> Send Waybill by Email
                         </a>
