@@ -1,5 +1,5 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed'); ?>
-<?php init_head(false); ?>
+<?php init_head(); ?>
 <?php load_courier_styles(); ?>
 <?php
 $inv_color      = get_option('courier_invoice_color') ?: '#2e7d32';

@@ -1,5 +1,5 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed'); ?>
-<?php init_head(false); ?>
+<?php init_head(); ?>
 <?php $this->load->view('courier_logistic/layout/_topnav', ['cgs_active' => 'shipments']); ?>
         <div class="row">
             <div class="col-md-8 col-md-offset-2">
