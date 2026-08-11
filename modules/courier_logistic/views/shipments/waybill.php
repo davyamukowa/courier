@@ -252,8 +252,146 @@
     }
 </script>
 
+<style>
+/* ── Go Shipping corporate theme (scoped to the waybill page only) ──
+   Blue = primary brand, Red = accent/action. Overrides the shared green
+   courier-sidebar / stepper styling from main.css / progress.css without
+   touching those files, so other pages that reuse them are unaffected. */
+.gs-waybill-page .courier-sidebar {
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(13, 71, 161, 0.08);
+}
+.gs-waybill-page .courier-sidebar-header {
+    background: linear-gradient(135deg, #1565c0, #0d47a1);
+}
+.gs-waybill-page .courier-nav-item:hover,
+.gs-waybill-page .courier-nav-item.active {
+    background: #eef4fc;
+    color: #0d47a1;
+    border-left-color: #c62828;
+}
+/* Plain flat list — no button blocks. Every row looks the same at rest;
+   red is reserved for whichever one the user is actually hovering/pressing
+   right now, instead of some actions being permanently-colored buttons and
+   others plain text. */
+.gs-waybill-page .gs-action-list {
+    padding: 4px 0;
+    display: flex;
+    flex-direction: column;
+}
+.gs-waybill-page .gs-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: none;
+    color: #32475a !important;
+    padding: 12px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none !important;
+    border-bottom: 1px solid #eef1f5;
+    transition: background .15s, color .15s;
+}
+.gs-waybill-page .gs-action-btn i { width: 16px; text-align: center; color: #9aa7b5; font-size: 12px; }
+.gs-waybill-page .gs-action-btn:hover,
+.gs-waybill-page .gs-action-btn:focus,
+.gs-waybill-page .gs-action-btn:active {
+    background: #fbeeee;
+    color: #c62828 !important;
+}
+.gs-waybill-page .gs-action-btn:hover i,
+.gs-waybill-page .gs-action-btn:focus i,
+.gs-waybill-page .gs-action-btn:active i {
+    color: #c62828;
+}
+.gs-waybill-page .courier-nav-divider {
+    display: none;
+}
+.gs-waybill-page .panel_s {
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(13, 71, 161, 0.06);
+    border: 1px solid #e3ebf5;
+}
+.gs-waybill-page .stepper-item .step-counter {
+    background: #dbe7f6;
+    color: #0d47a1;
+    font-weight: 700;
+}
+.gs-waybill-page .stepper-item.completed .step-counter {
+    background: #1565c0;
+    color: #fff;
+}
+.gs-waybill-page .stepper-item.active .step-counter {
+    background: #c62828;
+    color: #fff;
+    box-shadow: 0 0 0 4px rgba(198, 40, 40, 0.18);
+}
+.gs-waybill-page .stepper-item.completed::after {
+    border-bottom-color: #1565c0;
+}
+.gs-waybill-page .waybill-container {
+    border-color: #0d47a1;
+    border-top: 4px solid #c62828;
+}
+
+/* Single compact status panel — this module doesn't split international vs
+   domestic tracking, so there's always exactly one line of steps. */
+.gs-tracker-section {
+    margin-top: 16px;
+    padding: 16px 18px 8px;
+    border-radius: 10px;
+    background: #f1f6fd;
+    border: 1px solid #d9e6f7;
+}
+
+/* Smaller circles + tighter labels so many steps fit on one line without
+   towering over the rest of the page. */
+.gs-compact-stepper.stepper-wrapper {
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+    row-gap: 18px;
+}
+.gs-compact-stepper .step-counter {
+    width: 30px;
+    height: 30px;
+    font-size: 12px;
+}
+.gs-compact-stepper .step-name {
+    font-size: 11.5px;
+    line-height: 1.3;
+    max-width: 90px;
+}
+.gs-compact-stepper .stepper-item::before,
+.gs-compact-stepper .stepper-item::after {
+    top: 15px;
+}
+
+@media (max-width: 767px) {
+    .gs-tracker-section { padding: 14px; }
+    .gs-compact-stepper .step-name { max-width: 70px; font-size: 11px; }
+}
+
+/* Action button row: always one line, scrolls horizontally rather than
+   wrapping if the viewport is too narrow to fit every button. */
+.gs-waybill-actions {
+    scrollbar-width: thin;
+}
+.gs-waybill-actions .custom-button {
+    padding: 0.55rem 1rem;
+    font-size: 0.8125rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.gs-waybill-actions::-webkit-scrollbar {
+    height: 6px;
+}
+.gs-waybill-actions::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
+</style>
 <?php $this->load->view('courier_logistic/layout/_topnav', ['cgs_active' => 'shipments']); ?>
-    <div class="content">
+    <div class="content gs-waybill-page">
         <div class="row">
             <?php
             $wb_type      = $this->session->userdata('type') ?: 'domestic';
@@ -272,32 +410,30 @@
                     <div class="courier-sidebar-header">
                         <i class="fa fa-file-text"></i> Shipment Actions
                     </div>
-                    <nav class="courier-sidebar-nav">
+                    <nav class="courier-sidebar-nav gs-action-list">
 
-                        <a href="<?php echo admin_url($wb_list_url); ?>" class="courier-nav-item">
+                        <a href="<?php echo admin_url($wb_list_url); ?>" class="gs-action-btn">
                             <i class="fa fa-arrow-left"></i> Shipment List
                         </a>
 
                         <div class="courier-nav-divider"></div>
 
-                        <a href="javascript:void(0);" onclick="printWaybill();" class="courier-nav-item">
+                        <a href="javascript:void(0);" onclick="printWaybill();" class="gs-action-btn">
                             <i class="fa fa-print"></i> Print Waybill
                         </a>
 
-                        <a href="javascript:void(0);" onclick="openSendWaybillModal();" class="courier-nav-item"
-                           style="color:#1565c0;">
+                        <a href="javascript:void(0);" onclick="openSendWaybillModal();" class="gs-action-btn">
                             <i class="fa fa-envelope"></i> Send Waybill by Email
                         </a>
 
                         <?php if (!empty($shipment_details['shipment']->invoice_id)): ?>
                         <a href="<?php echo admin_url('invoices/invoice/' . $shipment_details['shipment']->invoice_id); ?>"
-                           class="courier-nav-item">
+                           class="gs-action-btn">
                             <i class="fa fa-money"></i> Invoice
                         </a>
                         <?php elseif (empty($shipment_details['shipment']->invoice_id) && $shipment_details['shipment']->staff_id == 0): ?>
                         <a href="javascript:void(0);" onclick="openConfirmPortalModal(<?php echo $wb_sid; ?>);"
-                           class="courier-nav-item"
-                           style="background:#00796b;color:#fff;font-weight:700;border-radius:4px;padding:8px 10px;">
+                           class="gs-action-btn">
                             <i class="fa fa-check-circle"></i> Confirm &amp; Create Invoice
                         </a>
                         <?php endif; ?>
@@ -309,7 +445,7 @@
                             : admin_url('courier_logistic/shipments/commercial_invoice/' . $wb_sid);
                         $ci_target = !empty($shipment_details['shipment']->commercial_invoice_url) ? ' target="_blank"' : '';
                         ?>
-                        <a href="<?php echo $ci_url; ?>"<?php echo $ci_target; ?> class="courier-nav-item">
+                        <a href="<?php echo $ci_url; ?>"<?php echo $ci_target; ?> class="gs-action-btn">
                             <i class="fa fa-file-invoice"></i> Commercial Invoice
                         </a>
                         <?php endif; ?>
@@ -348,13 +484,11 @@
                         <?php if (is_admin() || staff_can('edit_shipments', 'courier-shipments')): ?>
                         <div class="courier-nav-divider"></div>
 
-                        <a href="#" data-toggle="modal" data-target="#update_status" class="courier-nav-item"
-                           style="color:#e65100;">
+                        <a href="#" data-toggle="modal" data-target="#update_status" class="gs-action-btn">
                             <i class="fa fa-refresh"></i> Update Status
                         </a>
 
-                        <a href="#" data-toggle="modal" data-target="#assign_agent_modal" class="courier-nav-item"
-                           style="color:#004d40;">
+                        <a href="#" data-toggle="modal" data-target="#assign_agent_modal" class="gs-action-btn">
                             <i class="fa fa-user-plus"></i> Assign Agent / Staff
                         </a>
                         <?php endif; ?>
@@ -362,7 +496,7 @@
                         <?php if (is_admin()): ?>
                         <div class="courier-nav-divider"></div>
                         <a href="<?php echo admin_url('courier_logistic/shipments/create?type=' . $wb_type); ?>"
-                           class="courier-nav-item">
+                           class="gs-action-btn">
                             <i class="fa fa-plus-circle"></i> New Shipment
                         </a>
                         <?php endif; ?>
@@ -398,27 +532,24 @@
             <?php echo form_open($this->uri->uri_string(), ['id' => 'create-pickup-form']); ?>
                 <div class="panel_s">
                     <div class="panel-body">
-                        <div style="margin-bottom:20px; display:flex; justify-content:flex-end; gap:8px; flex-wrap:wrap;">
-                            <a class="custom-button custom-button-green"
-                               href="javascript:void(0);" onclick="printWaybill();">
+                        <div class="gs-waybill-actions" style="margin-bottom:20px; display:flex; justify-content:flex-start; gap:8px; flex-wrap:nowrap; overflow-x:auto; padding-bottom:4px;">
+                            <a class="custom-button"
+                               href="javascript:void(0);" onclick="printWaybill();"
+                               style="background:linear-gradient(135deg,#1565c0,#0d47a1); color:#fff; border-color:#0d47a1;">
                                 <i class="fa fa-print" style="margin-right:5px;"></i> Print Waybill
                             </a>
                             <a class="custom-button"
                                href="javascript:void(0);" onclick="downloadWaybillPdf();"
-                               style="background:#1565c0; color:#fff; border-color:#1565c0;">
+                               style="background:linear-gradient(135deg,#c62828,#8e1c1c); color:#fff; border-color:#8e1c1c;">
                                 <i class="fa fa-file-pdf-o" style="margin-right:5px;"></i> Download PDF
                             </a>
-                            <a class="custom-button" href="javascript:void(0);" onclick="openSendWaybillModal();"
-                               style="background:#455a64; color:#fff; border-color:#455a64;">
-                                <i class="fa fa-envelope" style="margin-right:5px;"></i> Send by Email
-                            </a>
                             <a class="custom-button" href="#" data-toggle="modal" data-target="#update_status"
-                               style="background:#e65100; color:#fff; border-color:#e65100;">
+                               style="background:#c62828; color:#fff; border-color:#c62828;">
                                 <i class="fa fa-refresh" style="margin-right:5px;"></i> Update Status
                             </a>
                             <?php if (is_admin() || staff_can('edit_shipments', 'courier-shipments')): ?>
                             <a class="custom-button" href="#" data-toggle="modal" data-target="#assign_agent_modal"
-                               style="background:#004d40; color:#fff; border-color:#004d40;">
+                               style="background:#0d47a1; color:#fff; border-color:#0d47a1;">
                                 <i class="fa fa-user-plus" style="margin-right:5px;"></i> Assign Agent/Staff
                             </a>
                             <?php endif; ?>
@@ -436,24 +567,26 @@
                         }
                         </script>
 
-                        <div style="margin-top:20px;" class="stepper-wrapper">
-                            <?php
-                            $displayCounter = 1; // Initialize a counter for display purposes
-                            foreach ($statuses as $status):
-                                // Check if we should skip the pickup step
-                                if ($status->id != 2 || !empty($shipment_details['shipment']->pickup_id)):
-                                    // Adjust the display counter based on the pickup condition
-                                    $displayId = (!empty($shipment_details['shipment']->pickup_id) || $status->id != 2) ? $displayCounter : $displayCounter - 1;
-                                    ?>
-                                    <div class="stepper-item <?= ($status->id <= $shipment_details['shipment']->status_id) ? 'completed' : ''; ?> <?= ($status->id == $shipment_details['shipment']->status_id) ? 'active' : ''; ?>">
-                                        <div class="step-counter"><?= $displayId; ?></div>
-                                        <div class="step-name"><?= $status->description; ?></div>
-                                    </div>
-                                    <?php
-                                    $displayCounter++; // Increment the display counter for the next step
-                                endif;
-                            endforeach;
-                            ?>
+                        <div class="gs-tracker-section">
+                            <div class="stepper-wrapper gs-compact-stepper">
+                                <?php
+                                $displayCounter = 1; // Initialize a counter for display purposes
+                                foreach ($statuses as $status):
+                                    // Check if we should skip the pickup step
+                                    if ($status->id != 2 || !empty($shipment_details['shipment']->pickup_id)):
+                                        // Adjust the display counter based on the pickup condition
+                                        $displayId = (!empty($shipment_details['shipment']->pickup_id) || $status->id != 2) ? $displayCounter : $displayCounter - 1;
+                                        ?>
+                                        <div class="stepper-item <?= ($status->id <= $shipment_details['shipment']->status_id) ? 'completed' : ''; ?> <?= ($status->id == $shipment_details['shipment']->status_id) ? 'active' : ''; ?>">
+                                            <div class="step-counter"><?= $displayId; ?></div>
+                                            <div class="step-name"><?= $status->description; ?></div>
+                                        </div>
+                                        <?php
+                                        $displayCounter++; // Increment the display counter for the next step
+                                    endif;
+                                endforeach;
+                                ?>
+                            </div>
                         </div>
 
                         <?php
