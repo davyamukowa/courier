@@ -446,12 +446,17 @@
                         </a>
                         <?php endif; ?>
 
-                        <?php if (is_admin()): ?>
+                        <?php if (is_admin() || staff_can('view_invoices', 'courier-invoices') || staff_can('view_own_invoices', 'courier-invoices')): ?>
                         <div class="courier-nav-divider"></div>
 
+                        <a href="<?php echo admin_url('courier_logistic/shipments/courier_invoice/' . $wb_sid); ?>" class="gs-action-btn">
+                            <i class="fa fa-file-text"></i> Courier Invoice
+                        </a>
+                        <?php if (is_admin()): ?>
                         <a href="<?php echo admin_url('courier_logistic/shipments/consignment_note/' . $wb_sid); ?>" class="gs-action-btn">
                             <i class="fa fa-clipboard"></i> Consignment Note
                         </a>
+                        <?php endif; ?>
                         <?php endif; ?>
 
                         <?php if (is_admin()): ?>
