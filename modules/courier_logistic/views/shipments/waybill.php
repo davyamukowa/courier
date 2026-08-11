@@ -528,10 +528,11 @@
                                style="background:#c62828; color:#fff; border-color:#c62828;">
                                 <i class="fa fa-refresh" style="margin-right:5px;"></i> Update Status
                             </a>
-                            <?php if (is_admin() || staff_can('edit_shipments', 'courier-shipments')): ?>
-                            <a class="custom-button" href="#" data-toggle="modal" data-target="#assign_agent_modal"
-                               style="background:#0d47a1; color:#fff; border-color:#0d47a1;">
-                                <i class="fa fa-user-plus" style="margin-right:5px;"></i> Assign Agent/Staff
+                            <?php if (is_admin() || staff_can('view_invoices', 'courier-invoices') || staff_can('view_own_invoices', 'courier-invoices')): ?>
+                            <a class="custom-button"
+                               href="<?php echo admin_url('courier_logistic/shipments/courier_invoice/' . $wb_sid); ?>"
+                               style="background:#c62828; color:#fff; border-color:#c62828;">
+                                <i class="fa fa-file-text" style="margin-right:5px;"></i> Courier Invoice
                             </a>
                             <?php endif; ?>
                         </div>
