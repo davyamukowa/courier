@@ -114,7 +114,8 @@ echo '<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/selec
     }
 
     #shipmentTable {
-        min-width: 1550px;
+        width: 100%;
+        table-layout: fixed;
     }
 
     .shipment-table-hint {
@@ -140,7 +141,28 @@ echo '<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/selec
         padding: 5px 8px !important;
         font-size: 12px;
         line-height: 1.3;
+        overflow: hidden;
     }
+
+    /* Everything fits on one screen — no horizontal scrolling. Long values
+       (names, emails, addresses) truncate with an ellipsis; hover for the
+       full text via the title attribute set on each line. */
+    #shipmentTable td .cell-line {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
+    }
+
+    /* Proportional column widths (7 columns, must sum to 100%) so fixed
+       layout doesn't split space equally regardless of content. */
+    #shipmentTable th:nth-child(1), #shipmentTable td:nth-child(1) { width: 10%; }
+    #shipmentTable th:nth-child(2), #shipmentTable td:nth-child(2) { width: 22%; }
+    #shipmentTable th:nth-child(3), #shipmentTable td:nth-child(3) { width: 22%; }
+    #shipmentTable th:nth-child(4), #shipmentTable td:nth-child(4) { width: 14%; }
+    #shipmentTable th:nth-child(5), #shipmentTable td:nth-child(5) { width: 8%; }
+    #shipmentTable th:nth-child(6), #shipmentTable td:nth-child(6) { width: 12%; }
+    #shipmentTable th:nth-child(7), #shipmentTable td:nth-child(7) { width: 12%; }
 
     #shipmentTable tbody tr.data-row {
         cursor: pointer;
@@ -288,7 +310,6 @@ echo '<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/selec
                                         <th>Mode</th>
                                         <th>Status</th>
                                         <th>Created At</th>
-                                        <th>Action</th>
                                     </tr>
                                     </thead>
                                     <tbody>
@@ -302,51 +323,42 @@ echo '<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/selec
                                                     <?php echo htmlspecialchars($shipment_detail['shipment']->waybill_number ?? $shipment_detail['shipment']->tracking_id); ?>
                                                 </a>
                                             </td>
-                                            <td>
-                                                <?php if ($shipment_detail['sender_type'] === 'individual'): ?>
-                                                    <div class="d-flex flex-column justify-content-center">
-                                                        <p style="font-weight: bold; font-size: 14px;">
-                                                            <?php echo $shipment_detail['sender']->first_name . ' ' . $shipment_detail['sender']->last_name; ?>
-                                                        </p>
-                                                        <p class="text-secondary mb-0"><?php echo $shipment_detail['sender']->email; ?></p>
-                                                        <p class="text-secondary mb-0"><?php echo $shipment_detail['sender']->phone_number; ?></p>
-                                                        <p class="text-secondary mb-0"><?php echo $shipment_detail['sender']->address . ' ' . $shipment_detail['sender']->zipcode; ?></p>
-                                                    </div>
-                                                <?php else: ?>
-                                                    <div class="d-flex flex-column justify-content-center">
-                                                        <p style="font-weight: bold; font-size: 14px;">
-                                                            <?php echo $shipment_detail['sender']->contact_person_name; ?>
-                                                        </p>
-                                                        <p class="text-secondary mb-0"><?php echo $shipment_detail['sender']->contact_person_email; ?></p>
-                                                        <p class="text-secondary mb-0"><?php echo $shipment_detail['sender']->contact_person_phone_number; ?></p>
-                                                        <p class="text-secondary mb-0"><?php echo $shipment_detail['sender']->contact_address . ' ' . $shipment_detail['sender']->contact_zipcode; ?></p>
-                                                    </div>
-                                                <?php endif; ?>
+                                            <?php
+                                            if ($shipment_detail['sender_type'] === 'individual') {
+                                                $sender_name  = trim(($shipment_detail['sender']->first_name ?? '') . ' ' . ($shipment_detail['sender']->last_name ?? ''));
+                                                $sender_email = $shipment_detail['sender']->email ?? '';
+                                                $sender_phone = $shipment_detail['sender']->phone_number ?? '';
+                                                $sender_addr  = trim(($shipment_detail['sender']->address ?? '') . ' ' . ($shipment_detail['sender']->zipcode ?? ''));
+                                            } else {
+                                                $sender_name  = $shipment_detail['sender']->contact_person_name ?? '';
+                                                $sender_email = $shipment_detail['sender']->contact_person_email ?? '';
+                                                $sender_phone = $shipment_detail['sender']->contact_person_phone_number ?? '';
+                                                $sender_addr  = trim(($shipment_detail['sender']->contact_address ?? '') . ' ' . ($shipment_detail['sender']->contact_zipcode ?? ''));
+                                            }
 
+                                            if ($shipment_detail['recipient_type'] === 'individual') {
+                                                $recipient_name  = trim(($shipment_detail['recipient']->first_name ?? '') . ' ' . ($shipment_detail['recipient']->last_name ?? ''));
+                                                $recipient_email = $shipment_detail['recipient']->email ?? '';
+                                                $recipient_phone = $shipment_detail['recipient']->phone_number ?? '';
+                                                $recipient_addr  = trim(($shipment_detail['recipient']->address ?? '') . ' ' . ($shipment_detail['recipient']->zipcode ?? ''));
+                                            } else {
+                                                $recipient_name  = $shipment_detail['recipient']->recipient_contact_person_name ?? '';
+                                                $recipient_email = $shipment_detail['recipient']->recipient_contact_person_email ?? '';
+                                                $recipient_phone = $shipment_detail['recipient']->recipient_contact_person_phone_number ?? '';
+                                                $recipient_addr  = trim(($shipment_detail['recipient']->recipient_contact_address ?? '') . ' ' . ($shipment_detail['recipient']->recipient_contact_zipcode ?? ''));
+                                            }
+                                            ?>
+                                            <td title="<?php echo htmlspecialchars($sender_name . ' | ' . $sender_email . ' | ' . $sender_phone . ' | ' . $sender_addr); ?>">
+                                                <p class="cell-line" style="font-weight:700; font-size:13px; margin:0;"><?php echo htmlspecialchars($sender_name); ?></p>
+                                                <p class="cell-line text-secondary mb-0"><?php echo htmlspecialchars($sender_email); ?></p>
+                                                <p class="cell-line text-secondary mb-0"><?php echo htmlspecialchars($sender_phone); ?></p>
+                                                <p class="cell-line text-secondary mb-0"><?php echo htmlspecialchars($sender_addr); ?></p>
                                             </td>
-                                            <td>
-                                                <div class="d-flex flex-column justify-content-center">
-                                                    <?php if ($shipment_detail['recipient_type'] === 'individual'): ?>
-                                                        <div class="d-flex flex-column justify-content-center">
-                                                            <p style="font-weight: bold; font-size: 14px;">
-                                                                <?php echo $shipment_detail['recipient']->first_name . ' ' . $shipment_detail['recipient']->last_name; ?>
-                                                            </p>
-                                                            <p class="text-secondary mb-0"><?php echo $shipment_detail['recipient']->email; ?></p>
-                                                            <p class="text-secondary mb-0"><?php echo $shipment_detail['recipient']->phone_number; ?></p>
-                                                            <p class="text-secondary mb-0"><?php echo $shipment_detail['recipient']->address . ' ' . $shipment_detail['recipient']->zipcode; ?></p>
-                                                        </div>
-                                                    <?php else: ?>
-                                                        <div class="d-flex flex-column justify-content-center">
-                                                            <p style="font-weight: bold; font-size: 14px;">
-                                                                <?php echo $shipment_detail['recipient']->recipient_contact_person_name; ?>
-                                                            </p>
-                                                            <p class="text-secondary mb-0"><?php echo $shipment_detail['recipient']->recipient_contact_person_email; ?></p>
-                                                            <p class="text-secondary mb-0"><?php echo $shipment_detail['recipient']->recipient_contact_person_phone_number; ?></p>
-                                                            <p class="text-secondary mb-0"><?php echo $shipment_detail['recipient']->recipient_contact_address . ' ' . $shipment_detail['recipient']->recipient_contact_zipcode; ?></p>
-                                                        </div>
-                                                    <?php endif; ?>
-
-
+                                            <td title="<?php echo htmlspecialchars($recipient_name . ' | ' . $recipient_email . ' | ' . $recipient_phone . ' | ' . $recipient_addr); ?>">
+                                                <p class="cell-line" style="font-weight:700; font-size:13px; margin:0;"><?php echo htmlspecialchars($recipient_name); ?></p>
+                                                <p class="cell-line text-secondary mb-0"><?php echo htmlspecialchars($recipient_email); ?></p>
+                                                <p class="cell-line text-secondary mb-0"><?php echo htmlspecialchars($recipient_phone); ?></p>
+                                                <p class="cell-line text-secondary mb-0"><?php echo htmlspecialchars($recipient_addr); ?></p>
                                             </td>
                                             <td>
                                                 <?php
@@ -354,14 +366,12 @@ echo '<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/selec
                                                 $assigned_is_agent = !empty($shipment_detail['shipment']->assigned_agent_id);
                                                 ?>
                                                 <?php if (!empty($shipment_detail['shipment']->staff_id) && $assigned_name !== ''): ?>
-                                                    <div class="d-flex flex-column justify-content-center">
-                                                        <p style="font-weight:bold; font-size:14px; margin-bottom:2px;">
-                                                            <?php echo htmlspecialchars($assigned_name); ?>
-                                                        </p>
-                                                        <p class="text-secondary mb-0">
-                                                            <?php echo $assigned_is_agent ? 'Agent' : 'Staff'; ?>
-                                                        </p>
-                                                    </div>
+                                                    <p class="cell-line" style="font-weight:700; font-size:13px; margin:0;" title="<?php echo htmlspecialchars($assigned_name); ?>">
+                                                        <?php echo htmlspecialchars($assigned_name); ?>
+                                                    </p>
+                                                    <p class="cell-line text-secondary mb-0">
+                                                        <?php echo $assigned_is_agent ? 'Agent' : 'Staff'; ?>
+                                                    </p>
                                                 <?php else: ?>
                                                     <span class="text-danger">Unassigned</span>
                                                 <?php endif; ?>
@@ -406,38 +416,13 @@ echo '<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/selec
 <td data-order="<?php echo strtotime($shipment_detail['shipment']->created_at); ?>">
     <?php echo date('d-m-Y, g:i A', strtotime($shipment_detail['shipment']->created_at)); ?>
 </td>
-                                            <td class="align-middle">
-                                                <?php
-                                                $type      = $this->input->get('type');
-                                                $mode      = $this->input->get('mode');
-                                                $mode_type = $this->input->get('mode_type');
-                                                $this->session->set_userdata('type',      $type);
-                                                $this->session->set_userdata('mode',      $mode);
-                                                $this->session->set_userdata('mode_type', $mode_type);
-                                                $sid      = $shipment_detail['shipment']->id;
-                                                $waybill  = htmlspecialchars($shipment_detail['shipment']->waybill_number ?? $shipment_detail['shipment']->tracking_id);
-                                                $recip    = $shipment_detail['recipient'] ?? null;
-                                                $recip_email = '';
-                                                if ($recip) {
-                                                    $recip_email = $recip->email
-                                                        ?? $recip->recipient_contact_person_email
-                                                        ?? '';
-                                                }
-                                                ?>
-                                                <div style="display:flex; flex-wrap:nowrap; gap:4px; align-items:center;">
-
-                                                    <!-- View -->
-                                                    <a href="<?php echo admin_url('courier_logistic/shipments/waybill/' . $sid); ?>"
-                                                       title="View Waybill"
-                                                       style="display:inline-flex;align-items:center;gap:4px;
-                                                              padding:5px 10px;font-size:11px;font-weight:600;
-                                                              background:#1565c0;color:#fff;border-radius:4px;
-                                                              text-decoration:none;white-space:nowrap;">
-                                                        <i class="fa fa-eye"></i> View
-                                                    </a>
-
-                                                </div>
-                                            </td>
+                                            <?php
+                                            // Preserved side effect (unrelated to display): keeps the last-used
+                                            // list filters in session for other pages that read them back.
+                                            $this->session->set_userdata('type',      $this->input->get('type'));
+                                            $this->session->set_userdata('mode',      $this->input->get('mode'));
+                                            $this->session->set_userdata('mode_type', $this->input->get('mode_type'));
+                                            ?>
                                         </tr>
                                     <?php endforeach; ?>
                                     </tbody>
@@ -450,7 +435,6 @@ echo '<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/selec
                                         <th>Mode</th>
                                         <th>Status</th>
                                         <th>Created At</th>
-                                        <th>Action</th>
                                     </tr>
                                     </tfoot>
                                 </table>
