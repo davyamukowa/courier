@@ -122,6 +122,33 @@ echo '<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/selec
         font-size: 12px;
         color: #6b7280;
     }
+
+    /* Excel-style grid: thin lines around every cell, tighter rows */
+    #shipmentTable,
+    #shipmentTable th,
+    #shipmentTable td {
+        border: 1px solid #d0d7de !important;
+        border-collapse: collapse;
+    }
+
+    #shipmentTable {
+        border-collapse: collapse;
+    }
+
+    #shipmentTable th,
+    #shipmentTable td {
+        padding: 5px 8px !important;
+        font-size: 12px;
+        line-height: 1.3;
+    }
+
+    #shipmentTable tbody tr.data-row {
+        cursor: pointer;
+    }
+
+    #shipmentTable tbody tr.data-row:hover {
+        background: #eef4fb !important;
+    }
 </style>
 
 <?php $this->load->view('courier_logistic/layout/_topnav', ['cgs_active' => 'shipments']); ?>
@@ -266,7 +293,8 @@ echo '<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/selec
                                     </thead>
                                     <tbody>
                                     <?php foreach ($shipment_details as $shipment_detail): ?>
-                                        <tr class="data-row">
+                                        <tr class="data-row"
+                                            data-href="<?php echo admin_url('courier_logistic/shipments/waybill/' . $shipment_detail['shipment']->id); ?>">
                                             <td>
                                                 <a href="<?php echo admin_url('courier_logistic/shipments/waybill/' . $shipment_detail['shipment']->id); ?>"
                                                    style="font-weight:700; color:#1976d2; text-decoration:none;"
@@ -408,73 +436,6 @@ echo '<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/selec
                                                         <i class="fa fa-eye"></i> View
                                                     </a>
 
-                                                    <!-- Courier Invoice -->
-                                                    <a href="<?php echo admin_url('courier_logistic/shipments/courier_invoice/' . $sid); ?>"
-                                                       title="Open Courier Invoice"
-                                                       style="display:inline-flex;align-items:center;gap:4px;
-                                                              padding:5px 10px;font-size:11px;font-weight:600;
-                                                              background:#2e7d32;color:#fff;border-radius:4px;
-                                                              text-decoration:none;white-space:nowrap;">
-                                                        <i class="fa fa-file-text-o"></i> Courier Invoice
-                                                    </a>
-
-                                                    <!-- Commercial Invoice -->
-                                                    <?php if (!empty($shipment_detail['shipment']->commercial_invoice_file)): ?>
-                                                        <a href="<?php echo base_url('uploads/courier/commercial_invoices/' . $shipment_detail['shipment']->commercial_invoice_file); ?>"
-                                                           title="Download Commercial Invoice"
-                                                           target="_blank"
-                                                           style="display:inline-flex;align-items:center;gap:4px;
-                                                                  padding:5px 10px;font-size:11px;font-weight:600;
-                                                                  background:#e65100;color:#fff;border-radius:4px;
-                                                                  text-decoration:none;white-space:nowrap;">
-                                                            <i class="fa fa-download"></i> Commercial Invoice
-                                                        </a>
-                                                    <?php else: ?>
-                                                        <a href="<?php echo admin_url('courier_logistic/shipments/commercial_invoice/' . $sid); ?>"
-                                                           title="Open Commercial Invoice"
-                                                           style="display:inline-flex;align-items:center;gap:4px;
-                                                                  padding:5px 10px;font-size:11px;font-weight:600;
-                                                                  background:#e65100;color:#fff;border-radius:4px;
-                                                                  text-decoration:none;white-space:nowrap;">
-                                                            <i class="fa fa-file-text-o"></i> Commercial Invoice
-                                                        </a>
-                                                    <?php endif; ?>
-
-                                                    <!-- Confirm Portal Request (admin only, portal shipments without invoice) -->
-                                                    <?php if ($is_portal_pending): ?>
-                                                    <button type="button"
-                                                            class="btn-confirm-portal"
-                                                            data-id="<?php echo $sid; ?>"
-                                                            data-waybill="<?php echo $waybill; ?>"
-                                                            title="Review & Create Invoice + Waybill"
-                                                            style="display:inline-flex;align-items:center;gap:4px;
-                                                                   padding:5px 10px;font-size:11px;font-weight:600;
-                                                                   background:#00796b;color:#fff;border-radius:4px;
-                                                                   border:none;cursor:pointer;white-space:nowrap;">
-                                                        <i class="fa fa-check-circle"></i> Confirm &amp; Invoice
-                                                    </button>
-                                                    <?php endif; ?>
-
-                                                    <!-- Delete -->
-                                                    <?php if (is_admin() || staff_can('delete_shipments', 'courier-shipments')): ?>
-                                                    <form action="<?php echo admin_url('courier_logistic/shipments/delete'); ?>"
-                                                          method="post" style="margin:0;"
-                                                          onsubmit="return confirm('Delete shipment <?php echo $waybill; ?> permanently?');">
-                                                        <input type="hidden"
-                                                               name="<?php echo $this->security->get_csrf_token_name(); ?>"
-                                                               value="<?php echo $this->security->get_csrf_hash(); ?>">
-                                                        <input type="hidden" name="shipment_id" value="<?php echo $sid; ?>">
-                                                        <button type="submit"
-                                                                title="Delete Shipment"
-                                                                style="display:inline-flex;align-items:center;gap:4px;
-                                                                       padding:5px 10px;font-size:11px;font-weight:600;
-                                                                       background:#c62828;color:#fff;border-radius:4px;
-                                                                       border:none;cursor:pointer;white-space:nowrap;">
-                                                            <i class="fa fa-trash"></i> Delete
-                                                        </button>
-                                                    </form>
-                                                    <?php endif; ?>
-
                                                 </div>
                                             </td>
                                         </tr>
@@ -495,6 +456,19 @@ echo '<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/selec
                                 </table>
                                 </div>
                                 <div class="shipment-table-hint">Scroll horizontally to see all shipment columns and actions.</div>
+                                <script>
+                                    // Whole-row click navigates to the shipment view, same as clicking "View".
+                                    (function () {
+                                        var table = document.getElementById('shipmentTable');
+                                        if (!table) return;
+                                        table.querySelectorAll('tbody tr.data-row[data-href]').forEach(function (row) {
+                                            row.addEventListener('click', function (e) {
+                                                if (e.target.closest('a, button, form, input, select, textarea')) return;
+                                                window.location = row.getAttribute('data-href');
+                                            });
+                                        });
+                                    })();
+                                </script>
                             <?php else: ?>
                                 <!-- Show a message when there's no data -->
                                 <div class="text-center text-danger">
