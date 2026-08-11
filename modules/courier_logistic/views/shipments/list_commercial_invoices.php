@@ -1,5 +1,5 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed'); ?>
-<?php init_head(); ?>
+<?php init_head(false); ?>
 <?php load_courier_styles(); ?>
 <?php $this->load->view('courier_logistic/layout/_topnav', ['cgs_active' => 'shipments']); ?>
 

@@ -1,5 +1,5 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed'); ?>
-<?php init_head(); ?>
+<?php init_head(false); ?>
 <?php load_courier_styles(); ?>
 <style>
 .doc-page { max-width:860px; margin:0 auto; }
