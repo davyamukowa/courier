@@ -618,6 +618,12 @@ echo '<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/selec
             <div class="col-md-12">
                 <div class="panel_s">
                     <div style="width:100%;" class="panel-body">
+                        <?php if (validation_errors() !== ''): ?>
+                            <div class="alert alert-danger" style="margin-bottom:15px;">
+                                <strong>Please fix the following before submitting:</strong>
+                                <?php echo validation_errors('<div>', '</div>'); ?>
+                            </div>
+                        <?php endif; ?>
                         <div style="margin-bottom:25px">
                             <a class="custom-button custom-button-green"
                                href="<?php echo admin_url('courier_logistic/shipments/main'); ?>">
