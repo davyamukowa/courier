@@ -38,6 +38,37 @@ international-leg logic). Never assume a code path is Salibay-only just because 
 this module or near Salibay code — the Rider app and the general `Shipments` controller are
 both shared by both flows.
 
+## Instant "waybill created" customer emails — universal, fires on ALL three creation paths
+
+The moment a shipment is created — general Go Shipping (`Shipments::store()`), Salibay manual
+(`Fulfilment::create_courier_shipment()`), or Salibay webhook
+(`Shopify_connector::create_courier_shipment()`) — two emails go out automatically, both
+non-blocking (wrapped in try/catch, a send failure never stops shipment creation):
+
+- `courier_send_shipment_waybill_email($shipment_id)` (`helpers/courier_helper.php`) → the
+  **recipient**, the actual formatted waybill (waybill number as a clickable tracking link,
+  sender/recipient/mode/status table, big red "Track Your Shipment" CTA). This is the exact
+  same email as the manual "Send Waybill by Email" button
+  (`Shipments::send_waybill_email()` — kept as a separate, independent implementation rather
+  than refactored to share code, so a future change to the manual button can't accidentally
+  also change the auto-send path or vice versa).
+- `courier_send_sender_tracking_email($shipment_id)` (`helpers/courier_helper.php`) → the
+  **sender** (the person who handed over the parcel, resolved via
+  `courier_resolve_shipment_sender_email()` — `tbl_shipment_senders` or, if entered as a
+  company, `tbl_shipment_companies`), a simpler "here's how to track your shipment" notice
+  with the same big CTA button, using the `courier_sender_tracking_info` template/mailable.
+
+Both are intentionally **universal**, not Salibay-gated — unlike
+`courier_send_shipment_in_transit_email()` (Salibay-only, see "Known past bug" below), these
+two are meant to fire for every shipment regardless of source. Don't add a
+`shopify_orders.gs_shipment_id` guard to either of these two.
+
+`Fulfilment.php`/`Shopify_connector.php` used to call the older, simpler
+`courier_send_shipment_created_email()` (still defined in `courier_helper.php`, now unused —
+left in place rather than deleted in case something else still references it) — that call was
+replaced with `courier_send_shipment_waybill_email()` so Salibay orders get the identical
+detailed waybill email a manually created shipment gets, per explicit instruction.
+
 ## Shared core tables (used by BOTH flows — universal)
 
 - `tbl_shipments` — one row per shipment, whichever flow created it.
