@@ -2001,6 +2001,46 @@ class Courier_Logistic_System {
     }
 
     /**
+     * v46: backfills tbl_shipments rows with branch_id IS NULL — created by a
+     * staff member with no branch assigned in Courier > Settings > Staff
+     * Branches (Shipments::add_shipment() used to stamp
+     * courier_get_session_branch_id(), which returns null in that case).
+     * Such a shipment was permanently invisible to EVERY branch-scoped
+     * listing, including its own creator's "my shipments" view — the
+     * listing filter is "branch_id IN (my assigned branches)" and NULL
+     * never satisfies that, not even the [0] fallback used when a
+     * branch-restricted staff has zero branches assigned. Assigns each
+     * orphaned shipment the org-wide default branch (preferring an
+     * international one for international shipments, matching
+     * courier_get_fallback_branch_id()'s existing convention used
+     * elsewhere for the same reason). Shipments::add_shipment() itself is
+     * fixed alongside this so new shipments can't land in this state again.
+     */
+    public function run_db_upgrades_v46() {
+        if (get_option('courier_schema_v46_done')) return;
+
+        try {
+            $CI = &get_instance();
+            $CI->load->helper('courier_goshipping/courier');
+
+            $shipments_table = db_prefix() . '_shipments';
+            if ($CI->db->table_exists($shipments_table)) {
+                $orphans = $CI->db->where('branch_id IS NULL')->get($shipments_table)->result();
+                foreach ($orphans as $orphan) {
+                    $branch_id = courier_get_fallback_branch_id($orphan->shipping_category === 'international');
+                    if ($branch_id) {
+                        $CI->db->where('id', $orphan->id)->update($shipments_table, ['branch_id' => $branch_id]);
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            log_message('error', 'courier_goshipping v46 migration failed: ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
+        }
+
+        update_option('courier_schema_v46_done', '1');
+    }
+
+    /**
      * Prunes old, purely-diagnostic rows that grow unbounded with order
      * volume and are never needed once they age out — NOT the same as
      * shipment_status_history/courier_sourcing_events, which are real
