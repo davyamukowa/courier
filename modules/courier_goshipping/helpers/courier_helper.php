@@ -312,6 +312,21 @@ if (!function_exists('courier_ensure_notification_email_templates')) {
             'Salibay: Shipment In Transit',
             'salibay_shipment_in_transit'
         );
+
+        create_email_template(
+            'Your Parcel Is On Its Way — Waybill {waybill_number} - {company_name}',
+            '<p>Dear {sender_name},</p>
+<p>Thank you for shipping with {company_name}. Your parcel has been picked up and assigned waybill number <strong>{waybill_number}</strong>, on its way to {recipient_name}.</p>
+<p>You can track its journey at any time using the button below.</p>
+<div style="text-align:center;margin:28px 0;">
+  <a href="{tracking_link}" style="display:inline-block;padding:18px 44px;background:#c62828;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:bold;font-size:20px;letter-spacing:0.5px;text-transform:uppercase;box-shadow:0 4px 14px rgba(198,40,40,0.4);">Track Your Shipment</a>
+</div>
+<p>Or copy and paste this link into your browser:<br>{tracking_link}</p>
+<p>Thank you for choosing <strong>{company_name}</strong>.</p>',
+            'courier',
+            'Courier: Sender Tracking Info',
+            'courier_sender_tracking_info'
+        );
     }
 }
 
