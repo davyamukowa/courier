@@ -2451,10 +2451,19 @@ class Fulfilment extends AdminController
 
         $invoice_id = $this->create_shipment_invoice($shipment_id, $order, $recipient_data, $packages_data, $tracking_number);
 
+        // Sends the actual formatted waybill (same as the manual "Send
+        // Waybill by Email" button) instantly to the recipient, and a
+        // tracking-info email to whoever sent the parcel — both never block
+        // shipment creation if they fail.
         try {
-            courier_send_shipment_created_email($shipment_id);
+            courier_send_shipment_waybill_email($shipment_id);
         } catch (\Throwable $e) {
-            log_message('error', 'Shipment-created customer email crashed: ' . $e->getMessage());
+            log_message('error', 'Waybill customer email crashed: ' . $e->getMessage());
+        }
+        try {
+            courier_send_sender_tracking_email($shipment_id);
+        } catch (\Throwable $e) {
+            log_message('error', 'Sender tracking-info email crashed: ' . $e->getMessage());
         }
 
         return [

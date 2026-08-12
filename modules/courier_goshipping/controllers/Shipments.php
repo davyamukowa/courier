@@ -1576,6 +1576,22 @@ class Shipments extends AdminController
                     $invoice_id = $this->process_invoice_and_packages($shipment_id, $waybill_number, $this->input->post('shipping_mode'), $client_id, $actual_mode_type, $data, $commercial_value_data);
                 }
 
+                // Instant customer notification: waybill to the recipient,
+                // tracking info to whoever sent the parcel. Never blocks the
+                // success flow if a send fails — same treatment given to
+                // Salibay-sourced shipments (Fulfilment::create_courier_shipment(),
+                // Shopify_connector::create_courier_shipment()).
+                try {
+                    courier_send_shipment_waybill_email($shipment_id);
+                } catch (\Throwable $e) {
+                    log_message('error', 'Waybill customer email crashed: ' . $e->getMessage());
+                }
+                try {
+                    courier_send_sender_tracking_email($shipment_id);
+                } catch (\Throwable $e) {
+                    log_message('error', 'Sender tracking-info email crashed: ' . $e->getMessage());
+                }
+
                 set_alert('success', 'Shipment added successfully.');
 
                 $type = $this->input->post('type');
