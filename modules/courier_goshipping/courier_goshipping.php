@@ -1898,6 +1898,47 @@ class Courier_Logistic_System {
     }
 
     /**
+     * v44: two independent fixes for the "Send Waybill by Email" flow —
+     * (a) Shipments::send_waybill_email()/send_invoice_email()/
+     * send_payment_receipt_email() passed mail_template() the wrong module
+     * folder name ('courier' instead of 'courier_goshipping'), which made
+     * every send of these three emails fatal with a generic "Server error"
+     * (fixed in code, no DB change needed for that part); (b) their merge
+     * field arrays used bare keys ('waybill_number') against brace-wrapped
+     * template placeholders ('{waybill_number}'), so even a successful send
+     * showed literal "{waybill_number}" text to the customer (also fixed in
+     * code). This migration only handles what code alone can't: rewriting
+     * the *already-created* courier_waybill_to_customer template row (a
+     * fresh install.php run never happens again post-activation) to add a
+     * clickable tracking link instead of the old plain-text instruction.
+     */
+    public function run_db_upgrades_v44() {
+        if (get_option('courier_schema_v44_done')) return;
+        $CI = &get_instance();
+
+        $templates_table = db_prefix() . 'emailtemplates';
+        if ($CI->db->table_exists($templates_table)) {
+            $CI->db->where('slug', 'courier_waybill_to_customer')
+                ->where('message LIKE', '%to track your shipment.%')
+                ->update($templates_table, [
+                    'message' => '<p>Dear {recipient_name},</p>
+<p>Your shipment waybill is ready. Please find the details below.</p>
+<table style="width:100%;border-collapse:collapse;font-size:14px;margin:16px 0;border:1px solid #e0e0e0;">
+  <tr style="background:#f5f5f5;"><td style="padding:8px 12px;border:1px solid #e0e0e0;font-weight:bold;width:40%;">Waybill Number</td><td style="padding:8px 12px;border:1px solid #e0e0e0;font-size:18px;font-weight:bold;color:#2e7d32;">{waybill_number}</td></tr>
+  <tr><td style="padding:8px 12px;border:1px solid #e0e0e0;font-weight:bold;">Sender</td><td style="padding:8px 12px;border:1px solid #e0e0e0;">{sender_name}</td></tr>
+  <tr style="background:#f5f5f5;"><td style="padding:8px 12px;border:1px solid #e0e0e0;font-weight:bold;">Recipient</td><td style="padding:8px 12px;border:1px solid #e0e0e0;">{recipient_name}</td></tr>
+  <tr><td style="padding:8px 12px;border:1px solid #e0e0e0;font-weight:bold;">Shipping Mode</td><td style="padding:8px 12px;border:1px solid #e0e0e0;">{shipping_mode}</td></tr>
+  <tr style="background:#f5f5f5;"><td style="padding:8px 12px;border:1px solid #e0e0e0;font-weight:bold;">Status</td><td style="padding:8px 12px;border:1px solid #e0e0e0;">{status}</td></tr>
+</table>
+<p>To track your goods, <a href="{tracking_link}" style="color:#2e7d32;font-weight:bold;">click here</a>.</p>
+<p>Thank you for choosing <strong>{company_name}</strong>.</p>',
+                ]);
+        }
+
+        update_option('courier_schema_v44_done', '1');
+    }
+
+    /**
      * Prunes old, purely-diagnostic rows that grow unbounded with order
      * volume and are never needed once they age out — NOT the same as
      * shipment_status_history/courier_sourcing_events, which are real
