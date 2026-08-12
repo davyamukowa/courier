@@ -1603,10 +1603,23 @@ class Shopify_connector extends AdminController
 
             // Let the customer know their waybill/tracking link right away —
             // never blocks shipment creation if it fails (see the function).
+            // Sends the actual formatted waybill (same as the manual "Send
+            // Waybill by Email" button), not the older simpler notice.
             try {
-                courier_send_shipment_created_email($shipment_id);
+                courier_send_shipment_waybill_email($shipment_id);
             } catch (\Throwable $e) {
-                $this->write_integration_log('error', 'shipment', 'Shipment-created customer email crashed: ' . $e->getMessage(), [
+                $this->write_integration_log('error', 'shipment', 'Waybill customer email crashed: ' . $e->getMessage(), [
+                    'shopify_db_order_id' => $order_id,
+                    'shipment_id' => $shipment_id
+                ], $order->store_id);
+            }
+
+            // Also let whoever sent the parcel know how to track it — same
+            // non-blocking contract as above.
+            try {
+                courier_send_sender_tracking_email($shipment_id);
+            } catch (\Throwable $e) {
+                $this->write_integration_log('error', 'shipment', 'Sender tracking-info email crashed: ' . $e->getMessage(), [
                     'shopify_db_order_id' => $order_id,
                     'shipment_id' => $shipment_id
                 ], $order->store_id);
