@@ -361,6 +361,18 @@ if (!function_exists('courier_send_shipment_created_email')) {
 if (!function_exists('courier_send_shipment_in_transit_email')) {
     function courier_send_shipment_in_transit_email($shipment_id)
     {
+        // Only for Salibay-sourced shipments — this fires from the Rider
+        // app's "Start Delivery" action, which a rider can tap on ANY
+        // assigned shipment, general Go Shipping freight included. A plain
+        // freight shipment has no linked shopify_orders row, so it's
+        // silently skipped rather than getting a Salibay-branded email.
+        $CI = &get_instance();
+        if (!$CI->db->table_exists(db_prefix() . 'shopify_orders')
+            || !$CI->db->where('gs_shipment_id', (int) $shipment_id)->get(db_prefix() . 'shopify_orders')->row()
+        ) {
+            return false;
+        }
+
         $resolved = courier_resolve_shipment_recipient_email($shipment_id);
         if (!$resolved) {
             return false;
