@@ -400,6 +400,194 @@ if (!function_exists('courier_send_shipment_in_transit_email')) {
 }
 
 /**
+ * Sends the actual formatted waybill — the same email behind the manual
+ * "Send Waybill by Email" button on the waybill page (see
+ * Shipments::send_waybill_email()) — to a shipment's recipient. Fired
+ * automatically the instant ANY shipment is created, general Go Shipping
+ * freight or Salibay-sourced alike, per explicit instruction that a Salibay
+ * order gets exactly the same "waybill created -> emailed instantly"
+ * treatment as a manually created shipment, not a separate/lesser
+ * notification. Silently no-ops (never throws) on any missing data so a
+ * notification failure can never block shipment creation.
+ */
+if (!function_exists('courier_send_shipment_waybill_email')) {
+    function courier_send_shipment_waybill_email($shipment_id, $custom_email = null)
+    {
+        try {
+            $CI = &get_instance();
+            $CI->load->model('courier_goshipping/Shipment_model');
+
+            $details = $CI->Shipment_model->get_shipment_details((int) $shipment_id);
+            if (empty($details)) {
+                return false;
+            }
+
+            $shipment  = $details['shipment'];
+            $recipient = $details['recipient'];
+            $sender    = $details['sender'];
+
+            $to_email = null;
+            if (!empty($recipient)) {
+                $to_email = $recipient->email ?? $recipient->recipient_contact_person_email ?? null;
+            }
+            if ($custom_email && filter_var($custom_email, FILTER_VALIDATE_EMAIL)) {
+                $to_email = $custom_email;
+            }
+            if (empty($to_email) || $to_email === 'no-reply@example.com' || !filter_var($to_email, FILTER_VALIDATE_EMAIL)) {
+                return false;
+            }
+
+            $invoice_info = courier_get_invoice_info($shipment->branch_id ?? null);
+            $company_name = $invoice_info['name'] ?: 'Courier';
+            $waybill_raw  = $shipment->waybill_number ?: $shipment->tracking_id;
+            $waybill      = htmlspecialchars($waybill_raw);
+            $status_name  = htmlspecialchars($shipment->status_name ?? 'Processing');
+            $tracking_url = courier_customer_tracking_link($waybill_raw);
+
+            $sender_name = 'N/A';
+            if (!empty($sender)) {
+                if (!empty($sender->first_name)) {
+                    $sender_name = htmlspecialchars(trim($sender->first_name . ' ' . ($sender->last_name ?? '')));
+                } elseif (!empty($sender->company_name)) {
+                    $sender_name = htmlspecialchars($sender->company_name);
+                }
+            }
+
+            $recip_name = 'N/A';
+            if (!empty($recipient)) {
+                if (!empty($recipient->first_name)) {
+                    $recip_name = htmlspecialchars(trim($recipient->first_name . ' ' . ($recipient->last_name ?? '')));
+                } elseif (!empty($recipient->recipient_contact_person_name)) {
+                    $recip_name = htmlspecialchars($recipient->recipient_contact_person_name);
+                } elseif (!empty($recipient->recipient_company_name)) {
+                    $recip_name = htmlspecialchars($recipient->recipient_company_name);
+                }
+            }
+
+            $mode = ucfirst(str_replace('_', ' ', $shipment->shipping_mode ?? 'road'));
+
+            courier_ensure_notification_email_templates();
+
+            $sent = mail_template('Courier_waybill_to_customer', 'courier_goshipping', $to_email, [
+                '{recipient_name}' => $recip_name ?: 'Customer',
+                '{sender_name}'    => $sender_name,
+                '{waybill_number}' => $waybill,
+                '{shipping_mode}'  => $mode,
+                '{status}'         => $status_name,
+                '{company_name}'   => $company_name,
+                '{tracking_link}'  => $tracking_url,
+            ])->send();
+
+            if (!$sent) {
+                log_message('error', "Waybill email to {$to_email} for shipment #{$shipment_id} was not sent.");
+            }
+
+            return (bool) $sent;
+        } catch (\Throwable $e) {
+            log_message('error', 'Waybill email crashed: ' . $e->getMessage());
+            return false;
+        }
+    }
+}
+
+/**
+ * Loads a shipment's sender's usable email + display name — mirrors
+ * courier_resolve_shipment_recipient_email() but for the sender side
+ * (individual shipment_senders row, or shipment_companies row when the
+ * sender was entered as a company). Returns null if there's no usable email.
+ */
+if (!function_exists('courier_resolve_shipment_sender_email')) {
+    function courier_resolve_shipment_sender_email($shipment_id)
+    {
+        $CI = &get_instance();
+        $shipment = $CI->db->where('id', (int) $shipment_id)->get(db_prefix() . '_shipments')->row();
+        if (!$shipment) {
+            return null;
+        }
+
+        $email = null;
+        $name  = 'Customer';
+
+        if (!empty($shipment->sender_id)) {
+            $sender = $CI->db->where('id', $shipment->sender_id)->get(db_prefix() . '_shipment_senders')->row();
+            if ($sender) {
+                $email = $sender->email ?? null;
+                $name  = trim(($sender->first_name ?? '') . ' ' . ($sender->last_name ?? '')) ?: $name;
+            }
+        } elseif (!empty($shipment->company_id)) {
+            $company = $CI->db->where('id', $shipment->company_id)->get(db_prefix() . '_shipment_companies')->row();
+            if ($company) {
+                $email = $company->contact_person_email ?? null;
+                $name  = $company->company_name ?? $name;
+            }
+        }
+
+        if (empty($email) || $email === 'no-reply@example.com' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return null;
+        }
+
+        return ['shipment' => $shipment, 'sender_name' => $name, 'email' => $email];
+    }
+}
+
+/**
+ * Emails the PERSON WHO SENT THE PARCEL (not the recipient) a "here's how to
+ * track your shipment" notice, the moment a shipment is created — the
+ * recipient-facing waybill email (courier_send_shipment_waybill_email())
+ * only ever reaches the recipient, so without this the sender has no way to
+ * follow their own parcel's progress. Same silent-no-op contract as the
+ * other notification senders in this file.
+ */
+if (!function_exists('courier_send_sender_tracking_email')) {
+    function courier_send_sender_tracking_email($shipment_id)
+    {
+        try {
+            $resolved = courier_resolve_shipment_sender_email($shipment_id);
+            if (!$resolved) {
+                return false;
+            }
+
+            $CI = &get_instance();
+            $shipment = $resolved['shipment'];
+
+            $recipient_name = 'the recipient';
+            if (!empty($shipment->recipient_id)) {
+                $r = $CI->db->where('id', $shipment->recipient_id)->get(db_prefix() . '_shipment_recipients')->row();
+                if ($r) {
+                    $recipient_name = trim(($r->first_name ?? '') . ' ' . ($r->last_name ?? '')) ?: $recipient_name;
+                }
+            } elseif (!empty($shipment->recipient_company_id)) {
+                $rc = $CI->db->where('id', $shipment->recipient_company_id)->get(db_prefix() . '_recipient_companies')->row();
+                if ($rc) {
+                    $recipient_name = $rc->recipient_company_name ?? $recipient_name;
+                }
+            }
+
+            $waybill = $shipment->waybill_number ?: $shipment->tracking_id;
+
+            courier_ensure_notification_email_templates();
+
+            $sent = mail_template('Courier_sender_tracking_info', 'courier_goshipping', $resolved['email'], [
+                '{sender_name}'    => $resolved['sender_name'] ?: 'Customer',
+                '{recipient_name}' => $recipient_name,
+                '{waybill_number}' => $waybill,
+                '{tracking_link}'  => courier_customer_tracking_link($waybill),
+                '{company_name}'   => get_option('companyname'),
+            ])->send();
+
+            if (!$sent) {
+                log_message('error', "Sender tracking-info email to {$resolved['email']} for shipment #{$shipment_id} was not sent.");
+            }
+
+            return (bool) $sent;
+        } catch (\Throwable $e) {
+            log_message('error', 'Sender tracking-info email crashed: ' . $e->getMessage());
+            return false;
+        }
+    }
+}
+
+/**
  * Builds the full sourcing-to-doorstep journey for a shipment, for the
  * client portal tracker: the external sourcing pipeline's own progress tags
  * (tbl_courier_sourcing_events, captured by
