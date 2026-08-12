@@ -2606,12 +2606,13 @@ class Shipments extends AdminController
         $mode = ucfirst(str_replace('_', ' ', $shipment->shipping_mode ?? 'road'));
 
         $merge = [
-            'recipient_name' => $recip_name ?: 'Customer',
-            'sender_name'    => $sender_name,
-            'waybill_number' => $waybill,
-            'shipping_mode'  => $mode,
-            'status'         => $status_name,
-            'company_name'   => $company_name,
+            '{recipient_name}' => $recip_name ?: 'Customer',
+            '{sender_name}'    => $sender_name,
+            '{waybill_number}' => $waybill,
+            '{shipping_mode}'  => $mode,
+            '{status}'         => $status_name,
+            '{company_name}'   => $company_name,
+            '{tracking_link}'  => $tracking_url,
         ];
 
         $sent = mail_template('Courier_waybill_to_customer', 'courier_goshipping', $to_email, $merge)->send();
