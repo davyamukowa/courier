@@ -1953,6 +1953,7 @@ class Courier_Logistic_System {
     public function run_db_upgrades_v45() {
         if (get_option('courier_schema_v45_done')) return;
         $CI = &get_instance();
+        $CI->load->helper('courier_goshipping/courier');
 
         $templates_table = db_prefix() . 'emailtemplates';
         if ($CI->db->table_exists($templates_table)) {
