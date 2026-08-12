@@ -755,17 +755,34 @@ create_email_template(
     '<p>Dear {recipient_name},</p>
 <p>Your shipment waybill is ready. Please find the details below.</p>
 <table style="width:100%;border-collapse:collapse;font-size:14px;margin:16px 0;border:1px solid #e0e0e0;">
-  <tr style="background:#f5f5f5;"><td style="padding:8px 12px;border:1px solid #e0e0e0;font-weight:bold;width:40%;">Waybill Number</td><td style="padding:8px 12px;border:1px solid #e0e0e0;font-size:18px;font-weight:bold;color:#2e7d32;">{waybill_number}</td></tr>
+  <tr style="background:#f5f5f5;"><td style="padding:8px 12px;border:1px solid #e0e0e0;font-weight:bold;width:40%;">Waybill Number</td><td style="padding:8px 12px;border:1px solid #e0e0e0;font-size:18px;font-weight:bold;"><a href="{tracking_link}" style="color:#2e7d32;text-decoration:none;">{waybill_number}</a></td></tr>
   <tr><td style="padding:8px 12px;border:1px solid #e0e0e0;font-weight:bold;">Sender</td><td style="padding:8px 12px;border:1px solid #e0e0e0;">{sender_name}</td></tr>
   <tr style="background:#f5f5f5;"><td style="padding:8px 12px;border:1px solid #e0e0e0;font-weight:bold;">Recipient</td><td style="padding:8px 12px;border:1px solid #e0e0e0;">{recipient_name}</td></tr>
   <tr><td style="padding:8px 12px;border:1px solid #e0e0e0;font-weight:bold;">Shipping Mode</td><td style="padding:8px 12px;border:1px solid #e0e0e0;">{shipping_mode}</td></tr>
   <tr style="background:#f5f5f5;"><td style="padding:8px 12px;border:1px solid #e0e0e0;font-weight:bold;">Status</td><td style="padding:8px 12px;border:1px solid #e0e0e0;">{status}</td></tr>
 </table>
-<p>To track your goods, <a href="{tracking_link}" style="color:#2e7d32;font-weight:bold;">click here</a>.</p>
+<div style="text-align:center;margin:28px 0;">
+  <a href="{tracking_link}" style="display:inline-block;padding:18px 44px;background:#c62828;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:bold;font-size:20px;letter-spacing:0.5px;text-transform:uppercase;box-shadow:0 4px 14px rgba(198,40,40,0.4);">Track Your Shipment</a>
+</div>
 <p>Thank you for choosing <strong>{company_name}</strong>.</p>',
     'courier',
     'Courier Waybill Notification to Customer',
     'courier_waybill_to_customer'
+);
+
+create_email_template(
+    'Your Parcel Is On Its Way — Waybill {waybill_number} - {company_name}',
+    '<p>Dear {sender_name},</p>
+<p>Thank you for shipping with {company_name}. Your parcel has been picked up and assigned waybill number <strong>{waybill_number}</strong>, on its way to {recipient_name}.</p>
+<p>You can track its journey at any time using the button below.</p>
+<div style="text-align:center;margin:28px 0;">
+  <a href="{tracking_link}" style="display:inline-block;padding:18px 44px;background:#c62828;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:bold;font-size:20px;letter-spacing:0.5px;text-transform:uppercase;box-shadow:0 4px 14px rgba(198,40,40,0.4);">Track Your Shipment</a>
+</div>
+<p>Or copy and paste this link into your browser:<br>{tracking_link}</p>
+<p>Thank you for choosing <strong>{company_name}</strong>.</p>',
+    'courier',
+    'Courier: Sender Tracking Info',
+    'courier_sender_tracking_info'
 );
 
 // ── Service Points table ──────────────────────────────────────────────────────
