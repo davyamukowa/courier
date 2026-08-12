@@ -761,7 +761,7 @@ create_email_template(
   <tr><td style="padding:8px 12px;border:1px solid #e0e0e0;font-weight:bold;">Shipping Mode</td><td style="padding:8px 12px;border:1px solid #e0e0e0;">{shipping_mode}</td></tr>
   <tr style="background:#f5f5f5;"><td style="padding:8px 12px;border:1px solid #e0e0e0;font-weight:bold;">Status</td><td style="padding:8px 12px;border:1px solid #e0e0e0;">{status}</td></tr>
 </table>
-<p>Use your waybill number <strong>{waybill_number}</strong> to track your shipment.</p>
+<p>To track your goods, <a href="{tracking_link}" style="color:#2e7d32;font-weight:bold;">click here</a>.</p>
 <p>Thank you for choosing <strong>{company_name}</strong>.</p>',
     'courier',
     'Courier Waybill Notification to Customer',
