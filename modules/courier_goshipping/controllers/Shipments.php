@@ -2758,7 +2758,7 @@ class Shipments extends AdminController
             'company_name'   => $company_name,
         ];
 
-        $sent = mail_template('Courier_payment_receipt_to_customer', 'courier', $to_email, $merge)->send();
+        $sent = mail_template('Courier_payment_receipt_to_customer', 'courier_goshipping', $to_email, $merge)->send();
         if ($sent) {
             echo json_encode(['success' => true, 'message' => 'Receipt emailed to ' . $to_email]);
         } else {
