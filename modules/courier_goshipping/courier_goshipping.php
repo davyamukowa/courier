@@ -1915,14 +1915,22 @@ class Courier_Logistic_System {
      */
     public function run_db_upgrades_v44() {
         if (get_option('courier_schema_v44_done')) return;
-        $CI = &get_instance();
 
-        $templates_table = db_prefix() . 'emailtemplates';
-        if ($CI->db->table_exists($templates_table)) {
-            $CI->db->where('slug', 'courier_waybill_to_customer')
-                ->where('message LIKE', '%to track your shipment.%')
-                ->update($templates_table, [
-                    'message' => '<p>Dear {recipient_name},</p>
+        // This whole chain runs synchronously inside admin_init, which fires
+        // on the very next admin page load after login — a fatal error here
+        // (this is the FIRST run of this migration, unlike v2-v43 which are
+        // already flagged done and short-circuit above) takes down that
+        // entire page load, which is exactly the login flow. Never let a
+        // schema/content self-heal crash the request that triggered it.
+        try {
+            $CI = &get_instance();
+
+            $templates_table = db_prefix() . 'emailtemplates';
+            if ($CI->db->table_exists($templates_table)) {
+                $CI->db->where('slug', 'courier_waybill_to_customer')
+                    ->where('message LIKE', '%to track your shipment.%')
+                    ->update($templates_table, [
+                        'message' => '<p>Dear {recipient_name},</p>
 <p>Your shipment waybill is ready. Please find the details below.</p>
 <table style="width:100%;border-collapse:collapse;font-size:14px;margin:16px 0;border:1px solid #e0e0e0;">
   <tr style="background:#f5f5f5;"><td style="padding:8px 12px;border:1px solid #e0e0e0;font-weight:bold;width:40%;">Waybill Number</td><td style="padding:8px 12px;border:1px solid #e0e0e0;font-size:18px;font-weight:bold;color:#2e7d32;">{waybill_number}</td></tr>
@@ -1933,7 +1941,10 @@ class Courier_Logistic_System {
 </table>
 <p>To track your goods, <a href="{tracking_link}" style="color:#2e7d32;font-weight:bold;">click here</a>.</p>
 <p>Thank you for choosing <strong>{company_name}</strong>.</p>',
-                ]);
+                    ]);
+            }
+        } catch (\Throwable $e) {
+            log_message('error', 'courier_goshipping v44 migration failed: ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
         }
 
         update_option('courier_schema_v44_done', '1');
