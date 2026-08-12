@@ -2668,12 +2668,12 @@ class Shipments extends AdminController
         $company_name = (!empty($_lc_raw) && $_lc_raw !== 'GO Shipping') ? $_lc_raw : (get_option('companyname') ?: 'Our Company');
 
         $merge = [
-            'recipient_name'  => $rec_name ?: 'Customer',
-            'waybill_number'  => $s->waybill_number,
-            'invoice_number'  => 'INV-' . strtoupper($s->waybill_number),
-            'total_amount'    => number_format($total, 2),
-            'due_date'        => date('d M Y', strtotime('+14 days')),
-            'company_name'    => $company_name,
+            '{recipient_name}'  => $rec_name ?: 'Customer',
+            '{waybill_number}'  => $s->waybill_number,
+            '{invoice_number}'  => 'INV-' . strtoupper($s->waybill_number),
+            '{total_amount}'    => number_format($total, 2),
+            '{due_date}'        => date('d M Y', strtotime('+14 days')),
+            '{company_name}'    => $company_name,
         ];
 
         $sent = mail_template('Courier_invoice_to_customer', 'courier_goshipping', $to_email, $merge)->send();
@@ -2749,14 +2749,14 @@ class Shipments extends AdminController
         $company_name = (!empty($_lc_raw) && $_lc_raw !== 'GO Shipping') ? $_lc_raw : (get_option('companyname') ?: 'Our Company');
 
         $merge = [
-            'recipient_name' => $rec_name ?: 'Customer',
-            'waybill_number' => $s->waybill_number,
-            'receipt_number' => 'RCP-' . str_pad($payment_id, 6, '0', STR_PAD_LEFT),
-            'amount_paid'    => number_format((float)$pmt['amount'], 2),
-            'payment_mode'   => !empty($pmt['name']) ? $pmt['name'] : 'Cash',
-            'payment_date'   => date('d M Y', strtotime($pmt['date'])),
-            'balance_due'    => number_format($balance, 2),
-            'company_name'   => $company_name,
+            '{recipient_name}' => $rec_name ?: 'Customer',
+            '{waybill_number}' => $s->waybill_number,
+            '{receipt_number}' => 'RCP-' . str_pad($payment_id, 6, '0', STR_PAD_LEFT),
+            '{amount_paid}'    => number_format((float)$pmt['amount'], 2),
+            '{payment_mode}'   => !empty($pmt['name']) ? $pmt['name'] : 'Cash',
+            '{payment_date}'   => date('d M Y', strtotime($pmt['date'])),
+            '{balance_due}'    => number_format($balance, 2),
+            '{company_name}'   => $company_name,
         ];
 
         $sent = mail_template('Courier_payment_receipt_to_customer', 'courier_goshipping', $to_email, $merge)->send();
