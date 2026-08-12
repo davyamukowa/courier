@@ -951,7 +951,14 @@ class Shipments extends AdminController
                 : ($this->input->post('payment_terms') ?: null),
             'created_at' => $this->_parse_shipment_date() . ' ' . date('H:i:s'),
             'company_type' => $this->input->post('company_type'),
-            'branch_id' => courier_get_session_branch_id(),
+            // Falls back to the org-wide default branch when the creating
+            // staff has no branch assigned (courier_get_session_branch_id()
+            // returns null in that case) — a shipment with branch_id NULL is
+            // permanently invisible to any branch-restricted staff list
+            // (including its own creator's), since that list's filter is
+            // "branch_id IN (my branches)" and NULL never matches anything,
+            // not even a fallback [0] filter.
+            'branch_id' => courier_get_session_branch_id() ?: courier_get_fallback_branch_id($this->input->post('type') === 'international'),
         ];
 
         if ($this->db->field_exists('goods_declared_value', db_prefix() . '_shipments')) {
