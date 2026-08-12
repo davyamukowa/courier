@@ -2614,7 +2614,7 @@ class Shipments extends AdminController
             'company_name'   => $company_name,
         ];
 
-        $sent = mail_template('Courier_waybill_to_customer', 'courier', $to_email, $merge)->send();
+        $sent = mail_template('Courier_waybill_to_customer', 'courier_goshipping', $to_email, $merge)->send();
         if ($sent) {
             echo json_encode(['success' => true, 'message' => 'Waybill sent successfully to ' . $to_email]);
         } else {
@@ -2675,7 +2675,7 @@ class Shipments extends AdminController
             'company_name'    => $company_name,
         ];
 
-        $sent = mail_template('Courier_invoice_to_customer', 'courier', $to_email, $merge)->send();
+        $sent = mail_template('Courier_invoice_to_customer', 'courier_goshipping', $to_email, $merge)->send();
         if ($sent) {
             echo json_encode(['success' => true, 'message' => 'Invoice emailed to ' . $to_email]);
         } else {
