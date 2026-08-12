@@ -1963,14 +1963,19 @@ class Courier_Logistic_System {
      */
     public function run_db_upgrades_v45() {
         if (get_option('courier_schema_v45_done')) return;
-        $CI = &get_instance();
-        $CI->load->helper('courier_goshipping/courier');
 
-        $templates_table = db_prefix() . 'emailtemplates';
-        if ($CI->db->table_exists($templates_table)) {
-            $CI->db->where('slug', 'courier_waybill_to_customer')
-                ->update($templates_table, [
-                    'message' => '<p>Dear {recipient_name},</p>
+        // Same reasoning as v44's try/catch above — this is this migration's
+        // first-ever run, so it must not be able to fatal the admin_init
+        // chain that fires right after login.
+        try {
+            $CI = &get_instance();
+            $CI->load->helper('courier_goshipping/courier');
+
+            $templates_table = db_prefix() . 'emailtemplates';
+            if ($CI->db->table_exists($templates_table)) {
+                $CI->db->where('slug', 'courier_waybill_to_customer')
+                    ->update($templates_table, [
+                        'message' => '<p>Dear {recipient_name},</p>
 <p>Your shipment waybill is ready. Please find the details below.</p>
 <table style="width:100%;border-collapse:collapse;font-size:14px;margin:16px 0;border:1px solid #e0e0e0;">
   <tr style="background:#f5f5f5;"><td style="padding:8px 12px;border:1px solid #e0e0e0;font-weight:bold;width:40%;">Waybill Number</td><td style="padding:8px 12px;border:1px solid #e0e0e0;font-size:18px;font-weight:bold;"><a href="{tracking_link}" style="color:#2e7d32;text-decoration:none;">{waybill_number}</a></td></tr>
@@ -1983,10 +1988,13 @@ class Courier_Logistic_System {
   <a href="{tracking_link}" style="display:inline-block;padding:18px 44px;background:#c62828;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:bold;font-size:20px;letter-spacing:0.5px;text-transform:uppercase;box-shadow:0 4px 14px rgba(198,40,40,0.4);">Track Your Shipment</a>
 </div>
 <p>Thank you for choosing <strong>{company_name}</strong>.</p>',
-                ]);
-        }
+                    ]);
+            }
 
-        courier_ensure_notification_email_templates();
+            courier_ensure_notification_email_templates();
+        } catch (\Throwable $e) {
+            log_message('error', 'courier_goshipping v45 migration failed: ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
+        }
 
         update_option('courier_schema_v45_done', '1');
     }
