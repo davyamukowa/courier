@@ -1940,6 +1940,46 @@ class Courier_Logistic_System {
     }
 
     /**
+     * v45: two more requested polish items for the recipient waybill email —
+     * make the Waybill Number cell itself a clickable tracking link, and
+     * turn the plain-text "click here" tracking line into a large, high
+     * contrast CTA button. Also registers the brand-new "sender tracking
+     * info" template (courier_ensure_notification_email_templates() would
+     * eventually create it lazily on first send, but doing it here means it
+     * exists — and is visible/editable in Setup > Email Templates — as soon
+     * as this migration runs, not only after the first shipment is created
+     * post-deploy).
+     */
+    public function run_db_upgrades_v45() {
+        if (get_option('courier_schema_v45_done')) return;
+        $CI = &get_instance();
+
+        $templates_table = db_prefix() . 'emailtemplates';
+        if ($CI->db->table_exists($templates_table)) {
+            $CI->db->where('slug', 'courier_waybill_to_customer')
+                ->update($templates_table, [
+                    'message' => '<p>Dear {recipient_name},</p>
+<p>Your shipment waybill is ready. Please find the details below.</p>
+<table style="width:100%;border-collapse:collapse;font-size:14px;margin:16px 0;border:1px solid #e0e0e0;">
+  <tr style="background:#f5f5f5;"><td style="padding:8px 12px;border:1px solid #e0e0e0;font-weight:bold;width:40%;">Waybill Number</td><td style="padding:8px 12px;border:1px solid #e0e0e0;font-size:18px;font-weight:bold;"><a href="{tracking_link}" style="color:#2e7d32;text-decoration:none;">{waybill_number}</a></td></tr>
+  <tr><td style="padding:8px 12px;border:1px solid #e0e0e0;font-weight:bold;">Sender</td><td style="padding:8px 12px;border:1px solid #e0e0e0;">{sender_name}</td></tr>
+  <tr style="background:#f5f5f5;"><td style="padding:8px 12px;border:1px solid #e0e0e0;font-weight:bold;">Recipient</td><td style="padding:8px 12px;border:1px solid #e0e0e0;">{recipient_name}</td></tr>
+  <tr><td style="padding:8px 12px;border:1px solid #e0e0e0;font-weight:bold;">Shipping Mode</td><td style="padding:8px 12px;border:1px solid #e0e0e0;">{shipping_mode}</td></tr>
+  <tr style="background:#f5f5f5;"><td style="padding:8px 12px;border:1px solid #e0e0e0;font-weight:bold;">Status</td><td style="padding:8px 12px;border:1px solid #e0e0e0;">{status}</td></tr>
+</table>
+<div style="text-align:center;margin:28px 0;">
+  <a href="{tracking_link}" style="display:inline-block;padding:18px 44px;background:#c62828;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:bold;font-size:20px;letter-spacing:0.5px;text-transform:uppercase;box-shadow:0 4px 14px rgba(198,40,40,0.4);">Track Your Shipment</a>
+</div>
+<p>Thank you for choosing <strong>{company_name}</strong>.</p>',
+                ]);
+        }
+
+        courier_ensure_notification_email_templates();
+
+        update_option('courier_schema_v45_done', '1');
+    }
+
+    /**
      * Prunes old, purely-diagnostic rows that grow unbounded with order
      * volume and are never needed once they age out — NOT the same as
      * shipment_status_history/courier_sourcing_events, which are real
