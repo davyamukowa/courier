@@ -501,12 +501,15 @@ class Shopify_connector_model extends App_Model
 
         // Our internal shipment_statuses id -> Shopify's fulfillment event
         // vocabulary. Statuses with no clean Shopify equivalent (Created,
-        // Picked up, Received) are simply not pushed as events.
+        // Picked up, Received, and the international leg's later stages
+        // 11/12 — "In Air"/"Customs" have no distinct Shopify event either)
+        // are simply not pushed as events.
         $event_map = [
-            5 => 'in_transit',
-            6 => 'in_transit',
-            7 => 'out_for_delivery',
-            8 => 'delivered',
+            5  => 'in_transit',
+            6  => 'in_transit',
+            7  => 'out_for_delivery',
+            8  => 'delivered',
+            10 => 'in_transit', // International leg activated — see note above.
         ];
 
         if ((int) $status_id === 9) {
