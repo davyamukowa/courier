@@ -1207,6 +1207,23 @@ class Shopify_connector extends AdminController
         $this->load->model('shopify_connector/shopify_connector_model');
         if ($this->shopify_connector_model->activate_international_status($shipment->id)) {
             log_activity("Shopify Webhook: international tracking activated on shipment #{$shipment->id} for SHF-{$order->shopify_order_id}.");
+
+            // This is the international leg's equivalent of the domestic
+            // "first in_transit" trigger (see push_shopify_fulfillment_
+            // status()'s own doc comment) — the moment Go Shipping actually
+            // takes physical custody at origin, not any earlier sourcing-side
+            // tag. Creates the Shopify fulfillment (customer gets the
+            // tracking link/waybill by whatever notification Shopify itself
+            // sends) and pushes an in_transit event. Never blocks the
+            // international-activation flow above if it fails.
+            try {
+                $this->shopify_connector_model->push_shopify_fulfillment_status($shipment->id, 10);
+            } catch (\Throwable $e) {
+                $this->write_integration_log('error', 'shipment', 'Shopify fulfillment push for international activation crashed: ' . $e->getMessage(), [
+                    'shipment_id' => $shipment->id,
+                    'shopify_db_order_id' => $order->id,
+                ], null);
+            }
         }
     }
 
