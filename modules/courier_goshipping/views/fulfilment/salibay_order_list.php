@@ -149,4 +149,33 @@
         }
     });
 })();
+
+// Global (not inside the jQuery-wait closure above) since it's only ever
+// invoked from the button's inline onclick, well after page load — by
+// then jQuery is guaranteed to already be loaded.
+function importSalibayMissedOrder() {
+    var orderNumber = prompt('Enter the Shopify order number (e.g. 2150):');
+    if (!orderNumber) {
+        return;
+    }
+
+    var postData = { order_number: orderNumber };
+    if (typeof csrfData !== 'undefined') {
+        postData[csrfData['token_name']] = csrfData['hash'];
+    } else {
+        postData['<?php echo $this->security->get_csrf_token_name(); ?>'] = '<?php echo $this->security->get_csrf_hash(); ?>';
+    }
+
+    jQuery.post('<?php echo site_url('admin/shopify_connector/manual_import_order'); ?>', postData, function (res) {
+        if (!res.success) {
+            alert_float('danger', res.message || 'Import failed.');
+            return;
+        }
+
+        alert_float('success', res.message || 'Order imported.');
+        window.location.reload();
+    }, 'json').fail(function () {
+        alert_float('danger', 'Unable to contact the server. Please refresh and try again.');
+    });
+}
 </script>
