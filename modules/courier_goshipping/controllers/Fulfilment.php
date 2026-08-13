@@ -2119,7 +2119,9 @@ class Fulfilment extends AdminController
         // an admin grants this explicitly per staff/role via Setup > Roles.
         return is_admin()
             || has_permission('shopify_connector', '', 'view_shopify_connector')
-            || has_permission('shopify_connector', '', 'manage_shopify_connector');
+            || has_permission('shopify_connector', '', 'manage_shopify_connector')
+            || staff_can('view_salibay', 'courier-salibay')
+            || $this->can_manage_fulfilment();
     }
 
     private function can_manage_fulfilment()
