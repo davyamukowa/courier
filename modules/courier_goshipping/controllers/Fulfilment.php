@@ -223,12 +223,30 @@ class Fulfilment extends AdminController
             return;
         }
 
-        $rows = $this->db->select('r.id, r.name, r.phone, r.status, r.staff_id, r.created_at, staff.firstname, staff.lastname, staff.active AS staff_active')
+        // A rider has no branch_id of its own — it's only attributable to a
+        // branch via its linked staff record's tbl_courier_staff_branches
+        // assignment. A branch-restricted staff member only sees riders
+        // linked to a staff member assigned to one of their own branches
+        // (an unlinked rider has no branch info at all, so it's left for an
+        // org-wide admin to triage/link first, same reasoning as leaving
+        // orphaned-branch shipments to a self-heal rather than guessing).
+        $my_staff_ids = null;
+        if (!courier_staff_can_view_all_branches() && $this->db->table_exists($prefix . '_courier_staff_branches')) {
+            $my_branch_ids = courier_get_staff_branch_ids();
+            $rows_sb = $this->db->select('staff_id')
+                ->where_in('branch_id', !empty($my_branch_ids) ? $my_branch_ids : [0])
+                ->get($prefix . '_courier_staff_branches')
+                ->result_array();
+            $my_staff_ids = !empty($rows_sb) ? array_unique(array_column($rows_sb, 'staff_id')) : [0];
+        }
+
+        $this->db->select('r.id, r.name, r.phone, r.status, r.staff_id, r.created_at, staff.firstname, staff.lastname, staff.active AS staff_active')
             ->from($prefix . '_courier_riders r')
-            ->join($prefix . 'staff staff', 'staff.staffid = r.staff_id', 'left')
-            ->order_by('r.created_at', 'desc')
-            ->get()
-            ->result();
+            ->join($prefix . 'staff staff', 'staff.staffid = r.staff_id', 'left');
+        if ($my_staff_ids !== null) {
+            $this->db->where_in('r.staff_id', $my_staff_ids);
+        }
+        $rows = $this->db->order_by('r.created_at', 'desc')->get()->result();
 
         foreach ($rows as $row) {
             $row->linked = !empty($row->staff_id);
@@ -238,12 +256,14 @@ class Fulfilment extends AdminController
         }
 
         $data['riders'] = $rows;
-        $data['unlinked_drivers'] = $this->db->select('staff.staffid, staff.firstname, staff.lastname, staff.phonenumber')
+        $this->db->select('staff.staffid, staff.firstname, staff.lastname, staff.phonenumber')
             ->from($prefix . 'staff staff')
             ->join($prefix . 'roles roles', 'roles.roleid = staff.role')
-            ->where('roles.name', 'Fleet: Driver')
-            ->get()
-            ->result();
+            ->where('roles.name', 'Fleet: Driver');
+        if ($my_staff_ids !== null) {
+            $this->db->where_in('staff.staffid', $my_staff_ids);
+        }
+        $data['unlinked_drivers'] = $this->db->get()->result();
 
         $data['group_content'] = $this->load->view('courier_goshipping/fulfilment/riders', $data, true);
         $this->load->view('courier_goshipping/fulfilment/main', $data);
