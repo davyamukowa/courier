@@ -2148,21 +2148,66 @@ class Fulfilment extends AdminController
             || $this->can_manage_fulfilment();
     }
 
+    /**
+     * Kept as the broadest "does this staffer have ANY Salibay manage
+     * capability" check — used only where that's genuinely the right
+     * question (e.g. can_view_fulfilment()'s "can they get past the front
+     * door at all" check). Do NOT use this to gate a specific action —
+     * that was the bug: a staffer granted only "Manage Riders" was able to
+     * reach Settings/Webhooks/Integration Health too, because every
+     * individual action was gated by this same umbrella OR instead of its
+     * own capability. Use the specific can_manage_salibay_*() methods below
+     * for anything that maps to one particular checkbox in the permissions
+     * UI ("Courier - Salibay Fulfilment" in courier_goshipping.php's
+     * create_permissions()).
+     */
     private function can_manage_fulfilment()
     {
-        // has_permission('shopify_connector', ..., 'manage_shopify_connector')
-        // is kept for backward compatibility with any staff already granted
-        // access that way (under the separate "Shopify Connector" permission
-        // group) — but any of the new "Courier - Salibay Fulfilment"
-        // capabilities also satisfy this single umbrella "can manage" gate,
-        // same as before this feature had its own registered permissions at
-        // all (see courier_goshipping.php's create_permissions()).
         return is_admin()
             || has_permission('shopify_connector', '', 'manage_shopify_connector')
             || staff_can('manage_salibay_settings', 'courier-salibay')
             || staff_can('manage_salibay_riders', 'courier-salibay')
             || staff_can('manage_salibay_logs', 'courier-salibay')
             || staff_can('create_salibay_shipments', 'courier-salibay');
+    }
+
+    private function can_manage_salibay_riders()
+    {
+        return is_admin()
+            || has_permission('shopify_connector', '', 'manage_shopify_connector')
+            || staff_can('manage_salibay_riders', 'courier-salibay');
+    }
+
+    private function can_manage_salibay_settings()
+    {
+        return is_admin()
+            || has_permission('shopify_connector', '', 'manage_shopify_connector')
+            || staff_can('manage_salibay_settings', 'courier-salibay');
+    }
+
+    private function can_manage_salibay_logs()
+    {
+        return is_admin()
+            || has_permission('shopify_connector', '', 'manage_shopify_connector')
+            || staff_can('manage_salibay_logs', 'courier-salibay');
+    }
+
+    private function can_create_salibay_shipments()
+    {
+        return is_admin()
+            || has_permission('shopify_connector', '', 'manage_shopify_connector')
+            || staff_can('create_salibay_shipments', 'courier-salibay');
+    }
+
+    /**
+     * test_connection() and run_inventory_sync() are each triggered from
+     * BOTH the Settings page and the Integration Health page — either
+     * manage permission is legitimately sufficient for these two actions
+     * specifically, since both pages already surface a button for them.
+     */
+    private function can_manage_salibay_settings_or_logs()
+    {
+        return $this->can_manage_salibay_settings() || $this->can_manage_salibay_logs();
     }
 
     private function write_integration_log($level, $category, $message, array $context = [], $store_id = null)
