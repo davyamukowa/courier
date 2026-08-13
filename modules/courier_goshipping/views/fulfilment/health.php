@@ -35,7 +35,7 @@
             <p><strong>Status:</strong> <span id="health_api_status">Loading...</span></p>
             <p><strong>Store:</strong> <span id="health_api_store">...</span></p>
             <p><strong>Last Sync:</strong> <span id="health_api_last">...</span></p>
-            <?php if ($can_manage_fulfilment): ?>
+            <?php if ($can_manage_salibay_settings_or_logs): ?>
             <button type="button" class="btn btn-danger" onclick="testFulfilmentApiConnection();">Test Connection</button>
             <?php endif; ?>
         </div>
@@ -44,7 +44,7 @@
             <p><strong>Pending:</strong> <span id="health_wh_pending">...</span></p>
             <p><strong>Failed:</strong> <span id="health_wh_failed">...</span></p>
             <p><strong>Oldest Pending:</strong> <span id="health_wh_oldest">...</span></p>
-            <?php if ($can_manage_fulfilment): ?>
+            <?php if ($can_manage_salibay_logs): ?>
             <button type="button" class="btn btn-danger" onclick="retryAllFulfilmentWebhooks();">Retry Failed Events</button>
             <?php endif; ?>
         </div>
@@ -53,7 +53,7 @@
             <p><strong>Last Sync:</strong> <span id="health_inv_last">...</span></p>
             <p><strong>Synced Records:</strong> <span id="health_inv_insync">...</span></p>
             <p><strong>Out of Sync:</strong> <span id="health_inv_outsync">...</span></p>
-            <?php if ($can_manage_fulfilment): ?>
+            <?php if ($can_manage_salibay_settings_or_logs): ?>
             <button type="button" class="btn btn-danger" onclick="runFulfilmentInventorySync();">Run Inventory Sync</button>
             <?php endif; ?>
         </div>
@@ -68,7 +68,7 @@
                 <p class="text-muted mtop5">Track Salibay order events, retry failures, and inspect raw payloads without leaving the courier module.</p>
             </div>
             <div class="col-md-4 text-right">
-                <?php if ($can_manage_fulfilment): ?>
+                <?php if ($can_manage_salibay_logs): ?>
                 <button type="button" class="btn btn-danger" onclick="retryAllFulfilmentWebhooks();"><i class="fa fa-refresh"></i> Retry All Failed</button>
                 <button type="button" class="btn btn-danger" onclick="clearDoneFulfilmentEvents();"><i class="fa fa-trash"></i> Clear Done</button>
                 <?php endif; ?>
@@ -103,7 +103,7 @@
                 <p class="text-muted mtop5">Clear analytics for connection health, stock sync, shipment creation, and Salibay event activity.</p>
             </div>
             <div class="col-md-5 text-right">
-                <?php if ($can_manage_fulfilment): ?>
+                <?php if ($can_manage_salibay_logs): ?>
                 <button type="button" class="btn btn-danger" onclick="generateFulfilmentTestLog();"><i class="fa fa-flask"></i> Test Log</button>
                 <button type="button" class="btn btn-danger" onclick="exportFulfilmentLogs();"><i class="fa fa-download"></i> Export CSV</button>
                 <button type="button" class="btn btn-danger" onclick="clearFulfilmentLogs();"><i class="fa fa-trash"></i> Clear Logs</button>
