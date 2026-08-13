@@ -3160,6 +3160,17 @@ class Shipments extends AdminController
 
             log_activity('International Shipment Status Updated [ID: ' . $id . ', Status ID: ' . $new_status_id . ']');
 
+            // Same as the domestic update_status() action above — keep the
+            // linked Salibay/Shopify order's fulfillment status in sync.
+            // Safe to call unconditionally: push_shopify_fulfillment_status()
+            // itself no-ops for a shipment with no linked Shopify order.
+            try {
+                $this->load->model('shopify_connector/shopify_connector_model');
+                $this->shopify_connector_model->push_shopify_fulfillment_status((int) $id, $new_status_id);
+            } catch (\Throwable $e) {
+                log_message('error', 'Shopify fulfillment push crashed: ' . $e->getMessage());
+            }
+
             set_alert('success', 'International status updated successfully.');
             redirect(admin_url('courier_goshipping/shipments/waybill/' . $id));
 
