@@ -1952,7 +1952,16 @@ class Fulfilment extends AdminController
         $prefix = db_prefix();
         $branch_where = '';
         $scope_key = 'all';
-        if (!courier_staff_can_view_all_branches()) {
+        // Defense in depth: Fulfilment::__construct() self-heals
+        // shopify_orders.branch_id, but this function's $branch_where gets
+        // appended to shopify_orders queries below — guard here too so a
+        // missing column degrades to unscoped metrics instead of a fatal
+        // "Unknown column" DB error (this exact gap crashed the page for
+        // any branch-restricted staff member before the column existed).
+        if (
+            !courier_staff_can_view_all_branches()
+            && $this->db->field_exists('branch_id', $prefix . 'shopify_orders')
+        ) {
             $ids = courier_get_staff_branch_ids();
             $ids = !empty($ids) ? $ids : [0];
             $ids = array_map('intval', $ids);
