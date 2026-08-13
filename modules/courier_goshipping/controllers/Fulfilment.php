@@ -2401,6 +2401,7 @@ class Fulfilment extends AdminController
                 FROM {$prefix}shopify_order_items
                 GROUP BY shopify_order_id
             ) items ON items.shopify_order_id = so.id
+            WHERE 1=1 {$branch_where}
             ORDER BY so.created_at DESC
         ")->result();
 
