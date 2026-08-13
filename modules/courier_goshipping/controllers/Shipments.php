@@ -3445,6 +3445,23 @@ class Shipments extends AdminController
     // -----------------------------------------------------------------------
     private function _get_manifest_rows($date_from, $date_to, $staff_id = null, array $service_points = [])
     {
+        // Resolve branch scope BEFORE touching $this->db for the main query
+        // below. courier_apply_branch_scope() internally runs its own nested
+        // query (courier_get_staff_branch_ids() -> $CI->db->select()->get()) —
+        // since CI3's query builder is one mutable object shared by $this->db
+        // everywhere, calling that mid-chain (after this method's own
+        // select()/join() calls but before its get()) flushes and corrupts
+        // the still-pending outer query, producing a broken merged query
+        // ("Column 'branch_id' in SELECT is ambiguous") once both queries'
+        // select/from/join fragments collide. Resolving first avoids any
+        // nested $this->db call happening while this method's own chain is
+        // still open.
+        $branch_scope_ids = null;
+        if (!courier_staff_can_view_all_branches()) {
+            $ids = courier_get_staff_branch_ids();
+            $branch_scope_ids = !empty($ids) ? $ids : [0];
+        }
+
         $select = 's.id, s.waybill_number, s.tracking_id, s.shipping_mode, s.shipping_category,'
                 . ' s.created_at, s.packaging_charges, s.staff_id,'
                 . ' COALESCE(s.vat_amount,0) AS vat_amount,'
