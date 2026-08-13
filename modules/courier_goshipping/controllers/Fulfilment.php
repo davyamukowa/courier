@@ -2359,6 +2359,14 @@ class Fulfilment extends AdminController
             ? 'so.salibay_classification, so.salibay_route_tag, so.needs_manual_review,'
             : "NULL AS salibay_classification, NULL AS salibay_route_tag, 0 AS needs_manual_review,";
 
+        // Same branch scoping as get_salibay_order_list_datatable() and
+        // get_orders_datatable() — this page-load query was the one place
+        // that had been missed, showing every branch's orders (including
+        // Head Office/Kenya) to a branch-restricted staff member like a
+        // Dubai-assigned agent, who should only see orders routed to their
+        // own branch (GSC-AE-DXB -> Dubai Branch, per Route Mapping).
+        $branch_where = $this->branch_scope_sql_clause('so', $this->db->field_exists('branch_id', "{$prefix}shopify_orders"));
+
         $rows = $this->db->query("
             SELECT
                 so.id AS order_id,
