@@ -1789,7 +1789,17 @@ class Shipments extends AdminController
         if (is_admin() || staff_can('view_all_shipments', 'courier-shipments')) {
             return true;
         }
-        if ((int)$details['shipment']->staff_id !== (int)get_staff_user_id()) {
+        // Unassigned (staff_id = 0) shipments — the norm for auto-created
+        // Salibay/Shopify orders until someone actually picks them up — must
+        // stay openable by any "view own" staff within the shipment's own
+        // branch, same rule Shipment_model::get_shipments_details() already
+        // uses for the list itself ("(s.staff_id = X OR s.staff_id = 0)").
+        // This check used to require an exact staff_id match with no such
+        // exception, so a branch-assigned staff member could see an
+        // unassigned shipment in their list but got "Access denied" the
+        // moment they tried to actually open it.
+        $shipment_staff_id = (int) $details['shipment']->staff_id;
+        if ($shipment_staff_id !== 0 && $shipment_staff_id !== (int) get_staff_user_id()) {
             set_alert('danger', 'Access denied — this shipment does not belong to you.');
             redirect(admin_url('courier_goshipping/shipments/main'));
             return false;
