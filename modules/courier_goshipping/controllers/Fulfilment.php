@@ -78,6 +78,7 @@ class Fulfilment extends AdminController
 
     public function get_salibay_order_list_datatable()
     {
+        $can_create_shipments = $this->can_create_salibay_shipments();
         $prefix = db_prefix();
         $start = (int) $this->input->post('start');
         $length = (int) $this->input->post('length');
