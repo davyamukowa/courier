@@ -238,7 +238,7 @@ $cgs_can_view_reporting_menu = $cgs_can_view_shipments || $cgs_can_view_manifest
                     <p class="cgs-mega-menu__section-label">Inventory</p>
                     <a href="<?php echo admin_url('courier_goshipping/fulfilment/inventory'); ?>" class="cgs-mega-menu__setup-link"><i class="fa fa-cubes cgs-icon-swatch cgs-icon-swatch--teal"></i><span>Inventory Overview</span></a>
                     <a href="<?php echo admin_url('courier_goshipping/fulfilment/inventory'); ?>" class="cgs-mega-menu__setup-link"><i class="fa fa-refresh cgs-icon-swatch cgs-icon-swatch--emerald"></i><span>Last Inventory Sync</span></a>
-                    <?php if ($cgs_can_manage_salibay_settings || $cgs_can_manage_salibay_logs): ?>
+                    <?php if ($cgs_can_manage_salibay_logs): ?>
                     <a href="<?php echo admin_url('courier_goshipping/fulfilment/health#tab_logs'); ?>" class="cgs-mega-menu__setup-link"><i class="fa fa-exchange cgs-icon-swatch cgs-icon-swatch--indigo"></i><span>Inventory Sync Logs</span></a>
                     <?php endif; ?>
                 </div>
