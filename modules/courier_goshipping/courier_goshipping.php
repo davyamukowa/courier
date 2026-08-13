@@ -2228,6 +2228,29 @@ class Courier_Logistic_System {
      */
     public function save_staff_branches($staff_id) {
         $CI = &get_instance();
+
+        // staff_member_updated fires for EVERY staff save, not just the main
+        // profile form that actually carries courier_branch_ids — a
+        // Permissions-tab-only save (or any other update path) posts no such
+        // field at all. This function used to delete-then-conditionally-
+        // reinsert unconditionally on every fire, which meant a permissions
+        // save with no branch field present still wiped the staff's existing
+        // branch assignment (delete ran; nothing re-inserted since the
+        // resolved $branch_ids was empty) — a real incident: a staff member's
+        // branch assignment silently disappeared after their permissions
+        // were edited, breaking all their branch-scoped visibility. Only
+        // touch the assignment table at all if THIS request genuinely
+        // submitted branch data — distinguish "field absent" (leave existing
+        // assignments alone) from "field present but empty" (an intentional
+        // clear-all from the profile form's checkbox list).
+        $branch_ids_present = $this->_pending_staff_branch_ids !== null
+            || $CI->input->post('courier_branch_ids') !== null;
+
+        if (!$branch_ids_present) {
+            $this->_pending_staff_default_branch_id = null;
+            return;
+        }
+
         $branch_ids = $this->_pending_staff_branch_ids !== null
             ? $this->_pending_staff_branch_ids
             : array_map('intval', (array) $CI->input->post('courier_branch_ids'));
