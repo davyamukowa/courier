@@ -1696,6 +1696,10 @@ class Fulfilment extends AdminController
 
     public function export_logs_csv()
     {
+        if (!$this->can_manage_fulfilment()) {
+            access_denied('Salibay Fulfilment - Integration Logs');
+        }
+
         $prefix = db_prefix();
         $level = $this->input->get('level');
         $category = $this->input->get('category');
@@ -1731,6 +1735,10 @@ class Fulfilment extends AdminController
 
     public function get_health_status()
     {
+        if (!$this->can_manage_fulfilment()) {
+            ajax_access_denied();
+        }
+
         $prefix = db_prefix();
         $store = $this->db->where('is_active', 1)->get("{$prefix}shopify_stores")->row();
         $pending = (int) $this->db->where('status', 'pending')->count_all_results("{$prefix}shopify_webhook_events");
