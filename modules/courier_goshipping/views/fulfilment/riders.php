@@ -33,7 +33,7 @@
                                         <span class="label label-info">Linked: <?php echo htmlspecialchars($rider->staff_display); ?></span>
                                     <?php else: ?>
                                         <span class="text-muted">Not linked</span>
-                                        <?php if (!empty($unlinked_drivers)): ?>
+                                        <?php if (!empty($unlinked_drivers) && $can_manage_salibay_riders): ?>
                                             <?php echo form_open(admin_url('courier_goshipping/fulfilment/link_rider/' . $rider->id), ['style' => 'display:inline-block; margin-left:6px;']); ?>
                                                 <select name="staff_id" class="form-control input-xs" style="display:inline-block; width:auto; height:26px; padding:2px 6px;" onchange="this.form.submit()">
                                                     <option value="">Link to driver...</option>
@@ -47,6 +47,7 @@
                                 </td>
                                 <td><?php echo _dt($rider->created_at); ?></td>
                                 <td>
+                                    <?php if ($can_manage_salibay_riders): ?>
                                     <?php echo form_open(admin_url('courier_goshipping/fulfilment/toggle_rider_status/' . $rider->id), ['style' => 'display:inline-block;']); ?>
                                         <button type="submit" class="btn btn-default btn-xs" onclick="return confirm('<?php echo $rider->status === 'active' ? 'Suspend' : 'Reactivate'; ?> this rider account?');">
                                             <?php echo $rider->status === 'active' ? 'Suspend' : 'Reactivate'; ?>
@@ -56,6 +57,9 @@
                                             onclick="document.getElementById('reset_rider_password_form').action='<?php echo admin_url('courier_goshipping/fulfilment/reset_rider_password/' . $rider->id); ?>'; document.getElementById('reset_rider_password_name').textContent='<?php echo htmlspecialchars(addslashes($rider->name)); ?>';">
                                         Reset Password
                                     </button>
+                                    <?php else: ?>
+                                    <span class="text-muted">&mdash;</span>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
