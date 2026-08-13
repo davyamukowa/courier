@@ -39,8 +39,18 @@ class Fulfilment extends AdminController
     public function dashboard()
     {
         $data = $this->build_base_data('dashboard', 'Salibay Fulfilment Dashboard');
-        $data['recent_orders'] = $this->db->select('id, shopify_order_number, customer_name, order_status, total_price, currency, gs_shipment_id, tracking_number, created_at')
-            ->from(db_prefix() . 'shopify_orders')
+        $this->db->select('id, shopify_order_number, customer_name, order_status, total_price, currency, gs_shipment_id, tracking_number, created_at')
+            ->from(db_prefix() . 'shopify_orders');
+        // Same branch scoping as the Orders/Salibay Order List datatables
+        // (get_orders_datatable(), get_salibay_order_list_datatable()) — a
+        // branch-restricted staff member (e.g. assigned only to a "Dubai"
+        // branch) must not see other branches' orders here either, this
+        // widget was the one place on the dashboard that had been missed.
+        if ($this->db->field_exists('branch_id', db_prefix() . 'shopify_orders') && !courier_staff_can_view_all_branches()) {
+            $ids = courier_get_staff_branch_ids();
+            $this->db->where_in('branch_id', !empty($ids) ? $ids : [0]);
+        }
+        $data['recent_orders'] = $this->db
             ->order_by('id', 'DESC')
             ->limit(8)
             ->get()
