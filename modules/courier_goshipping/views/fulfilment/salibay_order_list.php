@@ -5,6 +5,13 @@
             This page now uses the same server-rendered order loading approach as the dashboard, so every captured Salibay order is shown immediately with its shipment state. Click anywhere on a row to open its waybill, or to create a shipment if it doesn't have one yet.
         </div>
 
+        <?php if (!empty($can_manage_salibay_settings)): ?>
+        <div class="mbot15">
+            <button type="button" class="btn btn-default btn-sm" onclick="importSalibayMissedOrder();"><i class="fa fa-download"></i> Import Missed Order</button>
+            <span class="text-muted" style="font-size:12px;">For an order that was placed and paid on Shopify but never showed up here (missed webhook) — pulls it in by order number.</span>
+        </div>
+        <?php endif; ?>
+
         <div class="table-responsive">
             <table class="table table-striped table-bordered table-condensed salibay-order-list">
                 <thead>
