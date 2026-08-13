@@ -205,6 +205,10 @@ class Fulfilment extends AdminController
 
     public function health()
     {
+        if (!$this->can_manage_fulfilment()) {
+            access_denied('Salibay Fulfilment - Integration Health');
+        }
+
         $data = $this->build_base_data('health', 'Integration Health');
         $data['group_content'] = $this->load->view('courier_goshipping/fulfilment/health', $data, true);
         $this->load->view('courier_goshipping/fulfilment/main', $data);
