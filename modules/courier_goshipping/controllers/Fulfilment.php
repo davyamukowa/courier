@@ -8,8 +8,8 @@ class Fulfilment extends AdminController
     {
         parent::__construct();
 
-        if (!has_permission('courier_goshipping', '', 'view')) {
-            access_denied('Courier GoShipping');
+        if (!is_admin() && !staff_can('view_salibay', 'courier-salibay')) {
+            access_denied('Courier GoShipping - Salibay Fulfilment');
         }
 
         $this->load->helper('courier_goshipping/courier');
