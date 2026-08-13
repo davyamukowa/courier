@@ -150,7 +150,9 @@ class Fulfilment extends AdminController
             $order_number = '#' . htmlspecialchars((string) $row->shopify_order_number);
 
             $shipment_label = '<span class="text-muted">Not created</span>';
-            $shipment_action = '<button type="button" class="btn btn-default btn-xs" onclick="createSalibayShipment(' . (int) $row->order_id . '); return false;"><i class="fa fa-truck"></i> Create Shipment</button>';
+            $shipment_action = $can_create_shipments
+                ? '<button type="button" class="btn btn-default btn-xs" onclick="createSalibayShipment(' . (int) $row->order_id . '); return false;"><i class="fa fa-truck"></i> Create Shipment</button>'
+                : '<span class="text-muted">&mdash;</span>';
             if (!empty($row->shipment_id)) {
                 $waybill = htmlspecialchars((string) ($row->waybill_number ?: $row->tracking_id ?: $row->order_tracking_number ?: ('#' . $row->shipment_id)));
                 $waybill_url = admin_url('courier_goshipping/shipments/waybill/' . $row->shipment_id);
