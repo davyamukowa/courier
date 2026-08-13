@@ -683,8 +683,21 @@ if (!function_exists('courier_get_shipment_journey')) {
 /**
  * Applies branch isolation to the current CI query builder: restricts to the
  * staff's assigned branches unless they're an admin or hold 'view_all_branches'.
- * Call this right before ->get()/->count_all_results() on a table/alias that
- * has a branch_id column.
+ *
+ * CAUTION — do not call this in the middle of building another query (i.e.
+ * after you've already called ->select()/->from()/->join() on $this->db for
+ * a DIFFERENT query that hasn't been ->get() yet). CI3's query builder is one
+ * mutable object; courier_get_staff_branch_ids() (called internally here)
+ * runs its OWN select()->where()->get() on that same object, which flushes
+ * and corrupts whatever query you were still assembling — the two queries'
+ * select/from/join fragments merge into one broken query. This exact bug
+ * shipped once already (see _get_manifest_rows()'s branch_scope_ids
+ * pre-resolution pattern for the fix: resolve the staff's branch IDs into a
+ * plain PHP array via courier_get_staff_branch_ids() BEFORE calling
+ * ->select()/->from()/->join() on your own query, then apply
+ * ->where_in('branch_id_column', $ids) directly — no nested DB call mid-chain).
+ * Only safe to call this function directly when it's the FIRST thing you do
+ * with $this->db in the current query (nothing pending before it).
  */
 if (!function_exists('courier_apply_branch_scope')) {
     function courier_apply_branch_scope($column = 'branch_id')
