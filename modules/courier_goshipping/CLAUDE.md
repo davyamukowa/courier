@@ -40,18 +40,38 @@ both shared by both flows.
 
 ## Salibay Fulfilment staff permissions
 
-`Fulfilment.php`'s constructor now gates on `staff_can('view_salibay', 'courier-salibay')`
+`Fulfilment.php`'s constructor gates on `staff_can('view_salibay', 'courier-salibay')`
 (registered in `courier_goshipping.php::create_permissions()`, shows as "Courier - Salibay
 Fulfilment" in the staff permissions UI) — it used to gate on
 `has_permission('courier_goshipping', '', 'view')`, a capability that was **never registered
 anywhere**, meaning no non-admin staff could ever be granted access no matter what was checked
-for them. `can_manage_fulfilment()` (the umbrella gate used by ~23 write-actions — riders,
-settings, webhooks, product/location mapping, shipment creation, logs) now also accepts any of
-the new `courier-salibay` manage-level capabilities, in addition to the pre-existing
-`shopify_connector.manage_shopify_connector` permission (kept for backward compatibility with
-anyone already granted access that way). If you add a new Fulfilment.php action, gate it with
-`can_manage_fulfilment()` (or a new granular `courier-salibay` capability if it needs its own
-knob) — don't reintroduce an unregistered `has_permission()` string.
+for them.
+
+**Use the specific `can_manage_salibay_*()` methods, never the broad `can_manage_fulfilment()`,
+to gate an individual action.** `can_manage_fulfilment()` is a flat OR across every manage-level
+`courier-salibay` capability (settings, riders, logs, create-shipments) — it was originally used
+to gate all ~23 write-actions, which meant a staffer granted ONLY "Manage Riders" could also
+reach Settings, Webhooks, and Integration Health, since any one of those capabilities satisfied
+the same umbrella check. That's a real bug a user hit and reported. The actions are now split:
+- `can_manage_salibay_riders()` — riders(), link_rider(), toggle_rider_status(), reset_rider_password()
+- `can_manage_salibay_settings()` — settings(), save_settings(), webhooks, route/product/location mapping
+- `can_manage_salibay_logs()` — health(), webhook events/logs datatables, requeue/retry/clear/export
+- `can_create_salibay_shipments()` — create_shipment()
+- `can_manage_salibay_settings_or_logs()` — test_connection() and run_inventory_sync() specifically,
+  since both are legitimately triggered from both the Settings page and the Integration Health page
+
+`can_manage_fulfilment()` itself is kept only for `can_view_fulfilment()`'s "does this staffer
+have ANY Salibay manage capability" check — appropriate there since having any manage permission
+should imply base view access. `build_base_data()` passes ALL of these as separate flags to every
+Fulfilment view (`can_manage_salibay_riders`, `_settings`, `_logs`, `can_create_salibay_shipments`,
+`_settings_or_logs`) — **a view must condition a button/menu-link on the specific flag matching
+what that action's controller method actually checks**, not a shared/broad one, or you get the
+same bug again (a visible link/button that dead-ends at `access_denied()`/`ajax_access_denied()`
+for a permission the user was clearly not granted — confusing "is the system broken?" UX, not just
+a security nicety). This applies to `views/layout/_topnav.php`'s mega-menu columns too — each
+column is gated by the flag matching its links' actual controller-side requirement, computed
+inline near the menu (mirroring, not calling, the controller methods, since views don't have
+access to `$this->can_manage_salibay_*()`).
 
 ## Instant "waybill created" customer emails — universal, fires on ALL three creation paths
 
