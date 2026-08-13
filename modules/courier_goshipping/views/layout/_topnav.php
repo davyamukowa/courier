@@ -204,6 +204,18 @@ $cgs_can_view_reporting_menu = $cgs_can_view_shipments || $cgs_can_view_manifest
             || staff_can('manage_salibay_riders', 'courier-salibay')
             || staff_can('manage_salibay_settings', 'courier-salibay')
             || staff_can('manage_salibay_logs', 'courier-salibay');
+
+        // Mirrors Fulfilment::can_manage_fulfilment() — the single umbrella
+        // gate that Settings/Webhooks/Product Mapping AND the Integration
+        // Health page (webhook events, logs) sit behind at the controller
+        // level. A staffer with only view_salibay/manage_salibay_riders
+        // must not see menu links that dead-end at access_denied().
+        $cgs_can_manage_fulfilment = is_admin()
+            || has_permission('shopify_connector', '', 'manage_shopify_connector')
+            || staff_can('manage_salibay_settings', 'courier-salibay')
+            || staff_can('manage_salibay_riders', 'courier-salibay')
+            || staff_can('manage_salibay_logs', 'courier-salibay')
+            || staff_can('create_salibay_shipments', 'courier-salibay');
         ?>
         <?php if ($can_view_salibay_fulfilment): ?>
         <div class="cgs-topnav__item" data-menu="cgs-menu-fulfilment">
