@@ -205,17 +205,20 @@ $cgs_can_view_reporting_menu = $cgs_can_view_shipments || $cgs_can_view_manifest
             || staff_can('manage_salibay_settings', 'courier-salibay')
             || staff_can('manage_salibay_logs', 'courier-salibay');
 
-        // Mirrors Fulfilment::can_manage_fulfilment() — the single umbrella
-        // gate that Settings/Webhooks/Product Mapping AND the Integration
-        // Health page (webhook events, logs) sit behind at the controller
-        // level. A staffer with only view_salibay/manage_salibay_riders
-        // must not see menu links that dead-end at access_denied().
-        $cgs_can_manage_fulfilment = is_admin()
+        // Mirror Fulfilment's SPECIFIC per-action gates — NOT one broad OR.
+        // This exact spot had the same bug already fixed once in the
+        // controller: using one umbrella "any manage permission" check here
+        // meant a staffer granted only Manage Riders still saw the
+        // Integration Health and Configuration columns (which sit behind
+        // can_manage_salibay_logs()/can_manage_salibay_settings()
+        // specifically at the controller level, not "any manage
+        // permission"). Keep these matched 1:1 to the controller checks.
+        $cgs_can_manage_salibay_settings = is_admin()
             || has_permission('shopify_connector', '', 'manage_shopify_connector')
-            || staff_can('manage_salibay_settings', 'courier-salibay')
-            || staff_can('manage_salibay_riders', 'courier-salibay')
-            || staff_can('manage_salibay_logs', 'courier-salibay')
-            || staff_can('create_salibay_shipments', 'courier-salibay');
+            || staff_can('manage_salibay_settings', 'courier-salibay');
+        $cgs_can_manage_salibay_logs = is_admin()
+            || has_permission('shopify_connector', '', 'manage_shopify_connector')
+            || staff_can('manage_salibay_logs', 'courier-salibay');
         ?>
         <?php if ($can_view_salibay_fulfilment): ?>
         <div class="cgs-topnav__item" data-menu="cgs-menu-fulfilment">
