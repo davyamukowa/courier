@@ -238,11 +238,11 @@ $cgs_can_view_reporting_menu = $cgs_can_view_shipments || $cgs_can_view_manifest
                     <p class="cgs-mega-menu__section-label">Inventory</p>
                     <a href="<?php echo admin_url('courier_goshipping/fulfilment/inventory'); ?>" class="cgs-mega-menu__setup-link"><i class="fa fa-cubes cgs-icon-swatch cgs-icon-swatch--teal"></i><span>Inventory Overview</span></a>
                     <a href="<?php echo admin_url('courier_goshipping/fulfilment/inventory'); ?>" class="cgs-mega-menu__setup-link"><i class="fa fa-refresh cgs-icon-swatch cgs-icon-swatch--emerald"></i><span>Last Inventory Sync</span></a>
-                    <?php if ($cgs_can_manage_fulfilment): ?>
+                    <?php if ($cgs_can_manage_salibay_settings || $cgs_can_manage_salibay_logs): ?>
                     <a href="<?php echo admin_url('courier_goshipping/fulfilment/health#tab_logs'); ?>" class="cgs-mega-menu__setup-link"><i class="fa fa-exchange cgs-icon-swatch cgs-icon-swatch--indigo"></i><span>Inventory Sync Logs</span></a>
                     <?php endif; ?>
                 </div>
-                <?php if ($cgs_can_manage_fulfilment): ?>
+                <?php if ($cgs_can_manage_salibay_logs): ?>
                 <div class="cgs-mega-menu__column cgs-mega-menu__column--bordered">
                     <p class="cgs-mega-menu__section-label">Integration Health</p>
                     <a href="<?php echo admin_url('courier_goshipping/fulfilment/health#tab_logs'); ?>" class="cgs-mega-menu__setup-link"><i class="fa fa-heartbeat cgs-icon-swatch cgs-icon-swatch--red"></i><span>Webhook Events Pending</span></a>
@@ -250,7 +250,7 @@ $cgs_can_view_reporting_menu = $cgs_can_view_shipments || $cgs_can_view_manifest
                     <a href="<?php echo admin_url('courier_goshipping/fulfilment/health'); ?>" class="cgs-mega-menu__setup-link"><i class="fa fa-check-circle cgs-icon-swatch cgs-icon-swatch--blue"></i><span>Integration Health</span></a>
                 </div>
                 <?php endif; ?>
-                <?php if ($cgs_can_manage_fulfilment): ?>
+                <?php if ($cgs_can_manage_salibay_settings): ?>
                 <div class="cgs-mega-menu__column cgs-mega-menu__column--bordered">
                     <p class="cgs-mega-menu__section-label">Configuration</p>
                     <a href="<?php echo admin_url('courier_goshipping/fulfilment/settings'); ?>" class="cgs-mega-menu__setup-link"><i class="fa fa-cog cgs-icon-swatch cgs-icon-swatch--purple"></i><span>Connector Settings</span></a>
