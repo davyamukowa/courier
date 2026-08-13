@@ -38,6 +38,21 @@ international-leg logic). Never assume a code path is Salibay-only just because 
 this module or near Salibay code — the Rider app and the general `Shipments` controller are
 both shared by both flows.
 
+## Salibay Fulfilment staff permissions
+
+`Fulfilment.php`'s constructor now gates on `staff_can('view_salibay', 'courier-salibay')`
+(registered in `courier_goshipping.php::create_permissions()`, shows as "Courier - Salibay
+Fulfilment" in the staff permissions UI) — it used to gate on
+`has_permission('courier_goshipping', '', 'view')`, a capability that was **never registered
+anywhere**, meaning no non-admin staff could ever be granted access no matter what was checked
+for them. `can_manage_fulfilment()` (the umbrella gate used by ~23 write-actions — riders,
+settings, webhooks, product/location mapping, shipment creation, logs) now also accepts any of
+the new `courier-salibay` manage-level capabilities, in addition to the pre-existing
+`shopify_connector.manage_shopify_connector` permission (kept for backward compatibility with
+anyone already granted access that way). If you add a new Fulfilment.php action, gate it with
+`can_manage_fulfilment()` (or a new granular `courier-salibay` capability if it needs its own
+knob) — don't reintroduce an unregistered `has_permission()` string.
+
 ## Instant "waybill created" customer emails — universal, fires on ALL three creation paths
 
 The moment a shipment is created — general Go Shipping (`Shipments::store()`), Salibay manual
