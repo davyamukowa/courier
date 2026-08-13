@@ -802,10 +802,29 @@ class Shopify_connector extends AdminController
         if ($shopify_order_id) {
             $existing = $this->db->where('shopify_order_id', $shopify_order_id)->get(db_prefix() . 'shopify_orders')->row();
             if ($existing) {
+                // Already captured — but still worth re-running the SAME tag
+                // processing a live orders/updated webhook would do (route
+                // tag, classification, and critically "Ready for
+                // International Fulfillment"), for exactly the case that
+                // came up: an order pulled in with tags Shopify already had
+                // on it at import time, when handle_order_create() didn't
+                // used to persist salibay_ready_for_intl_fulfillment at all
+                // (fixed above) — so an order captured before that fix, or
+                // any order whose tags changed since capture, gets a chance
+                // to catch up instead of staying stuck.
+                try {
+                    $this->handle_order_updated($payload, $store);
+                } catch (\Throwable $e) {
+                    $this->write_integration_log('error', 'order', 'Manual order re-sync crashed: ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine(), [
+                        'order_number' => $order_number,
+                    ], $store->id);
+                    echo json_encode(['success' => false, 'message' => 'Re-sync crashed: ' . $e->getMessage()]);
+                    return;
+                }
                 echo json_encode([
                     'success' => true,
                     'already_existed' => true,
-                    'message' => "Order #{$order_number} was already captured earlier (Go Shipping order #{$existing->id}).",
+                    'message' => "Order #{$order_number} was already captured (Go Shipping order #{$existing->id}) — re-synced its tags/status just now.",
                 ]);
                 return;
             }
