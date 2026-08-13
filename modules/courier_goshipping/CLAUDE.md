@@ -104,6 +104,35 @@ left in place rather than deleted in case something else still references it) �
 replaced with `courier_send_shipment_waybill_email()` so Salibay orders get the identical
 detailed waybill email a manually created shipment gets, per explicit instruction.
 
+## Pushing status back to Shopify — `push_shopify_fulfillment_status()`
+
+`Shopify_connector_model::push_shopify_fulfillment_status($shipment_id, $status_id)` is the
+**only** place that writes anything back to Shopify (creates/updates the order's Shopify
+fulfillment — this is what flips "Unfulfilled" → "Fulfilled" and shows the customer a tracking
+link). Everything else described in "Instant waybill emails" above and the Shopify order Tags
+box is one-directional (Go Shipping *reads* Shopify, never writes back because of a tag edit).
+
+Called from 4 sites tied to the **domestic** `status_id` track (`Shipments::update_status()`,
+`Rider_api::delivery_start()`, `Salibay_delivery::start()`, `Pickups.php`) — "Fulfilled" means
+status 5/6 (in_transit), matching Salibay's own ops semantics ("goods left the warehouse").
+Status 9 (cancelled) triggers `cancel_fulfillment()` instead. Anything earlier (Created/Picked
+up/Received) is deliberately skipped — nothing real to tell the customer yet.
+
+The **international** leg (`international_status_id` 10–13) also pushes now — status 10 (At
+Origin Airport, set by `activate_international_air_freight_leg()` in
+`shopify_connector/controllers/Shopify_connector.php`, triggered by the "Ready for
+International Fulfillment" tag) is the international equivalent of domestic's first in_transit:
+the moment Go Shipping actually takes physical custody and the parcel starts moving. **Not**
+"Salibay Warehouse Received" — that tag means the *sourcing* team's own warehouse abroad
+received it, before Go Shipping has custody, so there's nothing to fulfil yet (same reasoning
+domestic uses to skip Created/Picked up). Once the international leg reaches 13 and hands off
+to the domestic track, no separate wiring is needed — the existing domestic call sites push
+out_for_delivery/delivered normally from there. Two call sites needed the international push
+(both call `activate_international_status()`): the normal case in
+`activate_international_air_freight_leg()`, and the race-condition case in
+`create_courier_shipment()` where the tag arrives before the shipment even exists yet (shipment
+is born already in AIR (AIR FREIGHT) mode with international tracking pre-activated).
+
 ## Shared core tables (used by BOTH flows — universal)
 
 - `tbl_shipments` — one row per shipment, whichever flow created it.
