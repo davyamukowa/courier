@@ -110,9 +110,11 @@
             <a href="<?php echo admin_url('courier_goshipping/fulfilment/dashboard'); ?>" class="<?php echo $group === 'dashboard' ? 'is-active' : ''; ?>"><i class="fa fa-dashboard"></i><span>Dashboard</span></a>
             <a href="<?php echo admin_url('courier_goshipping/fulfilment/orders'); ?>" class="<?php echo $group === 'orders' ? 'is-active' : ''; ?>"><i class="fa fa-shopping-cart"></i><span>Orders</span></a>
             <a href="<?php echo admin_url('courier_goshipping/fulfilment/inventory'); ?>" class="<?php echo $group === 'inventory' ? 'is-active' : ''; ?>"><i class="fa fa-cubes"></i><span>Virtual Warehouse</span></a>
+            <?php if ($can_manage_salibay_logs): ?>
             <a href="<?php echo admin_url('courier_goshipping/fulfilment/health'); ?>" class="<?php echo $group === 'health' ? 'is-active' : ''; ?>"><i class="fa fa-heartbeat"></i><span>Health & Logs</span></a>
+            <?php endif; ?>
             <a href="<?php echo admin_url('courier_goshipping/fulfilment/riders'); ?>" class="<?php echo $group === 'riders' ? 'is-active' : ''; ?>"><i class="fa fa-motorcycle"></i><span>Riders</span></a>
-            <?php if ($can_manage_fulfilment): ?>
+            <?php if ($can_manage_salibay_settings): ?>
             <a href="<?php echo admin_url('courier_goshipping/fulfilment/settings'); ?>" class="<?php echo $group === 'settings' ? 'is-active' : ''; ?>"><i class="fa fa-cogs"></i><span>Settings</span></a>
             <?php endif; ?>
         </div>
