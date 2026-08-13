@@ -29,6 +29,27 @@ class Fulfilment extends AdminController
         ) {
             $this->db->query('ALTER TABLE `' . db_prefix() . 'shopify_product_mappings` ADD `courier_branch_id` INT NULL;');
         }
+
+        // shopify_orders.branch_id is ALSO supposed to be self-healed by
+        // courier_goshipping.php's run_db_upgrades migration chain (gated
+        // behind an admin_init version-flag option) — but CI3's default DB
+        // driver doesn't throw on a failed query, so if that ALTER TABLE
+        // ever failed silently, the option flag still got marked done and
+        // the column permanently never gets retried. Confirmed this
+        // actually happened on production: get_fulfilment_metrics() fatals
+        // with "Unknown column 'branch_id' in 'WHERE'" for any
+        // branch-restricted (non-view-all-branches) staff member, since
+        // that's the only code path that appends a branch_id filter to a
+        // shopify_orders query — is_admin()/view-all-branches staff never
+        // hit it because no filter gets appended for them at all. Redundant
+        // self-heal here guarantees this controller always has the column
+        // it needs, independent of whether the other migration succeeded.
+        if (
+            $this->db->table_exists(db_prefix() . 'shopify_orders')
+            && !$this->db->field_exists('branch_id', db_prefix() . 'shopify_orders')
+        ) {
+            $this->db->query('ALTER TABLE `' . db_prefix() . 'shopify_orders` ADD COLUMN `branch_id` INT NULL DEFAULT NULL;');
+        }
     }
 
     public function index()
