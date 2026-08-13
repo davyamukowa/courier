@@ -1903,7 +1903,18 @@ class Fulfilment extends AdminController
         return [
             'title' => $title,
             'group' => $group,
-            'can_manage_fulfilment' => $this->can_manage_fulfilment(),
+            // Deliberately NOT one flat flag any more — a view must ask for
+            // the specific capability the button it's rendering actually
+            // needs (riders/settings/logs/create), not "any Salibay manage
+            // permission", or a staffer granted only one of these ends up
+            // seeing every other section's buttons too. See
+            // can_manage_fulfilment()'s doc comment for why.
+            'can_manage_fulfilment'          => $this->can_manage_fulfilment(),
+            'can_manage_salibay_riders'      => $this->can_manage_salibay_riders(),
+            'can_manage_salibay_settings'    => $this->can_manage_salibay_settings(),
+            'can_manage_salibay_logs'        => $this->can_manage_salibay_logs(),
+            'can_create_salibay_shipments'   => $this->can_create_salibay_shipments(),
+            'can_manage_salibay_settings_or_logs' => $this->can_manage_salibay_settings_or_logs(),
             'store' => $store,
             'virtual_warehouse' => $warehouse,
             'metrics' => $metrics,
