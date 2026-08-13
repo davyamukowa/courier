@@ -3493,7 +3493,9 @@ class Shipments extends AdminController
             $this->db->where('s.staff_id', (int)$staff_id);
         }
 
-        courier_apply_branch_scope('s.branch_id');
+        if ($branch_scope_ids !== null) {
+            $this->db->where_in('s.branch_id', $branch_scope_ids);
+        }
 
         $this->db->order_by('s.created_at', 'ASC');
         $shipments = $this->db->get()->result();
