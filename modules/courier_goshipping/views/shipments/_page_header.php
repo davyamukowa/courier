@@ -1,7 +1,12 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed');
 
 $header_context = $header_context ?? 'list';
-$header_type = $header_type ?? ($this->input->get('type') ?: $this->session->userdata('type') ?: 'domestic');
+// No fallback to 'domestic' here — that used to make the header claim
+// "Domestic Shipment" even when the page was genuinely showing every type
+// (e.g. the Documents > Waybills link, which now intentionally omits
+// ?type= so both domestic and international/Salibay waybills show
+// together — see Shipment_model::get_shipments_details()).
+$header_type = $header_type ?? ($this->input->get('type') ?: $this->session->userdata('type') ?: '');
 $header_mode = $header_mode ?? ($this->input->get('mode') ?: $this->session->userdata('mode'));
 $header_mode_type = $header_mode_type ?? ($this->input->get('mode_type') ?: $this->session->userdata('mode_type'));
 $header_shipment_counts = $shipment_counts ?? [];
