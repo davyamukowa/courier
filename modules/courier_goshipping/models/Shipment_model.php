@@ -179,7 +179,16 @@ class Shipment_model extends App_Model
             $this->db->where_in('s.branch_id', !empty($branch_ids) ? (array) $branch_ids : [0]);
         }
 
-        $this->db->where('s.shipping_category', $type);
+        // Empty/omitted $type means "show every type" (e.g. the general
+        // Documents > Waybills menu link, which isn't domestic-vs-
+        // international specific) — filtering unconditionally used to turn
+        // that into "WHERE shipping_category IS NULL" (CI3's behavior for a
+        // null where() value), which matches zero rows since the column is
+        // never actually null, silently hiding every international/Salibay
+        // waybill from that page.
+        if (!empty($type)) {
+            $this->db->where('s.shipping_category', $type);
+        }
 
         if (!empty($mode) || !empty($mode_type)) {
             if (empty($mode_type)) {
