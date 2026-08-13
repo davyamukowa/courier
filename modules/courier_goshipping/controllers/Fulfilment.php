@@ -1227,7 +1227,9 @@ class Fulfilment extends AdminController
                     <li><a href="#" onclick="viewFulfilmentOrder(' . (int) $row->id . '); return false;">View Details</a></li>';
 
             if (empty($row->gs_shipment_id)) {
-                $actions .= '<li><a href="#" onclick="createFulfilmentShipment(' . (int) $row->id . '); return false;">Create Shipment</a></li>';
+                if ($this->can_create_salibay_shipments()) {
+                    $actions .= '<li><a href="#" onclick="createFulfilmentShipment(' . (int) $row->id . '); return false;">Create Shipment</a></li>';
+                }
             } else {
                 $actions .= '<li><a href="' . admin_url('courier_goshipping/shipments/waybill/' . $row->gs_shipment_id) . '">Open Shipment</a></li>';
             }
