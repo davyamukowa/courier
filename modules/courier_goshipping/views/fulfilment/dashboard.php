@@ -171,8 +171,10 @@
                     <a class="sf-action--primary" href="<?php echo admin_url('courier_goshipping/fulfilment/orders'); ?>"><i class="fa fa-shopping-cart"></i><span>Open Orders Desk</span></a>
                     <a href="<?php echo admin_url('courier_goshipping/fulfilment/orders?status=processing'); ?>"><i class="fa fa-truck"></i><span>Pending Dispatch</span></a>
                     <a href="<?php echo admin_url('courier_goshipping/fulfilment/inventory'); ?>"><i class="fa fa-cubes"></i><span>Virtual Warehouse</span></a>
+                    <?php if ($can_manage_salibay_logs): ?>
                     <a href="<?php echo admin_url('courier_goshipping/fulfilment/health'); ?>"><i class="fa fa-heartbeat"></i><span>Health & Logs</span></a>
-                    <?php if ($can_manage_fulfilment): ?>
+                    <?php endif; ?>
+                    <?php if ($can_manage_salibay_settings): ?>
                     <a href="<?php echo admin_url('courier_goshipping/fulfilment/settings'); ?>"><i class="fa fa-cogs"></i><span>Connector Settings</span></a>
                     <?php endif; ?>
                 </div>
