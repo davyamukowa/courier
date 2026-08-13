@@ -34,9 +34,15 @@ if ($header_context === 'dashboard') {
     ];
 
     $header_key = $header_type . '|' . ($header_mode ?: '') . '|' . (($header_mode_type && $header_mode_type !== 'none') ? $header_mode_type : '');
-    $header_title = $header_titles[$header_key] ?? ($header_titles[$header_type] ?? 'Shipment List');
-    $header_subtitle = 'You are currently working inside the ' . $header_title . ' page. The summary below reflects the visible shipments on this screen.';
-    $header_crumbs[] = ['label' => ($header_type === 'international' ? 'International' : 'Domestic'), 'url' => null];
+    $header_title = $header_type === ''
+        ? 'Waybills'
+        : ($header_titles[$header_key] ?? ($header_titles[$header_type] ?? 'Shipment List'));
+    $header_subtitle = $header_type === ''
+        ? 'Every waybill across both domestic and international shipments. The summary below reflects the visible shipments on this screen.'
+        : ('You are currently working inside the ' . $header_title . ' page. The summary below reflects the visible shipments on this screen.');
+    if ($header_type !== '') {
+        $header_crumbs[] = ['label' => ($header_type === 'international' ? 'International' : 'Domestic'), 'url' => null];
+    }
     if (!empty($header_mode)) {
         $header_crumbs[] = ['label' => ucfirst($header_mode), 'url' => null];
     }
