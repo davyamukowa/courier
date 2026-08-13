@@ -2758,6 +2758,20 @@ class Courier_Logistic_System {
             'view_all_branches'     => 'View All Branches (bypass isolation)',
         ];
         register_staff_capabilities('courier-branches', $config, 'Courier - Branches');
+
+        // Salibay Fulfilment — previously gated entirely by an unregistered
+        // has_permission('courier_goshipping', '', 'view') check, which had
+        // no matching capability anywhere in the permissions UI, so a
+        // non-admin staff member could never be granted access no matter
+        // what was checked for them (see Fulfilment.php's constructor).
+        $config['capabilities'] = [
+            'view_salibay'             => 'View Dashboard, Orders, Inventory',
+            'create_salibay_shipments' => 'Create Shipment from Order',
+            'manage_salibay_riders'    => 'Manage Riders',
+            'manage_salibay_settings'  => 'Manage Settings, Webhooks & Product/Location Mapping',
+            'manage_salibay_logs'      => 'View & Manage Webhook/Integration Logs',
+        ];
+        register_staff_capabilities('courier-salibay', $config, 'Courier - Salibay Fulfilment');
     }
 }
 
