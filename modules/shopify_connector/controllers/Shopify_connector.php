@@ -911,6 +911,21 @@ class Shopify_connector extends AdminController
             'salibay_classification' => $salibay_tags['classification'],
             'salibay_route_tag' => $salibay_tags['route_tag'],
             'needs_manual_review' => $salibay_tags['needs_manual_review'] ? 1 : 0,
+            // Normally "Ready for International Fulfillment" only ever
+            // arrives on a LATER orders/updated webhook (see
+            // handle_order_updated()), long after the order was first
+            // created — but if it's already present on the tags string at
+            // creation time (a fast-moving sourcing pipeline, a delayed
+            // orders/create delivery, or a late manual import via
+            // manual_import_order() pulling an order that's already far
+            // along), this must still be captured here. Without it,
+            // create_courier_shipment()'s $already_ready_for_air_freight
+            // check below reads false forever — the shipment gets born in
+            // placeholder mode and international tracking/the Shopify
+            // fulfillment push never activates, since nothing ever flips
+            // this column afterward (handle_order_updated() only reacts to
+            // it becoming newly true, not to it already being true).
+            'salibay_ready_for_intl_fulfillment' => $salibay_tags['ready_for_international_fulfillment'] ? 1 : 0,
             'created_at' => date('Y-m-d H:i:s')
         ];
 
