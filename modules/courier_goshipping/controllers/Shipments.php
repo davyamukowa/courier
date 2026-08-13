@@ -131,12 +131,29 @@ class Shipments extends AdminController
                 $data['filter_driver_id']     = $mf_driver_id;
                 $data['filter_route_id']      = $mf_route_id;
                 $data['filter_service_points'] = (array)$mf_svc_points;
-                $data['manifest_rows']        = $this->_get_manifest_rows($mf_date_from, $mf_date_to, $mf_driver_id, (array)$mf_svc_points);
-                $data['all_drivers']          = $this->Driver_model->get();
-                $data['all_routes']           = $this->db->get(db_prefix() . '_courier_routes')->result();
-                $data['all_service_points']   = $this->db
-                    ->order_by('sort_order', 'ASC')->order_by('name', 'ASC')
-                    ->get(db_prefix() . '_courier_service_points')->result_array();
+
+                // TEMP DIAGNOSTIC — a branch-restricted, non-view-all staff
+                // member reported a raw 500 loading this page; nobody but
+                // admin had ever loaded it before, so this may well be a
+                // latent bug never hit until now (same shape as the
+                // shipment branch_id NULL bug found earlier today). Catch
+                // and log instead of throwing raw, so the page degrades to
+                // an empty manifest instead of a blank server error while
+                // the exact cause gets diagnosed. Remove once confirmed fixed.
+                try {
+                    $data['manifest_rows']        = $this->_get_manifest_rows($mf_date_from, $mf_date_to, $mf_driver_id, (array)$mf_svc_points);
+                    $data['all_drivers']          = $this->Driver_model->get();
+                    $data['all_routes']           = $this->db->get(db_prefix() . '_courier_routes')->result();
+                    $data['all_service_points']   = $this->db
+                        ->order_by('sort_order', 'ASC')->order_by('name', 'ASC')
+                        ->get(db_prefix() . '_courier_service_points')->result_array();
+                } catch (\Throwable $e) {
+                    file_put_contents(FCPATH . 'manifest_debug.log', '[' . date('Y-m-d H:i:s') . "] ERROR staff_id={$staff_id} can_all=" . ($mf_can_all ? '1' : '0') . ' driver_id=' . var_export($mf_driver_id, true) . ' branch_ids=' . json_encode($branch_ids) . ' msg=' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine() . "\n", FILE_APPEND);
+                    $data['manifest_rows']      = [];
+                    $data['all_drivers']        = [];
+                    $data['all_routes']         = [];
+                    $data['all_service_points'] = [];
+                }
                 // Manifest renders as a full standalone page — no group_content needed
                 break;
 
