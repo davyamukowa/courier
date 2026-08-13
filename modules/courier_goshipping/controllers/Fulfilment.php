@@ -70,20 +70,21 @@ class Fulfilment extends AdminController
 
     public function salibay_order_list()
     {
-        $data = $this->build_base_data('orders', 'Salibay Order List');
-
-        // TEMP DIAGNOSTIC — same technique that found the manifest
-        // query-builder bug: log the exact exception instead of a raw 500,
-        // and degrade to an empty list so the page still loads. Remove once
-        // the cause is confirmed and fixed.
+        // TEMP DIAGNOSTIC — the previous narrower try/catch (around just
+        // get_salibay_orders_for_list()) never fired, meaning the actual
+        // crash is somewhere else in this method (build_base_data() or one
+        // of the two view renders) — wrap the whole thing this time so
+        // whatever it is gets logged instead of a raw 500. Remove once the
+        // cause is confirmed and fixed.
         try {
+            $data = $this->build_base_data('orders', 'Salibay Order List');
             $data['salibay_orders'] = $this->get_salibay_orders_for_list();
+            $data['group_content'] = $this->load->view('courier_goshipping/fulfilment/salibay_order_list', $data, true);
+            $this->load->view('courier_goshipping/fulfilment/main', $data);
         } catch (\Throwable $e) {
-            file_put_contents(FCPATH . 'salibay_order_list_debug.log', '[' . date('Y-m-d H:i:s') . '] ERROR staff_id=' . get_staff_user_id() . ' msg=' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine() . "\n");
-            $data['salibay_orders'] = [];
+            file_put_contents(FCPATH . 'salibay_order_list_debug.log', '[' . date('Y-m-d H:i:s') . '] ERROR staff_id=' . get_staff_user_id() . ' msg=' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine() . "\n" . $e->getTraceAsString() . "\n\n", FILE_APPEND);
+            throw $e;
         }
-        $data['group_content'] = $this->load->view('courier_goshipping/fulfilment/salibay_order_list', $data, true);
-        $this->load->view('courier_goshipping/fulfilment/main', $data);
     }
 
     public function get_salibay_order_list_datatable()
