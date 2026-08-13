@@ -747,8 +747,93 @@ class Shopify_connector extends AdminController
         echo "Processed {$processed} queued events.\n";
     }
 
+    /**
+     * Manually pulls a single order from Shopify by its order number (e.g.
+     * "2150" or "#2150") and runs it through the exact same processing as a
+     * live orders/create webhook. For orders that, for whatever reason,
+     * never actually triggered/received their webhook (delivery failure,
+     * webhook briefly unregistered, an outage window, etc.) and so never
+     * made it into tblshopify_orders on their own — staff can pull them in
+     * on demand instead of waiting on a full historical backfill.
+     */
+    public function manual_import_order()
+    {
+        if (!is_admin() && !has_permission('shopify_connector', '', 'manage_shopify_connector')) {
+            ajax_access_denied();
+        }
+
+        $order_number = ltrim(trim((string) $this->input->post('order_number')), '#');
+        if ($order_number === '') {
+            echo json_encode(['success' => false, 'message' => 'Enter an order number.']);
+            return;
+        }
+
+        $store = $this->shopify_connector_model->get_store();
+        if (!$store) {
+            echo json_encode(['success' => false, 'message' => 'No active Shopify store configured.']);
+            return;
+        }
+
+        $this->load->library('shopify_connector/shopify_api', [
+            'shop_domain'  => $store->shop_domain,
+            'access_token' => $store->access_token,
+            'api_version'  => $store->api_version,
+        ]);
+
+        $response = $this->shopify_api->list_orders([
+            'name'   => '#' . $order_number,
+            'status' => 'any',
+        ]);
+
+        if (!$response['success']) {
+            echo json_encode(['success' => false, 'message' => 'Shopify API error: ' . ($response['error'] ?: 'unknown')]);
+            return;
+        }
+
+        $orders = $response['data']['orders'] ?? [];
+        if (empty($orders)) {
+            echo json_encode(['success' => false, 'message' => "Order #{$order_number} was not found on Shopify. Double-check the order number."]);
+            return;
+        }
+
+        $payload = $orders[0];
+        $shopify_order_id = $payload['id'] ?? null;
+
+        if ($shopify_order_id) {
+            $existing = $this->db->where('shopify_order_id', $shopify_order_id)->get(db_prefix() . 'shopify_orders')->row();
+            if ($existing) {
+                echo json_encode([
+                    'success' => true,
+                    'already_existed' => true,
+                    'message' => "Order #{$order_number} was already captured earlier (Go Shipping order #{$existing->id}).",
+                ]);
+                return;
+            }
+        }
+
+        try {
+            $this->handle_order_create($payload, $store);
+        } catch (\Throwable $e) {
+            $this->write_integration_log('error', 'order', 'Manual order import crashed: ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine(), [
+                'order_number' => $order_number,
+            ], $store->id);
+            echo json_encode(['success' => false, 'message' => 'Import crashed: ' . $e->getMessage()]);
+            return;
+        }
+
+        $created = $shopify_order_id
+            ? $this->db->where('shopify_order_id', $shopify_order_id)->get(db_prefix() . 'shopify_orders')->row()
+            : null;
+
+        echo json_encode([
+            'success' => true,
+            'message' => 'Order #' . $order_number . ' imported successfully' . ($created ? " (Go Shipping order #{$created->id})." : '.'),
+            'order_id' => $created->id ?? null,
+        ]);
+    }
+
     // --- STUB HANDLERS ---
-    
+
     private function handle_order_create($payload, $store)
     {
         // STEP 1 — GUARD AGAINST DUPLICATES
