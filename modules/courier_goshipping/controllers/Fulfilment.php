@@ -205,7 +205,7 @@ class Fulfilment extends AdminController
 
     public function health()
     {
-        if (!$this->can_manage_fulfilment()) {
+        if (!$this->can_manage_salibay_logs()) {
             access_denied('Salibay Fulfilment - Integration Health');
         }
 
@@ -275,7 +275,7 @@ class Fulfilment extends AdminController
 
     public function link_rider($rider_id)
     {
-        if (!$this->can_manage_fulfilment()) {
+        if (!$this->can_manage_salibay_riders()) {
             access_denied('Salibay Fulfilment');
         }
 
@@ -289,7 +289,7 @@ class Fulfilment extends AdminController
 
     public function toggle_rider_status($rider_id)
     {
-        if (!$this->can_manage_fulfilment()) {
+        if (!$this->can_manage_salibay_riders()) {
             access_denied('Salibay Fulfilment');
         }
 
@@ -314,7 +314,7 @@ class Fulfilment extends AdminController
      */
     public function reset_rider_password($rider_id)
     {
-        if (!$this->can_manage_fulfilment()) {
+        if (!$this->can_manage_salibay_riders()) {
             access_denied('Salibay Fulfilment');
         }
 
@@ -326,7 +326,7 @@ class Fulfilment extends AdminController
 
     public function settings()
     {
-        if (!$this->can_manage_fulfilment()) {
+        if (!$this->can_manage_salibay_settings()) {
             access_denied('Salibay Fulfilment Settings');
         }
 
@@ -375,7 +375,7 @@ class Fulfilment extends AdminController
     // resolve_branch_from_route_tag()) ──────────────────────────────────────
     public function save_route_branch_map()
     {
-        if (!$this->can_manage_fulfilment()) {
+        if (!$this->can_manage_salibay_settings()) {
             access_denied('Salibay Fulfilment Settings');
         }
 
@@ -413,7 +413,7 @@ class Fulfilment extends AdminController
 
     public function delete_route_branch_map($id)
     {
-        if (!$this->can_manage_fulfilment()) {
+        if (!$this->can_manage_salibay_settings()) {
             access_denied('Salibay Fulfilment Settings');
         }
 
@@ -424,7 +424,7 @@ class Fulfilment extends AdminController
 
     public function save_settings()
     {
-        if (!$this->can_manage_fulfilment()) {
+        if (!$this->can_manage_salibay_settings()) {
             access_denied('Salibay Fulfilment Settings');
         }
 
@@ -469,7 +469,7 @@ class Fulfilment extends AdminController
 
     public function register_webhooks()
     {
-        if (!$this->can_manage_fulfilment()) {
+        if (!$this->can_manage_salibay_settings()) {
             access_denied('Salibay Fulfilment Settings');
         }
 
@@ -585,7 +585,7 @@ class Fulfilment extends AdminController
 
     public function delete_webhooks()
     {
-        if (!$this->can_manage_fulfilment()) {
+        if (!$this->can_manage_salibay_settings()) {
             access_denied('Salibay Fulfilment Settings');
         }
 
@@ -617,7 +617,7 @@ class Fulfilment extends AdminController
 
     public function test_connection()
     {
-        if (!$this->can_manage_fulfilment()) {
+        if (!$this->can_manage_salibay_settings_or_logs()) {
             ajax_access_denied();
         }
 
@@ -660,7 +660,7 @@ class Fulfilment extends AdminController
 
     public function ensure_virtual_warehouse_ajax()
     {
-        if (!$this->can_manage_fulfilment()) {
+        if (!$this->can_manage_salibay_settings()) {
             ajax_access_denied();
         }
 
@@ -694,7 +694,7 @@ class Fulfilment extends AdminController
 
     public function save_product_mapping()
     {
-        if (!$this->can_manage_fulfilment()) {
+        if (!$this->can_manage_salibay_settings()) {
             ajax_access_denied();
         }
 
@@ -726,7 +726,7 @@ class Fulfilment extends AdminController
 
     public function delete_product_mapping($id)
     {
-        if (!$this->can_manage_fulfilment()) {
+        if (!$this->can_manage_salibay_settings()) {
             ajax_access_denied();
         }
 
@@ -736,7 +736,7 @@ class Fulfilment extends AdminController
 
     public function import_shopify_products()
     {
-        if (!$this->can_manage_fulfilment()) {
+        if (!$this->can_manage_salibay_settings()) {
             ajax_access_denied();
         }
 
@@ -1033,7 +1033,7 @@ class Fulfilment extends AdminController
      */
     public function sync_shopify_locations()
     {
-        if (!$this->can_manage_fulfilment()) {
+        if (!$this->can_manage_salibay_settings()) {
             ajax_access_denied();
         }
 
@@ -1086,7 +1086,7 @@ class Fulfilment extends AdminController
      */
     public function save_location_branch_map()
     {
-        if (!$this->can_manage_fulfilment()) {
+        if (!$this->can_manage_salibay_settings()) {
             ajax_access_denied();
         }
 
@@ -1295,7 +1295,7 @@ class Fulfilment extends AdminController
 
     public function create_shipment($order_id)
     {
-        if (!$this->can_manage_fulfilment()) {
+        if (!$this->can_create_salibay_shipments()) {
             ajax_access_denied();
         }
 
@@ -1424,7 +1424,7 @@ class Fulfilment extends AdminController
 
     public function run_inventory_sync()
     {
-        if (!$this->can_manage_fulfilment()) {
+        if (!$this->can_manage_salibay_settings_or_logs()) {
             ajax_access_denied();
         }
 
@@ -1444,7 +1444,7 @@ class Fulfilment extends AdminController
 
     public function get_webhook_events_datatable()
     {
-        if (!$this->can_manage_fulfilment()) {
+        if (!$this->can_manage_salibay_logs()) {
             ajax_access_denied();
         }
 
@@ -1528,7 +1528,7 @@ class Fulfilment extends AdminController
 
     public function get_logs_datatable()
     {
-        if (!$this->can_manage_fulfilment()) {
+        if (!$this->can_manage_salibay_logs()) {
             ajax_access_denied();
         }
 
@@ -1609,7 +1609,7 @@ class Fulfilment extends AdminController
 
     public function requeue_webhook_event($id)
     {
-        if (!$this->can_manage_fulfilment()) {
+        if (!$this->can_manage_salibay_logs()) {
             ajax_access_denied();
         }
 
@@ -1623,7 +1623,7 @@ class Fulfilment extends AdminController
 
     public function retry_all_failed_webhooks()
     {
-        if (!$this->can_manage_fulfilment()) {
+        if (!$this->can_manage_salibay_logs()) {
             ajax_access_denied();
         }
 
@@ -1637,7 +1637,7 @@ class Fulfilment extends AdminController
 
     public function clear_done_events()
     {
-        if (!$this->can_manage_fulfilment()) {
+        if (!$this->can_manage_salibay_logs()) {
             ajax_access_denied();
         }
 
@@ -1647,7 +1647,7 @@ class Fulfilment extends AdminController
 
     public function get_raw_data($type, $id)
     {
-        if (!$this->can_manage_fulfilment()) {
+        if (!$this->can_manage_salibay_logs()) {
             ajax_access_denied();
         }
 
@@ -1670,7 +1670,7 @@ class Fulfilment extends AdminController
 
     public function clear_logs()
     {
-        if (!$this->can_manage_fulfilment()) {
+        if (!$this->can_manage_salibay_logs()) {
             ajax_access_denied();
         }
 
@@ -1680,7 +1680,7 @@ class Fulfilment extends AdminController
 
     public function generate_test_log()
     {
-        if (!$this->can_manage_fulfilment()) {
+        if (!$this->can_manage_salibay_logs()) {
             ajax_access_denied();
         }
 
@@ -1696,7 +1696,7 @@ class Fulfilment extends AdminController
 
     public function export_logs_csv()
     {
-        if (!$this->can_manage_fulfilment()) {
+        if (!$this->can_manage_salibay_logs()) {
             access_denied('Salibay Fulfilment - Integration Logs');
         }
 
@@ -1735,7 +1735,7 @@ class Fulfilment extends AdminController
 
     public function get_health_status()
     {
-        if (!$this->can_manage_fulfilment()) {
+        if (!$this->can_manage_salibay_logs()) {
             ajax_access_denied();
         }
 
