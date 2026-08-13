@@ -193,10 +193,17 @@ $cgs_can_view_reporting_menu = $cgs_can_view_shipments || $cgs_can_view_manifest
         // Same gate as Fulfilment::can_view_fulfilment() — deliberately NOT
         // implied by any courier-shipments capability, so agents (who get
         // view_own_shipments by default) don't see this menu unless an
-        // admin explicitly grants the shopify_connector permission.
+        // admin explicitly grants one of the Courier - Salibay Fulfilment
+        // capabilities (or, for backward compatibility, the older
+        // Shopify Connector permission some staff may already have).
         $can_view_salibay_fulfilment = is_admin()
             || has_permission('shopify_connector', '', 'view_shopify_connector')
-            || has_permission('shopify_connector', '', 'manage_shopify_connector');
+            || has_permission('shopify_connector', '', 'manage_shopify_connector')
+            || staff_can('view_salibay', 'courier-salibay')
+            || staff_can('create_salibay_shipments', 'courier-salibay')
+            || staff_can('manage_salibay_riders', 'courier-salibay')
+            || staff_can('manage_salibay_settings', 'courier-salibay')
+            || staff_can('manage_salibay_logs', 'courier-salibay');
         ?>
         <?php if ($can_view_salibay_fulfilment): ?>
         <div class="cgs-topnav__item" data-menu="cgs-menu-fulfilment">
