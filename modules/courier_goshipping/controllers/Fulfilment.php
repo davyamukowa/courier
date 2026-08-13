@@ -70,8 +70,18 @@ class Fulfilment extends AdminController
 
     public function salibay_order_list()
     {
-        $data = $this->build_base_data('orders', 'Salibay Order List');
-        $data['salibay_orders'] = $this->get_salibay_orders_for_list();
+        // TEMP DIAGNOSTIC — same technique that found the manifest
+        // query-builder bug: log the exact exception instead of a raw 500,
+        // and degrade to an empty list so the page still loads. Remove once
+        // the cause is confirmed and fixed.
+        try {
+            $data = $this->build_base_data('orders', 'Salibay Order List');
+            $data['salibay_orders'] = $this->get_salibay_orders_for_list();
+        } catch (\Throwable $e) {
+            file_put_contents(FCPATH . 'salibay_order_list_debug.log', '[' . date('Y-m-d H:i:s') . '] ERROR staff_id=' . get_staff_user_id() . ' msg=' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine() . "\n");
+            $data = $this->build_base_data('orders', 'Salibay Order List');
+            $data['salibay_orders'] = [];
+        }
         $data['group_content'] = $this->load->view('courier_goshipping/fulfilment/salibay_order_list', $data, true);
         $this->load->view('courier_goshipping/fulfilment/main', $data);
     }
