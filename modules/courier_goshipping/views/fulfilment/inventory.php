@@ -42,11 +42,13 @@
         </div>
 
         <div class="mbot15">
-            <?php if ($can_manage_fulfilment): ?>
+            <?php if ($can_manage_salibay_settings): ?>
             <button type="button" class="btn btn-success" onclick="importFulfilmentProducts(this);"><i class="fa fa-download"></i> Import from Salibay</button>
             <?php endif; ?>
+            <?php if ($can_manage_salibay_settings_or_logs): ?>
             <button type="button" class="btn btn-primary" onclick="runFulfilmentInventorySync();"><i class="fa fa-refresh"></i> Sync Inventory Now</button>
-            <?php if ($can_manage_fulfilment): ?>
+            <?php endif; ?>
+            <?php if ($can_manage_salibay_settings): ?>
             <button type="button" class="btn btn-default" onclick="ensureFulfilmentWarehouse();"><i class="fa fa-building"></i> Ensure Virtual Warehouse</button>
             <?php endif; ?>
         </div>
