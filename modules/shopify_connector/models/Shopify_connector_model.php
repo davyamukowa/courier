@@ -470,9 +470,19 @@ class Shopify_connector_model extends App_Model
                 // Nothing was ever fulfilled — there's nothing to cancel.
                 return false;
             }
-            if (!in_array((int) $status_id, [5, 6, 7, 8], true)) {
-                // Created / Picked up / Received / Dispatched — too early;
-                // no fulfillment worth creating yet.
+            // 10 = international leg's "At Origin Airport" — the
+            // international equivalent of domestic's first in_transit (5/6):
+            // the moment Go Shipping actually takes physical custody and the
+            // parcel starts moving, not "Salibay Warehouse Received" (that's
+            // the sourcing team's own warehouse abroad, before we have it).
+            // See activate_international_air_freight_leg() in
+            // Shopify_connector.php, the only place that ever sets
+            // international_status_id to 10.
+            if (!in_array((int) $status_id, [5, 6, 7, 8, 10], true)) {
+                // Created / Picked up / Received / Dispatched (or the later
+                // international stages 11-13, which hand off into the
+                // domestic track at 13 and get pushed from there instead) —
+                // too early; no fulfillment worth creating yet.
                 return false;
             }
             $this->create_shopify_fulfillment($shipment_id);
