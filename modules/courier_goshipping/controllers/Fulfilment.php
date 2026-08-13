@@ -2094,7 +2094,19 @@ class Fulfilment extends AdminController
 
     private function can_manage_fulfilment()
     {
-        return is_admin() || has_permission('shopify_connector', '', 'manage_shopify_connector');
+        // has_permission('shopify_connector', ..., 'manage_shopify_connector')
+        // is kept for backward compatibility with any staff already granted
+        // access that way (under the separate "Shopify Connector" permission
+        // group) — but any of the new "Courier - Salibay Fulfilment"
+        // capabilities also satisfy this single umbrella "can manage" gate,
+        // same as before this feature had its own registered permissions at
+        // all (see courier_goshipping.php's create_permissions()).
+        return is_admin()
+            || has_permission('shopify_connector', '', 'manage_shopify_connector')
+            || staff_can('manage_salibay_settings', 'courier-salibay')
+            || staff_can('manage_salibay_riders', 'courier-salibay')
+            || staff_can('manage_salibay_logs', 'courier-salibay')
+            || staff_can('create_salibay_shipments', 'courier-salibay');
     }
 
     private function write_integration_log($level, $category, $message, array $context = [], $store_id = null)
