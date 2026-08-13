@@ -1444,6 +1444,10 @@ class Fulfilment extends AdminController
 
     public function get_webhook_events_datatable()
     {
+        if (!$this->can_manage_fulfilment()) {
+            ajax_access_denied();
+        }
+
         $prefix = db_prefix();
         $start = (int) $this->input->post('start');
         $length = (int) $this->input->post('length');
