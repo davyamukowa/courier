@@ -1298,6 +1298,22 @@ class Fulfilment extends AdminController
             return;
         }
 
+        // Branch isolation — this order-list page/datatable already hide
+        // other branches' orders, but a staff member could still reach
+        // another branch's order by guessing/incrementing the ID in this
+        // AJAX call directly. Same rule everywhere else in this module: a
+        // branch-restricted staff member must not see another branch's data.
+        if (
+            !courier_staff_can_view_all_branches()
+            && $this->db->field_exists('branch_id', "{$prefix}shopify_orders")
+        ) {
+            $my_branches = courier_get_staff_branch_ids();
+            if (!in_array((int) $order->branch_id, $my_branches, true)) {
+                echo json_encode(['success' => false, 'message' => 'Order not found.']);
+                return;
+            }
+        }
+
         $items = $this->db->where('shopify_order_id', (int) $id)->get("{$prefix}shopify_order_items")->result();
         $tracking = [];
         if (!empty($order->gs_shipment_id) && $this->db->table_exists(db_prefix() . '_shipment_status_history')) {
