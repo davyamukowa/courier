@@ -231,6 +231,17 @@ $cgs_can_view_reporting_menu = $cgs_can_view_shipments || $cgs_can_view_manifest
                     <a href="<?php echo admin_url('courier_goshipping/fulfilment/health#tab_logs'); ?>" class="cgs-mega-menu__setup-link"><i class="fa fa-warning cgs-icon-swatch cgs-icon-swatch--amber"></i><span>Webhook Events Failed</span></a>
                     <a href="<?php echo admin_url('courier_goshipping/fulfilment/health'); ?>" class="cgs-mega-menu__setup-link"><i class="fa fa-check-circle cgs-icon-swatch cgs-icon-swatch--blue"></i><span>Integration Health</span></a>
                 </div>
+                <?php
+                // Settings/Webhooks/Advanced Settings all sit behind
+                // Fulfilment::can_manage_fulfilment() at the controller
+                // level — don't show a link that leads straight to an
+                // access-denied page for a staffer who only has
+                // view_salibay/manage_salibay_riders/etc.
+                $can_manage_salibay_settings = is_admin()
+                    || has_permission('shopify_connector', '', 'manage_shopify_connector')
+                    || staff_can('manage_salibay_settings', 'courier-salibay');
+                ?>
+                <?php if ($can_manage_salibay_settings): ?>
                 <div class="cgs-mega-menu__column cgs-mega-menu__column--bordered">
                     <p class="cgs-mega-menu__section-label">Configuration</p>
                     <a href="<?php echo admin_url('courier_goshipping/fulfilment/settings'); ?>" class="cgs-mega-menu__setup-link"><i class="fa fa-cog cgs-icon-swatch cgs-icon-swatch--purple"></i><span>Connector Settings</span></a>
@@ -238,6 +249,7 @@ $cgs_can_view_reporting_menu = $cgs_can_view_shipments || $cgs_can_view_manifest
                     <a href="<?php echo admin_url('courier_goshipping/fulfilment/settings#advanced_settings'); ?>" class="cgs-mega-menu__setup-link"><i class="fa fa-sliders cgs-icon-swatch cgs-icon-swatch--orange"></i><span>Advanced Settings</span></a>
                     <a href="<?php echo site_url('courier_goshipping/rider'); ?>" target="_blank" class="cgs-mega-menu__setup-link"><i class="fa fa-mobile cgs-icon-swatch cgs-icon-swatch--emerald"></i><span>Rider App Link</span></a>
                 </div>
+                <?php endif; ?>
             </div>
         </div>
         <?php endif; ?>
