@@ -127,7 +127,11 @@ $cgs_can_view_reporting_menu = $cgs_can_view_shipments || $cgs_can_view_manifest
                     <a href="<?php echo $base . '/shipments/main?group=manifests'; ?>"><i class="fa fa-file cgs-icon-swatch cgs-icon-swatch--teal"></i><span>Manifests</span></a>
                     <?php endif; ?>
                     <?php if ($cgs_can_view_waybills): ?>
-                    <a href="<?php echo $base . '/shipments?type=domestic'; ?>"><i class="fa fa-file-text cgs-icon-swatch cgs-icon-swatch--purple"></i><span>Waybills</span></a>
+                    <?php // Was hardcoded to ?type=domestic, which silently
+                    // hid every international/Salibay waybill (shipping_
+                    // category='international') from this page — Waybills
+                    // should list every waybill, not just domestic ones. ?>
+                    <a href="<?php echo $base . '/shipments'; ?>"><i class="fa fa-file-text cgs-icon-swatch cgs-icon-swatch--purple"></i><span>Waybills</span></a>
                     <?php endif; ?>
                     <?php if ($cgs_can_view_invoices): ?>
                     <a href="<?php echo $base . '/shipments/list_commercial_invoices'; ?>"><i class="fa fa-file-invoice cgs-icon-swatch cgs-icon-swatch--red"></i><span>Commercial Invoices</span></a>
