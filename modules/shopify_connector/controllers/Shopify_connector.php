@@ -1654,7 +1654,22 @@ class Shopify_connector extends AdminController
             $this->db->update($shopify_orders_table, $order_update);
 
             if ($already_ready_for_air_freight) {
-                $this->shopify_connector_model->activate_international_status($shipment_id);
+                if ($this->shopify_connector_model->activate_international_status($shipment_id)) {
+                    // Same trigger as activate_international_air_freight_leg()
+                    // below — this is the case where the "Ready for
+                    // International Fulfillment" tag arrived BEFORE the
+                    // shipment even existed, so the shipment is born already
+                    // in AIR (AIR FREIGHT) mode with international tracking
+                    // activated immediately, and needs the same Shopify push.
+                    try {
+                        $this->shopify_connector_model->push_shopify_fulfillment_status($shipment_id, 10);
+                    } catch (\Throwable $e) {
+                        $this->write_integration_log('error', 'shipment', 'Shopify fulfillment push for international activation crashed: ' . $e->getMessage(), [
+                            'shipment_id' => $shipment_id,
+                            'shopify_db_order_id' => $order_id,
+                        ], $order->store_id);
+                    }
+                }
             }
 
             log_activity("Shipment #{$tracking_number} created for Shopify order SHF-{$order_id}");
