@@ -164,11 +164,13 @@ echo '<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/selec
                                 <i class="fa fa-arrow-left" aria-hidden="true"></i>
                                 <span style="margin-left: 10px;">Shipment Dashboard</span>
                             </a>
+                            <?php if (!empty($type)): ?>
                             <a style="text-decoration: none; border: 2px solid black; margin-left: 10px;"
                                class="custom-button"
                                href="#" data-toggle="modal" data-target="#generateManifestModal">
                                 <span style="margin-left: 10px;">Generate Manifest</span>
                             </a>
+                            <?php endif; ?>
                         </div>
                         <?php echo form_open(admin_url('courier_goshipping/shipments/filter_shipments'), ['id' => 'filter-shipments-form']); ?>
 
