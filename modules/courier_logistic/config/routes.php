@@ -41,18 +41,18 @@ $route['admin/courier_logistic/Fulfilment/clear_logs'] = 'courier_logistic/Fulfi
 $route['admin/courier_logistic/Fulfilment/generate_test_log'] = 'courier_logistic/Fulfilment/generate_test_log';
 $route['admin/courier_logistic/Fulfilment/export_logs_csv'] = 'courier_logistic/Fulfilment/export_logs_csv';
 $route['admin/courier_logistic/Fulfilment/get_health_status'] = 'courier_logistic/Fulfilment/get_health_status';
-$route['courier_logistic/tracking'] = 'courier_logistic/Tracker/tracking';
-$route['courier_logistic/tracking/shipment_info'] = 'courier_logistic/Tracker/shipment_info';
+$route['courier_logistic/tracking'] = 'Tracker/tracking';
+$route['courier_logistic/tracking/shipment_info'] = 'Tracker/shipment_info';
 
 /*
  * Client Portal — dedicated per-tab URLs (same page, tab pre-selected server-side)
  **/
-$route['courier_logistic/track'] = 'courier_logistic/Tracker/tracking/track';
-$route['courier_logistic/get-a-quote'] = 'courier_logistic/Tracker/tracking/quote';
-$route['courier_logistic/schedule-delivery'] = 'courier_logistic/Tracker/tracking/pickup';
-$route['courier_logistic/find-service-point'] = 'courier_logistic/Tracker/tracking/service';
-$route['courier_logistic/create-shipment'] = 'courier_logistic/Tracker/tracking/shipment';
-$route['courier_logistic/call-for-booking'] = 'courier_logistic/Tracker/tracking/call';
+$route['courier_logistic/track'] = 'Tracker/tracking/track';
+$route['courier_logistic/get-a-quote'] = 'Tracker/tracking/quote';
+$route['courier_logistic/schedule-delivery'] = 'Tracker/tracking/pickup';
+$route['courier_logistic/find-service-point'] = 'Tracker/tracking/service';
+$route['courier_logistic/create-shipment'] = 'Tracker/tracking/shipment';
+$route['courier_logistic/call-for-booking'] = 'Tracker/tracking/call';
 
 /*
  * Shipments Routes
@@ -161,19 +161,19 @@ $route['admin/courier_logistic/Settings/general'] =  'courier_logistic/Settings/
 /*
  * Public Customer Portal Routes
  **/
-$route['courier_logistic/portal'] = 'courier_logistic/Tracker/portal';
-$route['courier_logistic/portal/quote'] = 'courier_logistic/Tracker/quote';
-$route['courier_logistic/portal/schedule_pickup'] = 'courier_logistic/Tracker/schedule_pickup';
-$route['courier_logistic/portal/store_pickup'] = 'courier_logistic/Tracker/store_pickup';
-$route['courier_logistic/portal/service_points'] = 'courier_logistic/Tracker/service_points';
-$route['courier_logistic/portal/create_shipment'] = 'courier_logistic/Tracker/public_create_shipment';
-$route['courier_logistic/portal/store_shipment'] = 'courier_logistic/Tracker/store_public_shipment';
-$route['courier_logistic/portal/tariff_zones'] = 'courier_logistic/Tracker/tariff_zones';
-$route['courier_logistic/portal/calculate_quote'] = 'courier_logistic/Tracker/calculate_quote';
-$route['courier_logistic/portal/send_quote_email'] = 'courier_logistic/Tracker/send_quote_email';
-$route['courier_logistic/portal/get_countries'] = 'courier_logistic/Tracker/get_countries';
-$route['courier_logistic/portal/get_cities'] = 'courier_logistic/Tracker/get_cities';
-$route['courier_logistic/portal/get_domestic_cities'] = 'courier_logistic/Tracker/get_domestic_cities';
+$route['courier_logistic/portal'] = 'Tracker/portal';
+$route['courier_logistic/portal/quote'] = 'Tracker/quote';
+$route['courier_logistic/portal/schedule_pickup'] = 'Tracker/schedule_pickup';
+$route['courier_logistic/portal/store_pickup'] = 'Tracker/store_pickup';
+$route['courier_logistic/portal/service_points'] = 'Tracker/service_points';
+$route['courier_logistic/portal/create_shipment'] = 'Tracker/public_create_shipment';
+$route['courier_logistic/portal/store_shipment'] = 'Tracker/store_public_shipment';
+$route['courier_logistic/portal/tariff_zones'] = 'Tracker/tariff_zones';
+$route['courier_logistic/portal/calculate_quote'] = 'Tracker/calculate_quote';
+$route['courier_logistic/portal/send_quote_email'] = 'Tracker/send_quote_email';
+$route['courier_logistic/portal/get_countries'] = 'Tracker/get_countries';
+$route['courier_logistic/portal/get_cities'] = 'Tracker/get_cities';
+$route['courier_logistic/portal/get_domestic_cities'] = 'Tracker/get_domestic_cities';
 
 /*
  * Tariff Settings Routes
