@@ -1,5 +1,5 @@
 <div class="row">
-    <?php echo form_open('admin/courier/settings/save_appearance', ['id' => 'set-appearance-settings-form']); ?>
+    <?php echo form_open_multipart('admin/courier/settings/save_appearance', ['id' => 'set-appearance-settings-form']); ?>
     <div class="col-md-12">
         <div class="panel_s">
             <div class="panel-heading"><h4 class="panel-title">Theme Colors</h4></div>
@@ -27,6 +27,34 @@
                         <span class="text-muted" style="font-size:13px;">Active-tab underline and accent buttons.</span>
                     </div>
                 </div>
+
+                <hr style="margin:25px 0;">
+
+                <h4 class="panel-title" style="margin-bottom:10px;">Watermark Logo</h4>
+                <p class="text-muted" style="margin-bottom:15px;">
+                    A separate faded background logo shown on printed Waybills and Courier
+                    Invoices. This is independent of your site/company logo — upload one here
+                    if you want a different image (or none) watermarked on those documents.
+                </p>
+
+                <?php if (!empty($courier_watermark_logo_url)): ?>
+                <div class="mb-3" style="display:flex; align-items:center; gap:18px; margin-bottom:15px;">
+                    <div style="width:140px; height:90px; border:1px solid #e0e0e0; border-radius:6px; display:flex; align-items:center; justify-content:center; overflow:hidden; background:#fafafa;">
+                        <img src="<?php echo htmlspecialchars($courier_watermark_logo_url); ?>" alt="Watermark Logo"
+                             style="max-width:100%; max-height:100%; object-fit:contain;">
+                    </div>
+                    <label style="font-weight:normal; cursor:pointer; color:#c1272d;">
+                        <input type="checkbox" name="remove_watermark_logo" value="1"> Remove current watermark logo
+                    </label>
+                </div>
+                <?php endif; ?>
+
+                <div class="mb-3">
+                    <label class="form-label">Upload Watermark Logo</label>
+                    <input type="file" name="courier_watermark_logo_file" class="form-control" accept=".png,.jpg,.jpeg,.webp">
+                    <small class="text-muted">PNG, JPG or WEBP. A transparent PNG on a plain background works best.</small>
+                </div>
+
                 <button style="margin-top:20px;" type="submit" class="btn btn-success">Save Appearance Settings</button>
             </div>
         </div>

@@ -27,7 +27,7 @@ $rgba_border= 'rgba(' . $r . ',' . $g . ',' . $b . ',0.35)';
 .doc-card  { background:#fff; border:1px solid <?php echo $rgba_border; ?>; border-radius:8px; padding:30px 36px; box-shadow:0 2px 8px rgba(0,0,0,.08); position:relative; }
 /* 🚀 Background watermark logo 🚀 */
 .doc-watermark { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; z-index:0; overflow:hidden; border-radius:8px; }
-.doc-watermark img { width:75%; height:75%; object-fit:contain; opacity:.10; filter:grayscale(10%); transform: none; }
+.doc-watermark img { width:100%; height:100%; object-fit:contain; opacity:.10; filter:grayscale(10%); transform: none; }
 .doc-card > *:not(.doc-watermark) { position:relative; z-index:1; }
 /* ── Issuance stamp (SVG round rubber-stamp) ── */
 .stamp-wrap     { text-align:center; display:block; margin-bottom:0; }
@@ -131,6 +131,19 @@ $rgba_border= 'rgba(' . $r . ',' . $g . ',' . $b . ',0.35)';
                 $company_logo_data_uri = 'data:' . $_mime . ';base64,' . base64_encode(file_get_contents($_logo_path));
             }
         }
+        // Watermark logo is a separate upload from the site/company logo
+        // (Settings → Appearance) — never falls back to the company logo.
+        $watermark_logo_file     = get_option('courier_watermark_logo');
+        $watermark_logo_data_uri = '';
+        if (!empty($watermark_logo_file)) {
+            $_wm_path = FCPATH . 'uploads/courier_logistic/watermark/' . $watermark_logo_file;
+            if (file_exists($_wm_path)) {
+                $_wm_ext  = strtolower(pathinfo($_wm_path, PATHINFO_EXTENSION));
+                $_wm_mime = ['jpg'=>'image/jpeg','jpeg'=>'image/jpeg','png'=>'image/png','gif'=>'image/gif','webp'=>'image/webp'][$_wm_ext] ?? 'image/png';
+                $watermark_logo_data_uri = 'data:' . $_wm_mime . ';base64,' . base64_encode(file_get_contents($_wm_path));
+            }
+        }
+
         $_ci               = courier_get_invoice_info();
         $logistic_company  = $_ci['name'] ?: 'Our Company';
         $s                 = $shipment_details['shipment'];
@@ -214,10 +227,10 @@ $rgba_border= 'rgba(' . $r . ',' . $g . ',' . $b . ',0.35)';
         }
         ?>
 
-        <?php if ($company_logo_data_uri || $company_logo_url): ?>
+        <?php if ($watermark_logo_data_uri): ?>
         <!-- Faded watermark logo — sits behind all content -->
         <div class="doc-watermark">
-            <img src="<?php echo htmlspecialchars($company_logo_data_uri ?: $company_logo_url); ?>" alt="">
+            <img src="<?php echo htmlspecialchars($watermark_logo_data_uri); ?>" alt="">
         </div>
         <?php endif; ?>
 

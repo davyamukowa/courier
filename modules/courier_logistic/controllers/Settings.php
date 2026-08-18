@@ -69,6 +69,10 @@ class Settings extends AdminController
                 $data['title'] = 'Appearance';
                 $data['courier_theme_primary_color']   = get_option('courier_theme_primary_color')   ?: '#3a6ea5';
                 $data['courier_theme_secondary_color'] = get_option('courier_theme_secondary_color') ?: '#c1272d';
+                $watermark_file = get_option('courier_watermark_logo');
+                $data['courier_watermark_logo_url'] = $watermark_file
+                    ? base_url('uploads/courier_logistic/watermark/' . $watermark_file)
+                    : '';
                 $data['group_content'] = $this->load->view('settings/appearance', $data, true);
                 break;
 
@@ -248,6 +252,46 @@ class Settings extends AdminController
         $secondary = $this->input->post('courier_theme_secondary_color');
         if ($secondary !== null && preg_match($hex_pattern, $secondary)) {
             update_option('courier_theme_secondary_color', $secondary);
+        }
+
+        // Watermark logo — a separate image from the site/company logo, used
+        // only for the faded background on waybills and courier invoices.
+        if ($this->input->post('remove_watermark_logo')) {
+            $old = get_option('courier_watermark_logo');
+            if ($old) {
+                $old_path = FCPATH . 'uploads/courier_logistic/watermark/' . $old;
+                if (is_file($old_path)) {
+                    unlink($old_path);
+                }
+            }
+            update_option('courier_watermark_logo', '');
+        } elseif (!empty($_FILES['courier_watermark_logo_file']['name'])) {
+            $allowed_ext = ['png', 'jpg', 'jpeg', 'webp'];
+            $ext = strtolower(pathinfo($_FILES['courier_watermark_logo_file']['name'], PATHINFO_EXTENSION));
+            if (!in_array($ext, $allowed_ext, true)) {
+                set_alert('danger', 'Watermark logo must be a PNG, JPG, or WEBP image.');
+                redirect('admin/courier/settings/main?group=appearance');
+                return;
+            }
+            $upload_dir = FCPATH . 'uploads/courier_logistic/watermark/';
+            if (!is_dir($upload_dir)) {
+                mkdir($upload_dir, 0755, true);
+            }
+            $new_filename = 'watermark_' . time() . '.' . $ext;
+            if (move_uploaded_file($_FILES['courier_watermark_logo_file']['tmp_name'], $upload_dir . $new_filename)) {
+                $old = get_option('courier_watermark_logo');
+                if ($old) {
+                    $old_path = $upload_dir . $old;
+                    if (is_file($old_path)) {
+                        unlink($old_path);
+                    }
+                }
+                update_option('courier_watermark_logo', $new_filename);
+            } else {
+                set_alert('danger', 'Watermark logo upload failed.');
+                redirect('admin/courier/settings/main?group=appearance');
+                return;
+            }
         }
 
         set_alert('success', 'Appearance settings updated.');

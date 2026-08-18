@@ -576,11 +576,16 @@
                         $company_logo_url  = !empty($company_logo_file) ? base_url('uploads/company/' . $company_logo_file) : '';
                         $_ci              = courier_get_invoice_info();
                         $logistic_company = $_ci['name'] ?: '';
+
+                        // Watermark logo is a separate upload from the site/company logo
+                        // (Settings → Appearance) — never falls back to the company logo.
+                        $watermark_logo_file = get_option('courier_watermark_logo');
+                        $watermark_logo_url  = !empty($watermark_logo_file) ? base_url('uploads/courier_logistic/watermark/' . $watermark_logo_file) : '';
                         ?>
                         <div style="margin-top:60px;" id="waybill-section" class="waybill-container">
-                            <?php if ($company_logo_url): ?>
+                            <?php if ($watermark_logo_url): ?>
                             <img class="watermark" style="opacity:0.08;"
-                                 src="<?php echo $company_logo_url; ?>"
+                                 src="<?php echo $watermark_logo_url; ?>"
                                  alt="Watermark">
                             <?php endif; ?>
 
