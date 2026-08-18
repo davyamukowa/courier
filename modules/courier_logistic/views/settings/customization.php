@@ -1,5 +1,5 @@
 <div class="row">
-    <?php echo form_open('admin/courier/settings/general', ['id' => 'set-general-settings-form']); ?>
+    <?php echo form_open('admin/courier_logistic/settings/general', ['id' => 'set-general-settings-form']); ?>
     <div class="col-md-12">
         <div class="panel_s">
             <div class="panel-heading"><h4 class="panel-title">Courier Operation Type</h4></div>
@@ -291,7 +291,7 @@ function togglePtMode(val) {
 }
 </script>
 
-    <?php echo form_open('admin/courier/settings/dimensional_factor', ['id' => 'set-dimensional-factor-form']); ?>
+    <?php echo form_open('admin/courier_logistic/settings/dimensional_factor', ['id' => 'set-dimensional-factor-form']); ?>
     <div class="col-md-12">
         <div class="panel_s">
             <div class="panel-heading"><h4 class="panel-title">Dimensional Weight Factors</h4></div>
@@ -328,7 +328,7 @@ function togglePtMode(val) {
     </div>
     <?php echo form_close(); ?>
 
-    <?php echo form_open('admin/courier/settings/freight_rates', ['id' => 'set-freight-rates-form']); ?>
+    <?php echo form_open('admin/courier_logistic/settings/freight_rates', ['id' => 'set-freight-rates-form']); ?>
     <div class="col-md-12">
         <div class="panel_s">
             <div class="panel-heading"><h4 class="panel-title">International / Freight Rates</h4></div>

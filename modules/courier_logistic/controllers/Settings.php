@@ -203,7 +203,7 @@ class Settings extends AdminController
         }
 
         set_alert('success', 'General settings updated successfully.');
-        redirect('admin/courier/settings/main?group=customization');
+        redirect('admin/courier_logistic/settings/main?group=customization');
     }
 
     public function save_parcel_rate()
@@ -237,7 +237,7 @@ class Settings extends AdminController
             }
         }
         set_alert('success', 'Stamp settings updated.');
-        redirect('admin/courier/settings/main?group=invoice_info');
+        redirect('admin/courier_logistic/settings/main?group=invoice_info');
     }
 
     public function save_appearance()
@@ -270,7 +270,7 @@ class Settings extends AdminController
             $ext = strtolower(pathinfo($_FILES['courier_watermark_logo_file']['name'], PATHINFO_EXTENSION));
             if (!in_array($ext, $allowed_ext, true)) {
                 set_alert('danger', 'Watermark logo must be a PNG, JPG, or WEBP image.');
-                redirect('admin/courier/settings/main?group=appearance');
+                redirect('admin/courier_logistic/settings/main?group=appearance');
                 return;
             }
             $upload_dir = FCPATH . 'uploads/courier_logistic/watermark/';
@@ -289,13 +289,13 @@ class Settings extends AdminController
                 update_option('courier_watermark_logo', $new_filename);
             } else {
                 set_alert('danger', 'Watermark logo upload failed.');
-                redirect('admin/courier/settings/main?group=appearance');
+                redirect('admin/courier_logistic/settings/main?group=appearance');
                 return;
             }
         }
 
         set_alert('success', 'Appearance settings updated.');
-        redirect('admin/courier/settings/main?group=appearance');
+        redirect('admin/courier_logistic/settings/main?group=appearance');
     }
 
     public function save_invoice_info()
@@ -309,7 +309,7 @@ class Settings extends AdminController
             }
         }
         set_alert('success', 'Invoice & Receipt info updated.');
-        redirect('admin/courier/settings/main?group=invoice_info');
+        redirect('admin/courier_logistic/settings/main?group=invoice_info');
     }
 
     public function freight_rates()
@@ -331,7 +331,7 @@ class Settings extends AdminController
         }
 
         set_alert('success', 'Freight rates updated successfully.');
-        redirect('admin/courier/settings/main?group=customization');
+        redirect('admin/courier_logistic/settings/main?group=customization');
     }
 
 
@@ -1236,7 +1236,7 @@ class Settings extends AdminController
             }
 
             set_alert('success', 'Dimensional Factors updated successfully.');
-            redirect('admin/courier/settings/main');
+            redirect('admin/courier_logistic/settings/main');
 
         }
     }
