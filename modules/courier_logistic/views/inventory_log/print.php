@@ -22,6 +22,33 @@
             font-weight: 700;
             margin: 0 0 14px 0;
         }
+        .company-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #9fb3bd;
+        }
+        .company-header img {
+            max-height: 55px;
+            max-width: 180px;
+        }
+        .company-header__name {
+            font-size: 16px;
+            font-weight: 700;
+        }
+        .company-header__text {
+            font-size: 12px;
+            color: #333;
+        }
+        .signatures {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 36px;
+            font-size: 12px;
+        }
+        .signatures span { white-space: nowrap; }
         .company-line {
             font-size: 12px;
             margin-bottom: 6px;
@@ -89,6 +116,26 @@
     </div>
 
     <div class="sheet">
+
+        <?php if (!empty($company['logo_url']) || !empty($company['name'])): ?>
+        <div class="company-header">
+            <?php if (!empty($company['logo_url'])): ?>
+                <img src="<?php echo htmlspecialchars($company['logo_url']); ?>" alt="Logo">
+            <?php endif; ?>
+            <div class="company-header__text">
+                <?php if (!empty($company['name'])): ?><div class="company-header__name"><?php echo htmlspecialchars($company['name']); ?></div><?php endif; ?>
+                <?php
+                $contact_bits = array_filter([
+                    !empty($company['phone']) ? 'Phone: ' . $company['phone'] : '',
+                    !empty($company['pobox']) ? 'P.O. Box: ' . $company['pobox'] : '',
+                    !empty($company['email']) ? 'Email: ' . $company['email'] : '',
+                ]);
+                ?>
+                <?php if (!empty($contact_bits)): ?><div><?php echo htmlspecialchars(implode('   |   ', $contact_bits)); ?></div><?php endif; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <h1>Inventory Log Book</h1>
         <div class="company-line">
             COMPANY NAME: <?php echo $log ? htmlspecialchars($log['company_name']) : '<span class="fill-line" style="min-width:220px;"></span>'; ?>
@@ -158,6 +205,11 @@
             <?php endfor; ?>
             </tbody>
         </table>
+
+        <div class="signatures">
+            <span>Issued by .......................................... &nbsp; Sign ....................</span>
+            <span>Received by .......................................... &nbsp; Sign ....................</span>
+        </div>
     </div>
 
 </body>

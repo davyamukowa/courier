@@ -133,7 +133,28 @@ class Inventory_log extends AdminController
         $data['title'] = 'Inventory Log Book';
         $data['log'] = $log;
         $data['items'] = json_decode($log['items_json'] ?: '[]', true) ?: [];
+        $data['company'] = $this->_company_header_data();
         $this->load->view('inventory_log/view', $data);
+    }
+
+    /**
+     * Company header (logo + phone/P.O. box/email) shown on the view and
+     * print pages — same source the rest of this module's printed documents
+     * (waybill, courier invoice) already pull from, so it stays in sync with
+     * Settings → Invoice & Receipt Info / the round stamp settings.
+     */
+    private function _company_header_data()
+    {
+        $logo_file = get_option('company_logo_dark') ?: get_option('company_logo');
+        $info      = courier_get_invoice_info();
+
+        return [
+            'logo_url' => !empty($logo_file) ? base_url('uploads/company/' . $logo_file) : '',
+            'name'     => $info['name'],
+            'phone'    => $info['phone'],
+            'email'    => $info['email'],
+            'pobox'    => get_option('courier_stamp_pobox'),
+        ];
     }
 
     public function delete($id)
@@ -162,6 +183,7 @@ class Inventory_log extends AdminController
             $data['items'] = json_decode($log['items_json'] ?: '[]', true) ?: [];
         }
         $data['default_company_name'] = get_option('companyname');
+        $data['company'] = $this->_company_header_data();
         $this->load->view('inventory_log/print', $data);
     }
 }

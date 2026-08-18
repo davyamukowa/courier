@@ -28,6 +28,24 @@
                         </div>
                     </div>
 
+                    <div class="row" style="padding:15px 15px 0;align-items:center;">
+                        <div class="col-md-2">
+                            <?php if (!empty($company['logo_url'])): ?>
+                                <img src="<?php echo htmlspecialchars($company['logo_url']); ?>" alt="Logo" style="max-height:60px;max-width:100%;">
+                            <?php endif; ?>
+                        </div>
+                        <div class="col-md-10" style="font-size:13px;color:#444;">
+                            <?php if (!empty($company['name'])): ?><strong style="font-size:15px;color:#222;"><?php echo htmlspecialchars($company['name']); ?></strong><br><?php endif; ?>
+                            <?php $contact_bits = array_filter([
+                                !empty($company['phone']) ? 'Phone: ' . $company['phone'] : '',
+                                !empty($company['pobox']) ? 'P.O. Box: ' . $company['pobox'] : '',
+                                !empty($company['email']) ? 'Email: ' . $company['email'] : '',
+                            ]); ?>
+                            <?php echo htmlspecialchars(implode('   |   ', $contact_bits)); ?>
+                        </div>
+                    </div>
+                    <hr style="margin:12px 0 0;">
+
                     <div class="row" style="padding:15px;">
                         <div class="col-md-4"><strong>Company Name:</strong> <?php echo htmlspecialchars($log['company_name'] ?: '—'); ?></div>
                         <div class="col-md-2"><strong>Date:</strong> <?php echo !empty($log['log_date']) ? date('d M Y', strtotime($log['log_date'])) : '—'; ?></div>
@@ -63,6 +81,15 @@
                             <?php endif; ?>
                             </tbody>
                         </table>
+                    </div>
+
+                    <div class="row" style="padding:15px 15px 30px;">
+                        <div class="col-md-6" style="font-size:13px;">
+                            Issued by ..........................................  Sign ....................
+                        </div>
+                        <div class="col-md-6" style="font-size:13px;">
+                            Received by ..........................................  Sign ....................
+                        </div>
                     </div>
 
                 </div>
