@@ -127,8 +127,8 @@ class Inventory_log extends AdminController
         // the staff member actually drew something (see form.php), so an
         // empty post here means "leave whatever was saved before untouched"
         // rather than wiping out a signature already on file.
-        $issued_sig   = $this->_save_signature($this->input->post('issued_by_signature_data'), 'issued');
-        $received_sig = $this->_save_signature($this->input->post('received_by_signature_data'), 'received');
+        $issued_sig   = $this->_save_signature('issued_by_signature_data', 'issued');
+        $received_sig = $this->_save_signature('received_by_signature_data', 'received');
         if ($issued_sig !== null) {
             $data['issued_by_signature'] = $issued_sig;
         }
@@ -153,19 +153,29 @@ class Inventory_log extends AdminController
 
     /**
      * Decodes a data:image/png;base64,... string from a signature_pad canvas
-     * and saves it as a PNG (same convention as the shipment delivery
-     * signature in Shipments.php). Returns the relative path to store in the
-     * DB, or null if there was nothing to save (canvas left untouched).
+     * and saves it as a PNG. Returns the relative path to store in the DB,
+     * or null if there was nothing to save (canvas left untouched).
+     *
+     * Reads straight from $_POST rather than $this->input->post() — Perfex
+     * has `global_xss_filtering` on, which runs CI's xss_clean() over every
+     * post() value, and xss_clean() rewrites long base64 blobs (it's a text
+     * filter, not meant for binary-ish data), silently corrupting the PNG.
+     * The decoded bytes are still validated against the PNG signature below
+     * before anything is written to disk, so this doesn't skip validation —
+     * it just avoids a filter that isn't appropriate for this field.
      */
-    private function _save_signature($canvas_data, $prefix)
+    private function _save_signature($field_name, $prefix)
     {
+        $canvas_data = $_POST[$field_name] ?? '';
         if (empty($canvas_data)) {
             return null;
         }
-        $canvas_data = str_replace('data:image/png;base64,', '', $canvas_data);
-        $canvas_data = str_replace(' ', '+', $canvas_data);
-        $image_data  = base64_decode($canvas_data);
-        if (!$image_data) {
+        $canvas_data = preg_replace('#^data:image/png;base64,#', '', $canvas_data);
+        $image_data  = base64_decode($canvas_data, true);
+
+        // Real PNGs always start with this 8-byte signature — reject anything
+        // else rather than writing a corrupt file.
+        if (!$image_data || substr($image_data, 0, 8) !== "\x89PNG\x0d\x0a\x1a\x0a") {
             return null;
         }
 
