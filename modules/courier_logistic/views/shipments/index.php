@@ -89,80 +89,23 @@ echo '<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/selec
     .shipment-table-scroll {
         width: 100%;
         overflow-x: auto;
-        overflow-y: visible;
-        -webkit-overflow-scrolling: touch;
-        padding-bottom: 8px;
     }
 
-    .shipment-table-scroll::-webkit-scrollbar {
-        height: 12px;
-    }
-
-    .shipment-table-scroll::-webkit-scrollbar-track {
-        background: #e5e7eb;
-        border-radius: 999px;
-    }
-
-    .shipment-table-scroll::-webkit-scrollbar-thumb {
-        background: #9ca3af;
-        border-radius: 999px;
-        border: 2px solid #e5e7eb;
-    }
-
-    .shipment-table-scroll::-webkit-scrollbar-thumb:hover {
-        background: #6b7280;
-    }
-
-    #shipmentTable {
-        width: 100%;
-        table-layout: fixed;
-    }
-
-    .shipment-table-hint {
-        margin-top: 8px;
+    #shipmentTable > tbody > tr > td {
+        padding: 4px 8px;
+        vertical-align: middle;
         font-size: 12px;
-        color: #6b7280;
     }
 
-    /* Excel-style grid: thin lines around every cell, tighter rows */
-    #shipmentTable,
-    #shipmentTable th,
-    #shipmentTable td {
-        border: 1px solid #d0d7de !important;
-        border-collapse: collapse;
-    }
-
-    #shipmentTable {
-        border-collapse: collapse;
-    }
-
-    #shipmentTable th,
-    #shipmentTable td {
-        padding: 5px 8px !important;
+    #shipmentTable > thead > tr > th,
+    #shipmentTable > tfoot > tr > th {
+        padding: 6px 8px;
         font-size: 12px;
-        line-height: 1.3;
-        overflow: hidden;
     }
 
-    /* Everything fits on one screen — no horizontal scrolling. Long values
-       (names, emails, addresses) truncate with an ellipsis; hover for the
-       full text via the title attribute set on each line. */
     #shipmentTable td .cell-line {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
         max-width: 100%;
     }
-
-    /* Proportional column widths (7 columns, must sum to 100%) so fixed
-       layout doesn't split space equally regardless of content. */
-    #shipmentTable th:nth-child(1), #shipmentTable td:nth-child(1) { width: 10%; }
-    #shipmentTable th:nth-child(2), #shipmentTable td:nth-child(2) { width: 22%; }
-    #shipmentTable th:nth-child(3), #shipmentTable td:nth-child(3) { width: 22%; }
-    #shipmentTable th:nth-child(4), #shipmentTable td:nth-child(4) { width: 14%; }
-    #shipmentTable th:nth-child(5), #shipmentTable td:nth-child(5) { width: 8%; }
-    #shipmentTable th:nth-child(6), #shipmentTable td:nth-child(6) { width: 12%; }
-    #shipmentTable th:nth-child(7), #shipmentTable td:nth-child(7) { width: 12%; }
 
     #shipmentTable tbody tr.data-row {
         cursor: pointer;
@@ -299,7 +242,7 @@ echo '<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/selec
                         <?php else: ?>
                             <?php if (!empty($shipment_details)): ?>
                                 <div class="shipment-table-scroll">
-                                <table class="table dt-table cgs-table" data-order-col="6" data-order-type="desc"
+                                <table class="table table-striped table-bordered table-condensed cgs-table dt-table" data-order-col="6" data-order-type="desc"
                                        id="shipmentTable">
                                     <thead class="table-head">
                                     <tr>
@@ -439,7 +382,6 @@ echo '<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/selec
                                     </tfoot>
                                 </table>
                                 </div>
-                                <div class="shipment-table-hint">Scroll horizontally to see all shipment columns and actions.</div>
                                 <script>
                                     // Whole-row click navigates to the shipment view, same as clicking "View".
                                     (function () {
