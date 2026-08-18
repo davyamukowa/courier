@@ -216,12 +216,18 @@ class Inventory_log extends AdminController
         $logo_file = get_option('company_logo_dark') ?: get_option('company_logo');
         $info      = courier_get_invoice_info();
 
+        // "P.O. Box" can end up in either of two settings fields depending on
+        // where a tenant filled it in: the round-stamp's short "PO Box /
+        // Short Address" field, or the fuller "Physical Address" field on
+        // Invoice & Receipt Info — check both, stamp field first.
+        $pobox = get_option('courier_stamp_pobox') ?: $info['address'];
+
         return [
             'logo_url' => !empty($logo_file) ? base_url('uploads/company/' . $logo_file) : '',
             'name'     => $info['name'],
             'phone'    => $info['phone'],
             'email'    => $info['email'],
-            'pobox'    => get_option('courier_stamp_pobox'),
+            'pobox'    => $pobox,
         ];
     }
 
