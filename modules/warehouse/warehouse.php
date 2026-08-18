@@ -293,6 +293,16 @@ function warehouse_module_init_menu_items()
         ]);
     }
 
+    if (has_permission('warehouse_item', '', 'view')) {
+        $CI->app_menu->add_sidebar_children_item('warehouse', [
+            'slug'     => 'wa_manage_stock_take',
+            'name'     => _l('stock_take'),
+            'icon'     => 'fa fa-clipboard-check menu-icon',
+            'href'     => admin_url('warehouse/manage_stock_take'),
+            'position' => 7,
+        ]);
+    }
+
 
     if(ACTIVE_PROPOSAL_OLD_CUSTOMER){
             //add all warehouse on menu item

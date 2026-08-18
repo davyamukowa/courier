@@ -2338,7 +2338,45 @@ class warehouse extends AdminController {
 	public function manage_stock_take($id = '') {
 		$data['stock_take_id'] = $id;
 		$data['title'] = _l('stock_take');
+		$data['warehouses'] = $this->warehouse_model->get_warehouse();
 		$this->load->view('manage_stock_take/manage', $data);
+	}
+
+	/**
+	 * Printable physical stock-count sheet for a single warehouse — staff walk
+	 * the floor with this on paper and hand-write the counted qty, then key
+	 * the results into stock_take() above. Qty/Location/Notes are left blank
+	 * on purpose (a blind count), only the item code + description are
+	 * pre-filled from the warehouse's current active items.
+	 */
+	public function print_stock_take_sheet() {
+		if (!has_permission('warehouse_item', '', 'view') && !is_admin()) {
+			access_denied('warehouse');
+		}
+
+		$warehouse_id = (int) $this->input->get('warehouse_id');
+		if (!$warehouse_id) {
+			show_404();
+		}
+
+		$warehouse = $this->warehouse_model->get_warehouse($warehouse_id);
+		if (!$warehouse) {
+			show_404();
+		}
+
+		$data['warehouse'] = $warehouse;
+		$data['items'] = $this->db
+			->select('tblitems.id, tblitems.commodity_code, tblitems.description')
+			->from(db_prefix() . 'items')
+			->join(db_prefix() . 'inventory_manage', db_prefix() . 'inventory_manage.commodity_id = ' . db_prefix() . 'items.id')
+			->where(db_prefix() . 'inventory_manage.warehouse_id', $warehouse_id)
+			->where(db_prefix() . 'items.active', 1)
+			->group_by(db_prefix() . 'items.id')
+			->order_by(db_prefix() . 'items.commodity_code', 'asc')
+			->get()->result_array();
+
+		$data['title'] = _l('stock_take') . ' — ' . $warehouse->warehouse_name;
+		$this->load->view('manage_stock_take/print_sheet', $data);
 	}
 
 	/**

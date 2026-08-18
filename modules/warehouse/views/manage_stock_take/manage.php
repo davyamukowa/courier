@@ -21,6 +21,22 @@
 		                        </a>
 		                        <?php } ?>
 		                    </div>
+		                    <div class="col-md-4">
+		                        <?php if (!empty($warehouses)) { ?>
+		                        <div class="input-group">
+		                            <select id="pss_warehouse_id" class="form-control">
+		                                <?php foreach ($warehouses as $wh) { ?>
+		                                <option value="<?php echo (int) $wh['warehouse_id']; ?>"><?php echo htmlspecialchars($wh['warehouse_name']); ?></option>
+		                                <?php } ?>
+		                            </select>
+		                            <span class="input-group-btn">
+		                                <button type="button" class="btn btn-default" onclick="var id=document.getElementById('pss_warehouse_id').value; window.open('<?php echo admin_url('warehouse/print_stock_take_sheet'); ?>?warehouse_id=' + id, '_blank');">
+		                                    <i class="fa fa-print"></i> <?php echo _l('print'); ?>
+		                                </button>
+		                            </span>
+		                        </div>
+		                        <?php } ?>
+		                    </div>
 		                     <div class="col-md-1 pull-right">
 		                        <a href="#" class="btn btn-default pull-right btn-with-tooltip toggle-small-view hidden-xs" onclick="toggle_small_view_proposal('.purchase_sm','#purchase_sm_view'); return false;" data-toggle="tooltip" title="<?php echo _l('invoices_toggle_table_tooltip'); ?>"><i class="fa fa-angle-double-left"></i></a>
 		                    </div>
