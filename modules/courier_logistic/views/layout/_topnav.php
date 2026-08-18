@@ -74,6 +74,7 @@ $cgs_driver_only = ($cgs_user_role === 'Fleet: Driver' && !$cgs_admin);
                     <a href="<?php echo $base . '/shipments/list_commercial_invoices'; ?>"><i class="fa fa-file-invoice cgs-icon-swatch cgs-icon-swatch--red"></i><span>Commercial Invoices</span></a>
                     <a href="<?php echo $base . '/shipments/list_invoices'; ?>"><i class="fa fa-file-text-o cgs-icon-swatch cgs-icon-swatch--amber"></i><span>Courier Invoices</span></a>
                     <a href="<?php echo $base . '/client_quotes'; ?>"><i class="fa fa-list-alt cgs-icon-swatch cgs-icon-swatch--orange"></i><span>Client Quotes</span></a>
+                    <a href="<?php echo $base . '/inventory_log'; ?>"><i class="fa fa-clipboard-list cgs-icon-swatch cgs-icon-swatch--teal"></i><span>Inventory Log Book</span></a>
                 </div>
             </div>
         </div>

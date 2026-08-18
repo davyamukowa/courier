@@ -715,6 +715,24 @@ if (!$CI->db->table_exists(db_prefix() . 'courier_client_quotes')) {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;');
 }
 
+// ── Inventory Log Book (Documents → Inventory Log Book) ────────────────────
+if (!$CI->db->table_exists(db_prefix() . '_courier_inventory_log_books')) {
+    $CI->db->query('CREATE TABLE IF NOT EXISTS `' . db_prefix() . '_courier_inventory_log_books` (
+        `id`            INT NOT NULL AUTO_INCREMENT,
+        `company_name`  VARCHAR(255) NOT NULL DEFAULT "",
+        `log_date`      DATE NULL,
+        `log_time`      TIME NULL,
+        `am_pm`         VARCHAR(2) NOT NULL DEFAULT "",
+        `counted_by`    VARCHAR(255) NOT NULL DEFAULT "",
+        `sheet_number`  VARCHAR(100) NOT NULL DEFAULT "",
+        `items_json`    LONGTEXT NULL,
+        `staff_id`      INT NULL DEFAULT NULL,
+        `created_at`    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `updated_at`    DATETIME NULL DEFAULT NULL,
+        PRIMARY KEY (`id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;');
+}
+
 // ── Service Points table ──────────────────────────────────────────────────────
 if (!$CI->db->table_exists(db_prefix() . '_courier_service_points')) {
     $CI->db->query('CREATE TABLE IF NOT EXISTS `' . db_prefix() . '_courier_service_points` (
