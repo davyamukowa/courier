@@ -36,6 +36,12 @@ class Inventory_log extends AdminController
                 PRIMARY KEY (`id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;');
         }
+        if (!$this->db->field_exists('issued_by', $this->table)) {
+            $this->db->query('ALTER TABLE `' . $this->table . '` ADD COLUMN `issued_by` VARCHAR(255) NOT NULL DEFAULT ""');
+        }
+        if (!$this->db->field_exists('received_by', $this->table)) {
+            $this->db->query('ALTER TABLE `' . $this->table . '` ADD COLUMN `received_by` VARCHAR(255) NOT NULL DEFAULT ""');
+        }
     }
 
     public function index()
@@ -107,6 +113,8 @@ class Inventory_log extends AdminController
             'counted_by'   => trim($this->input->post('counted_by') ?? ''),
             'sheet_number' => trim($this->input->post('sheet_number') ?? ''),
             'items_json'   => json_encode($items),
+            'issued_by'    => trim($this->input->post('issued_by') ?? ''),
+            'received_by'  => trim($this->input->post('received_by') ?? ''),
         ];
 
         if ($id) {

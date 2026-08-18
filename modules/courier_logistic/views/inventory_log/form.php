@@ -110,6 +110,25 @@
                         </button>
                     </div>
 
+                    <div class="row" style="padding:15px;">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Issued By</label>
+                                <input type="text" name="issued_by" class="form-control"
+                                       placeholder="Name of staff issuing/handing over the count"
+                                       value="<?php echo htmlspecialchars($log['issued_by'] ?? ''); ?>">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Received By</label>
+                                <input type="text" name="received_by" class="form-control"
+                                       placeholder="Name of staff receiving/confirming the count"
+                                       value="<?php echo htmlspecialchars($log['received_by'] ?? ''); ?>">
+                            </div>
+                        </div>
+                    </div>
+
                     <div style="padding:20px 15px;">
                         <button type="submit" class="btn btn-success">
                             <i class="fa fa-save"></i> Save Log Book

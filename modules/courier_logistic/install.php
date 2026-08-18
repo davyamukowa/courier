@@ -726,11 +726,19 @@ if (!$CI->db->table_exists(db_prefix() . '_courier_inventory_log_books')) {
         `counted_by`    VARCHAR(255) NOT NULL DEFAULT "",
         `sheet_number`  VARCHAR(100) NOT NULL DEFAULT "",
         `items_json`    LONGTEXT NULL,
+        `issued_by`     VARCHAR(255) NOT NULL DEFAULT "",
+        `received_by`   VARCHAR(255) NOT NULL DEFAULT "",
         `staff_id`      INT NULL DEFAULT NULL,
         `created_at`    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         `updated_at`    DATETIME NULL DEFAULT NULL,
         PRIMARY KEY (`id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;');
+}
+if (!$CI->db->field_exists('issued_by', db_prefix() . '_courier_inventory_log_books')) {
+    $CI->db->query('ALTER TABLE `' . db_prefix() . '_courier_inventory_log_books` ADD COLUMN `issued_by` VARCHAR(255) NOT NULL DEFAULT ""');
+}
+if (!$CI->db->field_exists('received_by', db_prefix() . '_courier_inventory_log_books')) {
+    $CI->db->query('ALTER TABLE `' . db_prefix() . '_courier_inventory_log_books` ADD COLUMN `received_by` VARCHAR(255) NOT NULL DEFAULT ""');
 }
 
 // ── Service Points table ──────────────────────────────────────────────────────

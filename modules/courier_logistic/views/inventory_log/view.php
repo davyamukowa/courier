@@ -91,10 +91,12 @@
 
                     <div class="row" style="padding:15px 15px 30px;">
                         <div class="col-md-6" style="font-size:13px;">
-                            Issued by ..........................................  Sign ....................
+                            Issued by <strong><?php echo !empty($log['issued_by']) ? htmlspecialchars($log['issued_by']) : '..........................................'; ?></strong>
+                            &nbsp; Sign ....................
                         </div>
                         <div class="col-md-6" style="font-size:13px;">
-                            Received by ..........................................  Sign ....................
+                            Received by <strong><?php echo !empty($log['received_by']) ? htmlspecialchars($log['received_by']) : '..........................................'; ?></strong>
+                            &nbsp; Sign ....................
                         </div>
                     </div>
 

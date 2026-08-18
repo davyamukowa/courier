@@ -211,8 +211,8 @@
         </table>
 
         <div class="signatures">
-            <span>Issued by .......................................... &nbsp; Sign ....................</span>
-            <span>Received by .......................................... &nbsp; Sign ....................</span>
+            <span>Issued by <?php echo (!empty($log) && !empty($log['issued_by'])) ? htmlspecialchars($log['issued_by']) : '..........................................'; ?> &nbsp; Sign ....................</span>
+            <span>Received by <?php echo (!empty($log) && !empty($log['received_by'])) ? htmlspecialchars($log['received_by']) : '..........................................'; ?> &nbsp; Sign ....................</span>
         </div>
     </div>
 
