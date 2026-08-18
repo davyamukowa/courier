@@ -125,9 +125,13 @@
             <div class="company-header__text">
                 <?php if (!empty($company['name'])): ?><div class="company-header__name"><?php echo htmlspecialchars($company['name']); ?></div><?php endif; ?>
                 <?php
+                // The P.O. Box setting is sometimes mis-filled with the email
+                // address (this tenant's data) — don't show it twice.
+                $pobox_is_dupe = !empty($company['pobox']) && !empty($company['email'])
+                    && strcasecmp(trim($company['pobox']), trim($company['email'])) === 0;
                 $contact_bits = array_filter([
                     !empty($company['phone']) ? 'Phone: ' . $company['phone'] : '',
-                    !empty($company['pobox']) ? 'P.O. Box: ' . $company['pobox'] : '',
+                    (!empty($company['pobox']) && !$pobox_is_dupe) ? 'P.O. Box: ' . $company['pobox'] : '',
                     !empty($company['email']) ? 'Email: ' . $company['email'] : '',
                 ]);
                 ?>
