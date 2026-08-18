@@ -740,6 +740,12 @@ if (!$CI->db->field_exists('issued_by', db_prefix() . '_courier_inventory_log_bo
 if (!$CI->db->field_exists('received_by', db_prefix() . '_courier_inventory_log_books')) {
     $CI->db->query('ALTER TABLE `' . db_prefix() . '_courier_inventory_log_books` ADD COLUMN `received_by` VARCHAR(255) NOT NULL DEFAULT ""');
 }
+if (!$CI->db->field_exists('issued_by_signature', db_prefix() . '_courier_inventory_log_books')) {
+    $CI->db->query('ALTER TABLE `' . db_prefix() . '_courier_inventory_log_books` ADD COLUMN `issued_by_signature` VARCHAR(255) NOT NULL DEFAULT ""');
+}
+if (!$CI->db->field_exists('received_by_signature', db_prefix() . '_courier_inventory_log_books')) {
+    $CI->db->query('ALTER TABLE `' . db_prefix() . '_courier_inventory_log_books` ADD COLUMN `received_by_signature` VARCHAR(255) NOT NULL DEFAULT ""');
+}
 
 // ── Service Points table ──────────────────────────────────────────────────────
 if (!$CI->db->table_exists(db_prefix() . '_courier_service_points')) {

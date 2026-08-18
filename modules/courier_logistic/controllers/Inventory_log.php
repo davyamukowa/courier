@@ -42,6 +42,12 @@ class Inventory_log extends AdminController
         if (!$this->db->field_exists('received_by', $this->table)) {
             $this->db->query('ALTER TABLE `' . $this->table . '` ADD COLUMN `received_by` VARCHAR(255) NOT NULL DEFAULT ""');
         }
+        if (!$this->db->field_exists('issued_by_signature', $this->table)) {
+            $this->db->query('ALTER TABLE `' . $this->table . '` ADD COLUMN `issued_by_signature` VARCHAR(255) NOT NULL DEFAULT ""');
+        }
+        if (!$this->db->field_exists('received_by_signature', $this->table)) {
+            $this->db->query('ALTER TABLE `' . $this->table . '` ADD COLUMN `received_by_signature` VARCHAR(255) NOT NULL DEFAULT ""');
+        }
     }
 
     public function index()
@@ -117,6 +123,19 @@ class Inventory_log extends AdminController
             'received_by'  => trim($this->input->post('received_by') ?? ''),
         ];
 
+        // Signatures: canvases only populate their hidden data-URI field when
+        // the staff member actually drew something (see form.php), so an
+        // empty post here means "leave whatever was saved before untouched"
+        // rather than wiping out a signature already on file.
+        $issued_sig   = $this->_save_signature($this->input->post('issued_by_signature_data'), 'issued');
+        $received_sig = $this->_save_signature($this->input->post('received_by_signature_data'), 'received');
+        if ($issued_sig !== null) {
+            $data['issued_by_signature'] = $issued_sig;
+        }
+        if ($received_sig !== null) {
+            $data['received_by_signature'] = $received_sig;
+        }
+
         if ($id) {
             $data['updated_at'] = date('Y-m-d H:i:s');
             $this->db->where('id', $id)->update($this->table, $data);
@@ -130,6 +149,37 @@ class Inventory_log extends AdminController
         }
 
         redirect(admin_url('courier_logistic/inventory_log/view/' . $id));
+    }
+
+    /**
+     * Decodes a data:image/png;base64,... string from a signature_pad canvas
+     * and saves it as a PNG (same convention as the shipment delivery
+     * signature in Shipments.php). Returns the relative path to store in the
+     * DB, or null if there was nothing to save (canvas left untouched).
+     */
+    private function _save_signature($canvas_data, $prefix)
+    {
+        if (empty($canvas_data)) {
+            return null;
+        }
+        $canvas_data = str_replace('data:image/png;base64,', '', $canvas_data);
+        $canvas_data = str_replace(' ', '+', $canvas_data);
+        $image_data  = base64_decode($canvas_data);
+        if (!$image_data) {
+            return null;
+        }
+
+        $dir = FCPATH . 'modules/courier_logistic/assets/inventory_log_signatures/';
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+
+        $file_name = $prefix . '_' . uniqid() . '.png';
+        if (!file_put_contents($dir . $file_name, $image_data)) {
+            return null;
+        }
+
+        return 'modules/courier_logistic/assets/inventory_log_signatures/' . $file_name;
     }
 
     public function view($id)

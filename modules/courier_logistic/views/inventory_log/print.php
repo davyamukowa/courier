@@ -48,7 +48,8 @@
             margin-top: 36px;
             font-size: 12px;
         }
-        .signatures span { white-space: nowrap; }
+        .signatures span { flex: 1; }
+        .sig-img { max-height: 55px; vertical-align: middle; margin-left: 6px; }
         .company-line {
             font-size: 12px;
             margin-bottom: 6px;
@@ -211,8 +212,24 @@
         </table>
 
         <div class="signatures">
-            <span>Issued by <?php echo (!empty($log) && !empty($log['issued_by'])) ? htmlspecialchars($log['issued_by']) : '..........................................'; ?> &nbsp; Sign ....................</span>
-            <span>Received by <?php echo (!empty($log) && !empty($log['received_by'])) ? htmlspecialchars($log['received_by']) : '..........................................'; ?> &nbsp; Sign ....................</span>
+            <span>
+                Issued by <?php echo (!empty($log) && !empty($log['issued_by'])) ? htmlspecialchars($log['issued_by']) : '..........................................'; ?>
+                &nbsp; Sign
+                <?php if (!empty($log) && !empty($log['issued_by_signature'])): ?>
+                    <img src="<?php echo base_url($log['issued_by_signature']); ?>" alt="Signature" class="sig-img">
+                <?php else: ?>
+                    ....................
+                <?php endif; ?>
+            </span>
+            <span>
+                Received by <?php echo (!empty($log) && !empty($log['received_by'])) ? htmlspecialchars($log['received_by']) : '..........................................'; ?>
+                &nbsp; Sign
+                <?php if (!empty($log) && !empty($log['received_by_signature'])): ?>
+                    <img src="<?php echo base_url($log['received_by_signature']); ?>" alt="Signature" class="sig-img">
+                <?php else: ?>
+                    ....................
+                <?php endif; ?>
+            </span>
         </div>
     </div>
 

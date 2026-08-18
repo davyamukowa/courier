@@ -92,11 +92,21 @@
                     <div class="row" style="padding:15px 15px 30px;">
                         <div class="col-md-6" style="font-size:13px;">
                             Issued by <strong><?php echo !empty($log['issued_by']) ? htmlspecialchars($log['issued_by']) : '..........................................'; ?></strong>
-                            &nbsp; Sign ....................
+                            <br>Sign:
+                            <?php if (!empty($log['issued_by_signature'])): ?>
+                                <img src="<?php echo base_url($log['issued_by_signature']); ?>" alt="Signature" style="max-height:60px;vertical-align:middle;">
+                            <?php else: ?>
+                                ....................
+                            <?php endif; ?>
                         </div>
                         <div class="col-md-6" style="font-size:13px;">
                             Received by <strong><?php echo !empty($log['received_by']) ? htmlspecialchars($log['received_by']) : '..........................................'; ?></strong>
-                            &nbsp; Sign ....................
+                            <br>Sign:
+                            <?php if (!empty($log['received_by_signature'])): ?>
+                                <img src="<?php echo base_url($log['received_by_signature']); ?>" alt="Signature" style="max-height:60px;vertical-align:middle;">
+                            <?php else: ?>
+                                ....................
+                            <?php endif; ?>
                         </div>
                     </div>
 

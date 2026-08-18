@@ -1,12 +1,15 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed'); ?>
 <?php init_head(); ?>
 <?php load_courier_styles(); ?>
+<?php echo '<script src="https://cdn.jsdelivr.net/npm/signature_pad"></script>'; ?>
 <?php $this->load->view('courier_logistic/layout/_topnav', ['cgs_active' => 'shipments']); ?>
 
 <style>
     #ilb-items-table th, #ilb-items-table td { vertical-align: middle; }
     #ilb-items-table input { width: 100%; }
     .ilb-remove-row { cursor: pointer; color: #b71c1c; }
+    .ilb-sig-canvas { border: 1px solid #ddd; border-radius: 4px; width: 100%; height: 140px; touch-action: none; }
+    .ilb-sig-existing { max-height: 90px; border: 1px solid #eee; border-radius: 4px; padding: 4px; margin-bottom: 8px; }
 </style>
 
         <div class="row">
@@ -118,6 +121,18 @@
                                        placeholder="Name of staff issuing/handing over the count"
                                        value="<?php echo htmlspecialchars($log['issued_by'] ?? ''); ?>">
                             </div>
+                            <div class="form-group">
+                                <label>Issued By — Signature</label><br>
+                                <?php if (!empty($log['issued_by_signature'])): ?>
+                                    <div><img class="ilb-sig-existing" src="<?php echo base_url($log['issued_by_signature']); ?>" alt="Issued by signature"></div>
+                                    <div class="text-muted" style="font-size:12px;margin-bottom:6px;">Signature on file. Draw below only if you want to replace it.</div>
+                                <?php endif; ?>
+                                <canvas id="ilb-sig-issued" class="ilb-sig-canvas"></canvas>
+                                <input type="hidden" name="issued_by_signature_data" id="ilb-sig-issued-data">
+                                <button type="button" class="btn btn-default btn-sm ilb-sig-clear" data-target="ilb-sig-issued" style="margin-top:6px;">
+                                    <i class="fa fa-eraser"></i> Clear
+                                </button>
+                            </div>
                         </div>
                         <div class="col-md-6">
                             <div class="form-group">
@@ -125,6 +140,18 @@
                                 <input type="text" name="received_by" class="form-control"
                                        placeholder="Name of staff receiving/confirming the count"
                                        value="<?php echo htmlspecialchars($log['received_by'] ?? ''); ?>">
+                            </div>
+                            <div class="form-group">
+                                <label>Received By — Signature</label><br>
+                                <?php if (!empty($log['received_by_signature'])): ?>
+                                    <div><img class="ilb-sig-existing" src="<?php echo base_url($log['received_by_signature']); ?>" alt="Received by signature"></div>
+                                    <div class="text-muted" style="font-size:12px;margin-bottom:6px;">Signature on file. Draw below only if you want to replace it.</div>
+                                <?php endif; ?>
+                                <canvas id="ilb-sig-received" class="ilb-sig-canvas"></canvas>
+                                <input type="hidden" name="received_by_signature_data" id="ilb-sig-received-data">
+                                <button type="button" class="btn btn-default btn-sm ilb-sig-clear" data-target="ilb-sig-received" style="margin-top:6px;">
+                                    <i class="fa fa-eraser"></i> Clear
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -172,5 +199,34 @@
         $('#ilb_log_date').flatpickr({ dateFormat: 'Y-m-d' });
         $('#ilb_log_time').flatpickr({ enableTime: true, noCalendar: true, dateFormat: 'h:i', time_24hr: false });
     }
+
+    // ── Signature pads (Issued By / Received By) ──────────────────────────
+    function setupSignaturePad(canvasId, dataFieldId) {
+        var canvas = document.getElementById(canvasId);
+        var ratio = Math.max(window.devicePixelRatio || 1, 1);
+        canvas.width = canvas.offsetWidth * ratio;
+        canvas.height = canvas.offsetHeight * ratio;
+        canvas.getContext('2d').scale(ratio, ratio);
+        return new SignaturePad(canvas);
+    }
+
+    var sigIssued = setupSignaturePad('ilb-sig-issued', 'ilb-sig-issued-data');
+    var sigReceived = setupSignaturePad('ilb-sig-received', 'ilb-sig-received-data');
+
+    document.querySelectorAll('.ilb-sig-clear').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var target = btn.getAttribute('data-target');
+            (target === 'ilb-sig-issued' ? sigIssued : sigReceived).clear();
+        });
+    });
+
+    document.getElementById('ilb-form').addEventListener('submit', function () {
+        if (!sigIssued.isEmpty()) {
+            document.getElementById('ilb-sig-issued-data').value = document.getElementById('ilb-sig-issued').toDataURL('image/png');
+        }
+        if (!sigReceived.isEmpty()) {
+            document.getElementById('ilb-sig-received-data').value = document.getElementById('ilb-sig-received').toDataURL('image/png');
+        }
+    });
 })();
 </script>
