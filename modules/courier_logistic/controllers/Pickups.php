@@ -53,12 +53,12 @@ class Pickups extends AdminController
 
             case 'create_pickup':
                 // create.php is a standalone page with its own init_head/init_tail.
-                redirect('admin/courier/pickups/create');
+                redirect('admin/courier_logistic/pickups/create');
                 return;
 
             case 'list_pickups':
                 // index.php is a standalone page with its own init_head/init_tail.
-                redirect('admin/courier/pickups/index');
+                redirect('admin/courier_logistic/pickups/index');
                 return;
 
             default:
@@ -164,7 +164,7 @@ class Pickups extends AdminController
 
             if ($contact_id === false) {
                 set_alert('danger', 'Failed to add contact person.');
-                redirect('admin/courier/pickups/create');
+                redirect('admin/courier_logistic/pickups/create');
             }
 
             //store pickup data
@@ -191,11 +191,11 @@ class Pickups extends AdminController
 
             if ($pickup_id === false) {
                 set_alert('danger', 'Failed to add pickup.');
-                redirect('admin/courier/pickups/create');
+                redirect('admin/courier_logistic/pickups/create');
             }
 
             set_alert('success', 'Pickup added successfully.');
-            redirect('admin/courier/pickups');
+            redirect('admin/courier_logistic/pickups');
         }
     }
 
@@ -291,7 +291,7 @@ class Pickups extends AdminController
         if (!$pickup) {
             // Pickup not found; redirect with error
             set_alert('danger', 'Pickup not found.');
-            redirect('admin/courier/pickups/index');
+            redirect('admin/courier_logistic/pickups/index');
         }
 
         // Proceed with deletion
@@ -301,26 +301,26 @@ class Pickups extends AdminController
         if (!$this->Pickup_model->delete($id)) {
             $this->db->trans_rollback(); // Rollback if deletion fails
             set_alert('danger', 'Failed to delete pickup.');
-            redirect('admin/courier/pickups/index');
+            redirect('admin/courier_logistic/pickups/index');
         }
 
         // Delete associated driver
         if (!$this->PickupContact_model->delete($pickup->contact_person_id)) {
             $this->db->trans_rollback(); // Rollback if deletion fails
             set_alert('danger', 'Failed to delete contact person.');
-            redirect('admin/courier/pickups/index');
+            redirect('admin/courier_logistic/pickups/index');
         }
 
         $this->db->trans_complete(); // Complete transaction
 
         if ($this->db->trans_status() === FALSE) {
             set_alert('danger', 'Failed to delete pickup and associated data.');
-            redirect('admin/courier/pickups/index');
+            redirect('admin/courier_logistic/pickups/index');
         }
 
         // Success
         set_alert('success', 'Pickup and associated data deleted successfully.');
-        redirect('admin/courier/pickups/index');
+        redirect('admin/courier_logistic/pickups/index');
     }
 
     public function bulk_delete()
@@ -365,14 +365,14 @@ class Pickups extends AdminController
 
         if (empty($data['pickup'])) {
             set_alert('danger', 'Pickup not found.');
-            redirect('admin/courier/pickups/main');
+            redirect('admin/courier_logistic/pickups/main');
             return;
         }
 
         if (!is_admin() && !staff_can('view_all_pickups', 'courier-pickups')
             && (int)($data['pickup']['staff_id'] ?? 0) !== (int)get_staff_user_id()) {
             set_alert('danger', 'Access denied — this pickup does not belong to you.');
-            redirect('admin/courier/pickups/main');
+            redirect('admin/courier_logistic/pickups/main');
             return;
         }
 
