@@ -124,14 +124,14 @@ class Tracker extends App_Controller
     {
         header('Content-Type: application/json');
 
-        $contact_first = trim($this->input->post('contact_first_name'));
-        $contact_last  = trim($this->input->post('contact_last_name'));
-        $contact_phone = trim($this->input->post('contact_phone'));
-        $contact_email = trim($this->input->post('contact_email'));
-        $pickup_date   = trim($this->input->post('pickup_date'));
-        $time_window   = trim($this->input->post('time_window'));
-        $address       = trim($this->input->post('pickup_address'));
-        $description   = trim($this->input->post('package_description'));
+        $contact_first = trim($this->input->post('contact_first_name') ?? '');
+        $contact_last  = trim($this->input->post('contact_last_name') ?? '');
+        $contact_phone = trim($this->input->post('contact_phone') ?? '');
+        $contact_email = trim($this->input->post('contact_email') ?? '');
+        $pickup_date   = trim($this->input->post('pickup_date') ?? '');
+        $time_window   = trim($this->input->post('time_window') ?? '');
+        $address       = trim($this->input->post('pickup_address') ?? '');
+        $description   = trim($this->input->post('package_description') ?? '');
 
         if (!$contact_first || !$contact_last || !$contact_phone || !$contact_email || !$pickup_date || !$address) {
             echo json_encode(['status' => 'error', 'message' => 'Please fill in all required fields.']);
@@ -184,24 +184,24 @@ class Tracker extends App_Controller
     {
         header('Content-Type: application/json');
 
-        $sender_name    = trim($this->input->post('sender_name'));
-        $sender_phone   = trim($this->input->post('sender_phone'));
-        $sender_email   = trim($this->input->post('sender_email'));
-        $sender_address = trim($this->input->post('sender_address'));
-        $recip_name     = trim($this->input->post('recipient_name'));
-        $recip_phone    = trim($this->input->post('recipient_phone'));
-        $recip_email    = trim($this->input->post('recipient_email'));
-        $recip_address  = trim($this->input->post('recipient_address'));
-        $raw_mode       = trim($this->input->post('shipping_mode'));
-        $description    = trim($this->input->post('package_description'));
-        $instructions   = trim($this->input->post('special_instructions'));
-        $vehicle_type   = trim($this->input->post('vehicle_type'));
+        $sender_name    = trim($this->input->post('sender_name') ?? '');
+        $sender_phone   = trim($this->input->post('sender_phone') ?? '');
+        $sender_email   = trim($this->input->post('sender_email') ?? '');
+        $sender_address = trim($this->input->post('sender_address') ?? '');
+        $recip_name     = trim($this->input->post('recipient_name') ?? '');
+        $recip_phone    = trim($this->input->post('recipient_phone') ?? '');
+        $recip_email    = trim($this->input->post('recipient_email') ?? '');
+        $recip_address  = trim($this->input->post('recipient_address') ?? '');
+        $raw_mode       = trim($this->input->post('shipping_mode') ?? '');
+        $description    = trim($this->input->post('package_description') ?? '');
+        $instructions   = trim($this->input->post('special_instructions') ?? '');
+        $vehicle_type   = trim($this->input->post('vehicle_type') ?? '');
         $weight         = (float)$this->input->post('weight');
         $length         = (float)$this->input->post('length');
         $width          = (float)$this->input->post('width');
         $height         = (float)$this->input->post('height');
-        $cargo_type     = trim($this->input->post('cargo_type')) ?: 'parcel';
-        $zone_code      = strtoupper(trim($this->input->post('zone_code')));
+        $cargo_type     = trim($this->input->post('cargo_type') ?? '') ?: 'parcel';
+        $zone_code      = strtoupper(trim($this->input->post('zone_code') ?? ''));
         $quoted_amount  = (float)$this->input->post('quoted_amount');
 
         if (!$sender_name || !$sender_phone || !$sender_address || !$recip_name || !$recip_phone || !$recip_address || !$description) {
@@ -440,7 +440,7 @@ class Tracker extends App_Controller
     {
         header('Content-Type: application/json');
 
-        $country = trim($this->input->post('country') ?: $this->input->get('country'));
+        $country = trim($this->input->post('country') ?: $this->input->get('country') ?: '');
         if ($country === '') {
             echo json_encode(['status' => 'error', 'message' => 'Country name required.']);
             return;
@@ -538,8 +538,8 @@ class Tracker extends App_Controller
     {
         header('Content-Type: application/json');
 
-        $cargo_type      = trim($this->input->post('cargo_type')); // 'document' or 'parcel'
-        $zone_code       = strtolower(trim($this->input->post('zone')));  // a-f
+        $cargo_type      = trim($this->input->post('cargo_type') ?? ''); // 'document' or 'parcel'
+        $zone_code       = strtolower(trim($this->input->post('zone') ?? ''));  // a-f
         $weight          = (float)$this->input->post('weight');
         $length          = (float)$this->input->post('length');
         $width           = (float)$this->input->post('width');
@@ -920,8 +920,8 @@ class Tracker extends App_Controller
     {
         header('Content-Type: application/json');
 
-        $email      = trim($this->input->post('email'));
-        $quote_json = $this->input->post('quote_data');
+        $email      = trim($this->input->post('email') ?? '');
+        $quote_json = $this->input->post('quote_data') ?? '';
 
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             echo json_encode(['status' => 'error', 'message' => 'Please enter a valid email address.']);
