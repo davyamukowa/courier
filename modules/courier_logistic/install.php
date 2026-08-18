@@ -153,6 +153,9 @@ if (!$CI->db->table_exists(db_prefix() . '_shipments')) {
         FOREIGN KEY (`company_id`) REFERENCES `' . db_prefix() . '_shipment_companies`(`id`) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=latin1;');
 }
+if (!$CI->db->field_exists('commercial_invoice_file', db_prefix() . '_shipments')) {
+    $CI->db->query('ALTER TABLE `' . db_prefix() . '_shipments` ADD COLUMN `commercial_invoice_file` VARCHAR(255) NULL DEFAULT NULL');
+}
 
 
 // Create table `tbl_third_party_shipments`
@@ -696,6 +699,20 @@ if (function_exists('create_email_template')) {
         'Courier Waybill Notification to Customer',
         'courier_waybill_to_customer'
     );
+}
+
+// ── Client Quotes table (public "Get a Quote" submissions) ────────────────────
+if (!$CI->db->table_exists(db_prefix() . 'courier_client_quotes')) {
+    $CI->db->query('CREATE TABLE IF NOT EXISTS `' . db_prefix() . 'courier_client_quotes` (
+        `id`            INT NOT NULL AUTO_INCREMENT,
+        `name`          VARCHAR(255) NOT NULL DEFAULT "",
+        `company`       VARCHAR(255) NOT NULL DEFAULT "",
+        `email`         VARCHAR(255) NOT NULL DEFAULT "",
+        `phone`         VARCHAR(50)  NOT NULL DEFAULT "",
+        `quote_details` LONGTEXT NULL,
+        `created_at`    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;');
 }
 
 // ── Service Points table ──────────────────────────────────────────────────────

@@ -12,6 +12,22 @@ class Tracker extends App_Controller
         $this->load->model('DestinationOffice_model');
         $this->load->model('DimensionalFactor_model');
         $this->load->helper('courier_logistic/courier');
+
+        // Self-heal: this tenant's DB is missing columns that store_pickup() and
+        // store_public_shipment() insert unconditionally, because the migration
+        // that adds them (courier_logistic.php's admin_init hook, or install.php
+        // on modules never reactivated) never ran against it. Without this, those
+        // inserts throw an uncaught mysqli_sql_exception, which returns an HTML
+        // error page instead of JSON and breaks the portal's fetch().then(r =>
+        // r.json()) with a generic "Network error" for every submission.
+        $pickups_table = db_prefix() . '_pickups';
+        if ($this->db->table_exists($pickups_table) && !$this->db->field_exists('source', $pickups_table)) {
+            $this->db->query("ALTER TABLE `{$pickups_table}` ADD COLUMN `source` ENUM('portal', 'shipment', 'system') NOT NULL DEFAULT 'system'");
+        }
+        $shipments_table = db_prefix() . '_shipments';
+        if ($this->db->table_exists($shipments_table) && !$this->db->field_exists('commercial_invoice_file', $shipments_table)) {
+            $this->db->query("ALTER TABLE `{$shipments_table}` ADD COLUMN `commercial_invoice_file` VARCHAR(255) NULL DEFAULT NULL");
+        }
     }
 
     public function tracking($tab = 'track')
@@ -521,6 +537,22 @@ class Tracker extends App_Controller
             $phone   = trim($this->input->post('contact_phone') ?: '');
             
             if ($name !== '' || $company !== '' || $email !== '' || $phone !== '') {
+                // Self-heal: this table's migration can silently fail to run on this
+                // tenant (see CLAUDE.md's multi-tenant migration gotcha), and an
+                // uncaught mysqli exception here would return an HTML error page
+                // instead of JSON, breaking the portal's fetch().then(r => r.json()).
+                if (!$this->db->table_exists('tblcourier_client_quotes')) {
+                    $this->db->query('CREATE TABLE IF NOT EXISTS `tblcourier_client_quotes` (
+                        `id`            INT NOT NULL AUTO_INCREMENT,
+                        `name`          VARCHAR(255) NOT NULL DEFAULT "",
+                        `company`       VARCHAR(255) NOT NULL DEFAULT "",
+                        `email`         VARCHAR(255) NOT NULL DEFAULT "",
+                        `phone`         VARCHAR(50)  NOT NULL DEFAULT "",
+                        `quote_details` LONGTEXT NULL,
+                        `created_at`    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        PRIMARY KEY (`id`)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;');
+                }
                 $this->db->insert('tblcourier_client_quotes', [
                     'name'          => $name,
                     'email'         => $email,
