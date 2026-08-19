@@ -66,9 +66,8 @@
                             ['id'=>'2','label'=>'Picked Up',          'icon'=>'fa-truck',          'bg'=>'#1565c0'],
                             ['id'=>'3','label'=>'Received',           'icon'=>'fa-inbox',          'bg'=>'#00897b'],
                             ['id'=>'4','label'=>'Dispatched',         'icon'=>'fa-truck-loading',  'bg'=>'#ef6c00'],
-                            ['id'=>'5','label'=>'In Transit',         'icon'=>'fa-shipping-fast',  'bg'=>'#6a1b9a'],
+                            ['id'=>'5','label'=>'Local Delivery',     'icon'=>'fa-shipping-fast',  'bg'=>'#6a1b9a'],
                             ['id'=>'6','label'=>'Arrived Dest.',      'icon'=>'fa-map-pin',        'bg'=>'#283593'],
-                            ['id'=>'7','label'=>'Out for Delivery',   'icon'=>'fa-map-marker-alt', 'bg'=>'#f9a825'],
                             ['id'=>'8','label'=>'Delivered',          'icon'=>'fa-check-circle',   'bg'=>'#2e7d32'],
                             ['id'=>'9','label'=>'Cancelled',          'icon'=>'fa-times-circle',   'bg'=>'#c62828'],
                         ];
