@@ -3105,12 +3105,23 @@ class Shipments extends AdminController
                 // decoded bytes are still validated against the real PNG
                 // signature below before anything is written to disk.
                 $canvasData = $_POST['signature'] ?? '';
+                // TEMPORARY diagnostic — admin-only (changed_by_label is
+                // never shown to customers, only in this page's History
+                // panel) — pinpointing why a delivery signature isn't
+                // showing up despite no error being raised. Remove once
+                // confirmed working.
+                $diag = 'canvas_len=' . strlen((string) $canvasData);
 
                 if (!empty($canvasData)) {
                     $canvasData = preg_replace('#^data:image/png;base64,#', '', $canvasData);
                     $imageData = base64_decode($canvasData, true);
+                    $diag .= ' decoded_len=' . ($imageData !== false ? strlen($imageData) : 'FALSE');
+                    $diag .= ' magic=' . ($imageData ? bin2hex(substr($imageData, 0, 8)) : 'n/a');
 
                     if (!$imageData || substr($imageData, 0, 8) !== "\x89PNG\x0d\x0a\x1a\x0a") {
+                        if ($status_history_id) {
+                            $this->db->where('id', $status_history_id)->update(db_prefix() . '_shipment_status_history', ['changed_by_label' => $diag . ' REJECTED']);
+                        }
                         throw new Exception('The signature could not be saved — please try signing again.');
                     }
 
@@ -3118,7 +3129,7 @@ class Shipments extends AdminController
                     $filePath = FCPATH . 'modules/courier_goshipping/assets/deliveries/signatures/' . $fileName;
 
                     if (file_put_contents($filePath, $imageData)) {
-                        $this->Delivery_model->add([
+                        $delivery_id = $this->Delivery_model->add([
                             'shipment_id' => $id,
                             'first_name' => $first_name,
                             'last_name' => $last_name,
@@ -3128,10 +3139,20 @@ class Shipments extends AdminController
                             // base_url('modules/courier_goshipping/' . ...).
                             'signature_url' => 'assets/deliveries/signatures/' . $fileName,
                         ]);
+                        $diag .= ' file_saved=yes delivery_id=' . var_export($delivery_id, true);
+                        if ($status_history_id) {
+                            $this->db->where('id', $status_history_id)->update(db_prefix() . '_shipment_status_history', ['changed_by_label' => $diag]);
+                        }
                     } else {
+                        if ($status_history_id) {
+                            $this->db->where('id', $status_history_id)->update(db_prefix() . '_shipment_status_history', ['changed_by_label' => $diag . ' file_put_contents_FAILED path=' . $filePath]);
+                        }
                         throw new Exception('There was an error while saving the signature');
                     }
                 } else {
+                    if ($status_history_id) {
+                        $this->db->where('id', $status_history_id)->update(db_prefix() . '_shipment_status_history', ['changed_by_label' => $diag . ' EMPTY_SIGNATURE']);
+                    }
                     throw new Exception('Please include a signature');
                 }
             }
