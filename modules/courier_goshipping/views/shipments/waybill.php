@@ -1333,7 +1333,7 @@ $('#wb_cpm_submit').on('click', function () {
                                 name="status_id"
                                 class="custom-select">
                             <?php foreach ($statuses as $status): ?>
-                                <?php if ($status->id == 2) continue; ?>
+                                <?php if ($status->id == 2 || $status->id == 7) continue; ?>
                                 <option <?= $status->id == $shipment_details['shipment']->status_id ? "selected" : ""; ?>
                                         value="<?php echo $status->id; ?>">
                                     <?php echo $status->description ?>
