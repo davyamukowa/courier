@@ -725,8 +725,11 @@ if (!function_exists('courier_get_shipment_journey')) {
         $status_desc_col = $CI->db->field_exists('status_description', db_prefix() . '_shipment_statuses')
             ? 'ss.status_description'
             : 'ss.description';
+        $notes_col = $CI->db->field_exists('notes', db_prefix() . '_shipment_status_history')
+            ? 'h.notes'
+            : 'NULL AS notes';
 
-        $history = $CI->db->select("h.status_id, h.changed_at, ss.status_name, {$status_desc_col} AS status_description")
+        $history = $CI->db->select("h.status_id, h.changed_at, {$notes_col}, ss.status_name, {$status_desc_col} AS status_description")
             ->from(db_prefix() . '_shipment_status_history h')
             ->join(db_prefix() . '_shipment_statuses ss', 'ss.id = h.status_id', 'left')
             ->where_in('h.shipment_id', $leg_ids)
@@ -734,11 +737,38 @@ if (!function_exists('courier_get_shipment_journey')) {
             ->result();
 
         foreach ($history as $row) {
+            // A per-event note (e.g. "Your order has been Dispatched and
+            // assigned to the rider", or "...assigned Rider {name}" for a
+            // Local Delivery event) is always more specific than the generic
+            // status label, so it wins when present.
+            $label = !empty($row->notes)
+                ? $row->notes
+                : courier_customer_facing_status_label((int) $row->status_id, $row->status_description, $row->status_name);
+
             $events[] = [
-                'label'      => courier_customer_facing_status_label((int) $row->status_id, $row->status_description, $row->status_name),
+                'label'      => $label,
                 'changed_at' => $row->changed_at,
                 'status_id'  => (int) $row->status_id,
             ];
+        }
+
+        // update_international_status() silently bumps the domestic status
+        // to 3 ("Received") as a side effect of the international leg
+        // reaching 13 ("Arrived Go Shipping Warehouse") — same real-world
+        // event as the international entry, so showing both is a confusing
+        // duplicate. Drop the domestic one when it lands within a couple of
+        // minutes of the international-13 event.
+        $arrival_ts = null;
+        foreach ($events as $event) {
+            if ($event['status_id'] === 13) {
+                $arrival_ts = strtotime($event['changed_at']);
+                break;
+            }
+        }
+        if ($arrival_ts !== null) {
+            $events = array_values(array_filter($events, function ($event) use ($arrival_ts) {
+                return !($event['status_id'] === 3 && abs(strtotime($event['changed_at']) - $arrival_ts) <= 120);
+            }));
         }
 
         if ($CI->db->table_exists(db_prefix() . 'shopify_orders')) {
