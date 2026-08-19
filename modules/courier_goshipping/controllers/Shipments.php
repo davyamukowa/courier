@@ -3095,12 +3095,23 @@ class Shipments extends AdminController
 
                 $first_name = $this->input->post('first_name');
                 $last_name = $this->input->post('last_name');
-                $canvasData = $this->input->post('signature');
+                // Read straight from $_POST rather than $this->input->post()
+                // — Perfex's global_xss_filtering runs CI's xss_clean() over
+                // every post() value, and xss_clean() rewrites long base64
+                // blobs (it's a text filter, not meant for binary-ish data),
+                // silently corrupting the PNG. Same bug/fix as
+                // courier_logistic's Inventory Log Book signatures. The
+                // decoded bytes are still validated against the real PNG
+                // signature below before anything is written to disk.
+                $canvasData = $_POST['signature'] ?? '';
 
                 if (!empty($canvasData)) {
-                    $canvasData = str_replace('data:image/png;base64,', '', $canvasData);
-                    $canvasData = str_replace(' ', '+', $canvasData);
-                    $imageData = base64_decode($canvasData);
+                    $canvasData = preg_replace('#^data:image/png;base64,#', '', $canvasData);
+                    $imageData = base64_decode($canvasData, true);
+
+                    if (!$imageData || substr($imageData, 0, 8) !== "\x89PNG\x0d\x0a\x1a\x0a") {
+                        throw new Exception('The signature could not be saved — please try signing again.');
+                    }
 
                     $fileName = uniqid() . '.png';
                     $filePath = FCPATH . 'modules/courier_goshipping/assets/deliveries/signatures/' . $fileName;
