@@ -577,7 +577,7 @@ class Rider_api extends App_Controller
         }
 
         $rider_name = trim((string) ($this->rider->name ?? '')) ?: 'our rider';
-        $this->advance_shipment_status($shipment->id, 5, "Your Order is in Local Transit and has been assigned Rider {$rider_name}."); // in_transit / Local Delivery
+        $this->advance_shipment_status($shipment->id, 5, "Your order is in transit and has been assigned to Rider {$rider_name}. He will call you when he arrives."); // in_transit / Local Delivery
         $this->mirror_salibay_order_status($shipment->id, 'processing');
         $this->push_shopify_status($shipment->id, 5);
         try {
