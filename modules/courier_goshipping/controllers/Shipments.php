@@ -3181,6 +3181,12 @@ class Shipments extends AdminController
                 log_message('error', 'Shopify fulfillment push crashed: ' . $e->getMessage());
             }
 
+            try {
+                courier_send_international_leg_status_email((int) $id, $new_status_id);
+            } catch (\Throwable $e) {
+                log_message('error', 'International leg status email crashed: ' . $e->getMessage());
+            }
+
             set_alert('success', 'International status updated successfully.');
             redirect(admin_url('courier_goshipping/shipments/waybill/' . $id));
 
