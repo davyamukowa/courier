@@ -172,16 +172,21 @@ class Salibay_delivery extends App_Controller
 
         $first_name = trim((string) $this->input->post('first_name'));
         $last_name  = trim((string) $this->input->post('last_name'));
-        $signature  = $this->input->post('signature');
+        // Read straight from $_POST, not $this->input->post() — Perfex's
+        // global_xss_filtering runs xss_clean() over every post() value,
+        // which silently corrupts long base64 blobs. Same bug/fix as
+        // Shipments::update_status(), Rider_api::delivery_complete(), and
+        // courier_logistic's Inventory Log Book signatures.
+        $signature = $_POST['signature'] ?? '';
 
         if ($first_name === '' || $last_name === '' || empty($signature)) {
             echo json_encode(['success' => false, 'message' => "Please enter the customer's name and have them sign."]);
             return;
         }
 
-        $canvas_data = str_replace(' ', '+', str_replace('data:image/png;base64,', '', $signature));
-        $image_data  = base64_decode($canvas_data);
-        if ($image_data === false) {
+        $canvas_data = preg_replace('#^data:image/png;base64,#', '', $signature);
+        $image_data  = base64_decode($canvas_data, true);
+        if (!$image_data || substr($image_data, 0, 8) !== "\x89PNG\x0d\x0a\x1a\x0a") {
             echo json_encode(['success' => false, 'message' => 'Could not read the signature. Please try again.']);
             return;
         }
