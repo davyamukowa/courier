@@ -394,56 +394,14 @@ $tab_urls = [
                     <p id="delivered_to"></p>
                 </div>
 
-                <div class="timeline" id="status-timeline" style="margin-top:28px;">
-                    <div class="timeline-item" id="status-1">
-                        <h4>Shipment Created</h4>
-                        <p>Your shipment has been created.</p>
-                        <p class="tl-time" id="time-1"></p>
-                    </div>
-                    <div class="timeline-item" id="status-2">
-                        <h4>Picked Up</h4>
-                        <p>Package was picked up from sender.</p>
-                        <p class="tl-time" id="time-2"></p>
-                    </div>
-                    <div class="timeline-item" id="status-3">
-                        <h4>Received at Warehouse</h4>
-                        <p>Package received at our facility.</p>
-                        <p class="tl-time" id="time-3"></p>
-                    </div>
-                    <div class="timeline-item" id="status-4">
-                        <h4>Dispatched</h4>
-                        <p>Package has been dispatched.</p>
-                        <p class="tl-time" id="time-4"></p>
-                    </div>
-                    <div class="timeline-item" id="status-5">
-                        <h4>In Transit</h4>
-                        <p>Package is on its way.</p>
-                        <p class="tl-time" id="time-5"></p>
-                        <div id="shipment-stops" style="margin-top:10px; display:none;">
-                            <p style="font-weight:600; color:#555;">Transit stops:</p>
-                            <div id="stops-container"></div>
-                        </div>
-                    </div>
-                    <div class="timeline-item" id="status-6">
-                        <h4>Arrived at Destination</h4>
-                        <p>Package has arrived at destination hub.</p>
-                        <p class="tl-time" id="time-6"></p>
-                    </div>
-                    <div class="timeline-item" id="status-7">
-                        <h4>Out for Delivery</h4>
-                        <p>Package is out for final delivery.</p>
-                        <p class="tl-time" id="time-7"></p>
-                    </div>
-                    <div class="timeline-item" id="status-8">
-                        <h4>Delivered</h4>
-                        <p>Package has been delivered.</p>
-                        <p class="tl-time" id="time-8"></p>
-                    </div>
+                <div id="shipment-stops" style="margin-top:16px; display:none;" class="data-block">
+                    <p style="font-weight:600; color:#555;">Transit stops:</p>
+                    <div id="stops-container"></div>
                 </div>
 
                 <div id="journey-section" style="margin-top:32px; display:none;">
                     <h4 style="font-size:14px; color:#555; font-weight:600; margin-bottom:12px;">
-                        <i class="fas fa-route"></i> Full Journey
+                        <i class="fas fa-route"></i> Shipment Journey
                     </h4>
                     <div class="timeline" id="journey-timeline" style="margin-top:0;"></div>
                 </div>
