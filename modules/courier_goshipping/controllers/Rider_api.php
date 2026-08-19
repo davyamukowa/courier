@@ -526,7 +526,7 @@ class Rider_api extends App_Controller
         return $shipment;
     }
 
-    private function advance_shipment_status($shipment_id, $new_status_id)
+    private function advance_shipment_status($shipment_id, $new_status_id, $notes = null)
     {
         $shipment = $this->db->select('id, status_id')->where('id', $shipment_id)->get(db_prefix() . '_shipments')->row();
         if (!$shipment || (int) $shipment->status_id >= $new_status_id) {
@@ -536,6 +536,7 @@ class Rider_api extends App_Controller
         $this->db->insert(db_prefix() . '_shipment_status_history', [
             'shipment_id'         => $shipment_id,
             'status_id'           => $new_status_id,
+            'notes'               => $notes,
             'changed_at'          => date('Y-m-d H:i:s'),
             'changed_by_staff_id' => $this->rider->staff_id ?? null,
             'changed_by_label'    => trim(($this->rider->name ?? 'Rider') . ' (Rider)'),
@@ -575,7 +576,8 @@ class Rider_api extends App_Controller
             return;
         }
 
-        $this->advance_shipment_status($shipment->id, 5); // in_transit
+        $rider_name = trim((string) ($this->rider->name ?? '')) ?: 'our rider';
+        $this->advance_shipment_status($shipment->id, 5, "Your Order is in Local Transit and has been assigned Rider {$rider_name}."); // in_transit / Local Delivery
         $this->mirror_salibay_order_status($shipment->id, 'processing');
         $this->push_shopify_status($shipment->id, 5);
         try {
