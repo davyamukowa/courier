@@ -94,12 +94,21 @@ class Salibay_delivery extends App_Controller
             ->where('s.id', $shipment_id)
             ->get()
             ->row();
+        $rider_name = ($assigned && $assigned->firstname) ? trim($assigned->firstname . ' ' . $assigned->lastname) : null;
+        $notes = null;
+        if ($new_status_id === 5) {
+            $notes = $rider_name
+                ? "Your Order is in Local Transit and has been assigned Rider {$rider_name}."
+                : 'Your Order is in Local Transit.';
+        }
+
         $this->db->insert(db_prefix() . '_shipment_status_history', [
             'shipment_id'         => $shipment_id,
             'status_id'           => $new_status_id,
+            'notes'               => $notes,
             'changed_at'          => date('Y-m-d H:i:s'),
             'changed_by_staff_id' => $assigned->staff_id ?? null,
-            'changed_by_label'    => $assigned && $assigned->firstname ? trim($assigned->firstname . ' ' . $assigned->lastname) . ' (Rider link)' : 'Rider link',
+            'changed_by_label'    => $rider_name ? $rider_name . ' (Rider link)' : 'Rider link',
         ]);
     }
 
