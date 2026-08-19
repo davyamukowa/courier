@@ -751,19 +751,44 @@ if (!function_exists('courier_get_shipment_journey')) {
             ->get()
             ->result();
 
+        // Who actually signed for the parcel — same _deliveries row the
+        // admin waybill's "Proof of Delivery" card reads (Shipments::
+        // update_status()/Rider_api::delivery_complete()/Salibay_delivery
+        // all write into it when status 8 is reached). Only fetched if this
+        // shipment's history actually has a "delivered" row, so a shipment
+        // that's still in progress never pays for this query.
+        $delivered_status = $CI->db->where('status_name', 'delivered')->get(db_prefix() . '_shipment_statuses')->row();
+        $delivered_status_id = $delivered_status ? (int) $delivered_status->id : null;
+        $delivery_recipient_name = null;
+        if ($delivered_status_id !== null
+            && $CI->db->table_exists(db_prefix() . '_deliveries')
+            && array_reduce($history, function ($found, $row) use ($delivered_status_id) {
+                return $found || (int) $row->status_id === $delivered_status_id;
+            }, false)
+        ) {
+            $delivery = $CI->db->where_in('shipment_id', $leg_ids)->order_by('id', 'desc')->get(db_prefix() . '_deliveries')->row();
+            if ($delivery) {
+                $delivery_recipient_name = trim(($delivery->first_name ?? '') . ' ' . ($delivery->last_name ?? ''));
+            }
+        }
+
         foreach ($history as $row) {
             // Every step shows its backend status title (bold), then — only
             // when there's something more specific to say than the title
             // itself (a per-event note like "Your order has been assigned to
-            // Rider {name}...", or one of the international leg's friendly
-            // messages) — a separate, smaller/faded description line below
-            // it, same two-line layout as the admin History panel. A step
-            // with nothing extra to add (Created, Received, Delivered, ...)
-            // just shows its title, no description line.
+            // Rider {name}...", the international leg's friendly messages,
+            // or who signed for a delivered parcel) — a separate, smaller/
+            // faded description line below it, same two-line layout as the
+            // admin History panel. A step with nothing extra to add
+            // (Created, Received, ...) just shows its title, no description.
             $title = $row->status_description ?: ucfirst(str_replace('_', ' ', (string) $row->status_name));
             $message = !empty($row->notes)
                 ? $row->notes
                 : courier_customer_facing_status_label((int) $row->status_id, null, null, false);
+
+            if ($message === null && $delivered_status_id !== null && (int) $row->status_id === $delivered_status_id && !empty($delivery_recipient_name)) {
+                $message = "The order has been received by {$delivery_recipient_name}.";
+            }
 
             if ($message === $title) {
                 $message = null;
