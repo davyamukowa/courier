@@ -2640,6 +2640,24 @@ class Fulfilment extends AdminController
             'branch_id' => $branch_id,
         ]);
 
+        if ($already_ready_for_air_freight) {
+            if ($this->shopify_connector_model->activate_international_status($shipment_id)) {
+                // Same trigger as activate_international_air_freight_leg() in
+                // Shopify_connector.php — the tag arrived before this shipment
+                // existed, so it's born already in AIR (AIR FREIGHT) mode with
+                // the international leg activated immediately, and needs the
+                // same Shopify fulfillment push.
+                try {
+                    $this->shopify_connector_model->push_shopify_fulfillment_status($shipment_id, 10);
+                } catch (\Throwable $e) {
+                    $this->write_integration_log('error', 'shipment', 'Shopify fulfillment push for international activation crashed: ' . $e->getMessage(), [
+                        'shipment_id' => $shipment_id,
+                        'shopify_db_order_id' => $order_id,
+                    ]);
+                }
+            }
+        }
+
         $invoice_id = $this->create_shipment_invoice($shipment_id, $order, $recipient_data, $packages_data, $tracking_number);
 
         // Sends the actual formatted waybill (same as the manual "Send
