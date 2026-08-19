@@ -22,8 +22,55 @@ register_deactivation_hook(SHOPIFY_CONNECTOR_MODULE_NAME, 'shopify_connector_dea
 // Add hooks for menu, permissions, and assets
 hooks()->add_action('admin_init', 'shopify_connector_permissions');
 hooks()->add_action('admin_init', 'shopify_connector_init_menu_items');
+hooks()->add_action('admin_init', 'shopify_connector_scheduled_webhook_reconciliation');
 hooks()->add_action('app_admin_head', 'shopify_connector_add_head_components');
 hooks()->add_action('app_admin_footer', 'shopify_connector_load_js');
+
+/**
+ * Silently re-syncs our webhook subscriptions against Shopify's own live
+ * list, at most once/day (opportunistic — this project's cPanel deploy
+ * pipeline can't add a real OS cron, so "throttled, triggered by any admin
+ * page load" is the portable equivalent — see courier_goshipping.php's
+ * run_scheduled_log_pruning() for the same established pattern).
+ *
+ * Why this exists: Shopify silently auto-unsubscribes a webhook topic after
+ * 8 consecutive delivery failures, with no notification to us — the
+ * "Register All Webhooks" button on Settings -> Webhooks only catches this
+ * if a staffer happens to click it. Without this, a dropped subscription
+ * (this happened to orders/updated for hours before anyone noticed, on
+ * 2026-08-19) sits broken indefinitely, silently mis-routing every order
+ * whose Salibay tags arrive after the order is first created.
+ */
+function shopify_connector_scheduled_webhook_reconciliation()
+{
+    $last_run = get_option('shopify_webhook_reconcile_last_run');
+    if ($last_run && (time() - strtotime($last_run)) < 86400) {
+        return;
+    }
+    update_option('shopify_webhook_reconcile_last_run', date('Y-m-d H:i:s'));
+
+    $CI = &get_instance();
+    $CI->load->model('shopify_connector/shopify_connector_model');
+
+    $store = $CI->shopify_connector_model->get_store();
+    if (!$store || empty($store->access_token) || empty($store->shop_domain)) {
+        return;
+    }
+
+    $endpoint = trim(get_option('shopify_public_webhook_url'));
+    if ($endpoint === '') {
+        $endpoint = admin_url('shopify_connector/webhook');
+    }
+    if (stripos($endpoint, 'https://') !== 0 || preg_match('/\/\/(localhost|127\.0\.0\.1)(:|\/)/i', $endpoint)) {
+        return;
+    }
+
+    try {
+        $CI->shopify_connector_model->reconcile_webhooks($store, $endpoint);
+    } catch (\Throwable $e) {
+        log_message('error', 'Scheduled webhook reconciliation crashed: ' . $e->getMessage());
+    }
+}
 
 /**
  * Activation hook
