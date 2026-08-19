@@ -276,18 +276,43 @@ class Shopify_connector extends AdminController
             redirect(admin_url('shopify_connector/settings'));
         }
 
-        $topics = [
-            'orders/create', 'orders/updated', 'orders/cancelled', 'orders/paid',
-            'refunds/create', 'products/update', 'inventory_items/update'
-        ];
-        
         $endpoint = $this->get_shopify_webhook_endpoint();
         if (stripos($endpoint, 'https://') !== 0 || preg_match('/\/\/(localhost|127\.0\.0\.1)(:|\/)/i', $endpoint)) {
             set_alert('danger', 'Shopify webhooks require a public HTTPS endpoint. Set the Public webhook URL in Advanced Settings before registering webhooks.');
             redirect(admin_url('shopify_connector/settings'));
         }
+
+        $result = $this->reconcile_webhooks($store, $endpoint);
+
+        $alert_type = $result['success_count'] > 0 ? 'success' : 'danger';
+        set_alert($alert_type, "Registered/Synced {$result['success_count']}/{$result['total']} webhooks. Check Logs for details if any failed.");
+        redirect(admin_url('shopify_connector/settings'));
+    }
+
+    /**
+     * Core of register_webhooks() — pulled out so it can also run silently
+     * on a schedule (see run_scheduled_webhook_reconciliation() in
+     * courier_goshipping.php) rather than only when a staffer remembers to
+     * click the button. Shopify silently auto-unsubscribes a webhook topic
+     * after 8 consecutive delivery failures, with no notification to us —
+     * our own tblshopify_webhooks.is_active stays stale/wrong forever unless
+     * something re-checks against Shopify's own live list, which is exactly
+     * what step 1 below does (it's the same "fetch live list, sync local
+     * DB, only create what's actually missing" logic the button already
+     * used, just extracted so it's callable without an HTTP request/redirect
+     * context). Safe to call repeatedly/automatically — it never deletes or
+     * duplicates a subscription that's already correct on Shopify's side.
+     */
+    private function reconcile_webhooks($store, $endpoint)
+    {
+        $topics = [
+            'orders/create', 'orders/updated', 'orders/cancelled', 'orders/paid',
+            'refunds/create', 'products/update', 'inventory_items/update'
+        ];
+
         $success_count = 0;
-        
+        $missing_before = [];
+
         // 1. Fetch existing webhooks from Shopify to sync our local DB and avoid "already taken" errors
         $url = "https://{$store->shop_domain}/admin/api/{$store->api_version}/webhooks.json";
         $ch = curl_init($url);
@@ -307,7 +332,7 @@ class Shopify_connector extends AdminController
                 foreach ($data['webhooks'] as $wh) {
                     if (strpos($wh['address'], 'shopify_connector/webhook') !== false) {
                         $existing_topics[] = $wh['topic'];
-                        
+
                         // Sync to local DB
                         $exists = $this->db->where('store_id', $store->id)->where('topic', $wh['topic'])->get(db_prefix() . 'shopify_webhooks')->row();
                         if ($exists) {
@@ -330,14 +355,16 @@ class Shopify_connector extends AdminController
                 }
             }
         }
-        
+
         // 2. Register any missing topics
         foreach ($topics as $topic) {
             if (in_array($topic, $existing_topics)) {
                 $success_count++;
                 continue; // Already exists and synced!
             }
-            
+
+            $missing_before[] = $topic;
+
             $payload = json_encode([
                 'webhook' => [
                     'topic' => $topic,
@@ -345,7 +372,7 @@ class Shopify_connector extends AdminController
                     'format' => 'json'
                 ]
             ]);
-            
+
             $ch = curl_init($url);
             curl_setopt($ch, CURLOPT_HTTPHEADER, [
                 "Content-Type: application/json",
@@ -362,7 +389,7 @@ class Shopify_connector extends AdminController
             if ($http_code == 201 || $http_code == 200) {
                 $res_data = json_decode($response, true);
                 $webhook_id = isset($res_data['webhook']['id']) ? $res_data['webhook']['id'] : null;
-                
+
                 // Save to local DB
                 if ($webhook_id) {
                     $this->db->insert(db_prefix() . 'shopify_webhooks', [
@@ -387,9 +414,45 @@ class Shopify_connector extends AdminController
             }
         }
 
-        $alert_type = $success_count > 0 ? 'success' : 'danger';
-        set_alert($alert_type, "Registered/Synced {$success_count}/" . count($topics) . " webhooks. Check Logs for details if any failed.");
-        redirect(admin_url('shopify_connector/settings'));
+        if (!empty($missing_before)) {
+            $this->db->insert(db_prefix() . 'shopify_integration_logs', [
+                'store_id' => $store->id,
+                'log_level' => 'warning',
+                'category' => 'webhook_registration',
+                'message' => 'Webhook reconciliation found topic(s) missing from Shopify (likely auto-unsubscribed after repeated delivery failures) and re-registered them: ' . implode(', ', $missing_before),
+                'context' => json_encode(['topics' => $missing_before]),
+                'created_at' => date('Y-m-d H:i:s')
+            ]);
+        }
+
+        return ['success_count' => $success_count, 'total' => count($topics), 'missing_before' => $missing_before];
+    }
+
+    /**
+     * Runs the same reconciliation as the "Register All Webhooks" button,
+     * silently, on a schedule — see courier_goshipping.php's
+     * run_scheduled_webhook_reconciliation(), hooked to admin_init and
+     * throttled to once/day. Never touches the DB unless a real store is
+     * configured; never alerts/redirects since there's no HTTP request
+     * driving this.
+     */
+    public function run_scheduled_webhook_reconciliation()
+    {
+        $store = $this->shopify_connector_model->get_store();
+        if (!$store || empty($store->access_token) || empty($store->shop_domain)) {
+            return;
+        }
+
+        $endpoint = $this->get_shopify_webhook_endpoint();
+        if (stripos($endpoint, 'https://') !== 0 || preg_match('/\/\/(localhost|127\.0\.0\.1)(:|\/)/i', $endpoint)) {
+            return;
+        }
+
+        try {
+            $this->reconcile_webhooks($store, $endpoint);
+        } catch (\Throwable $e) {
+            log_message('error', 'Scheduled webhook reconciliation crashed: ' . $e->getMessage());
+        }
     }
 
     public function delete_webhooks()
