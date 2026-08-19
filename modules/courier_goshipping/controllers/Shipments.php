@@ -3157,12 +3157,15 @@ class Shipments extends AdminController
                     'shipping_mode'     => 'Courier',
                 ]);
                 if ((int) $shipment->status_id <= 2) {
+                    // Deliberately no separate _shipment_status_history row
+                    // here — the status_id=13 entry inserted just above
+                    // ("Arrived Go Shipping Warehouse" / now "...Local
+                    // warehouse...") already tells the customer this exact
+                    // real-world event; a second "Received" entry at the same
+                    // moment only duplicated it in the Full Journey list. The
+                    // domestic status still advances silently so the stepper
+                    // reflects "Received" as the shipment's current stage.
                     $this->db->where('id', $id)->update(db_prefix() . '_shipments', ['status_id' => 3]);
-                    $this->db->insert(db_prefix() . '_shipment_status_history', [
-                        'shipment_id' => $id,
-                        'status_id'   => 3,
-                        'changed_at'  => date('Y-m-d H:i:s'),
-                    ]);
                 }
             }
 
