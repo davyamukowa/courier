@@ -654,6 +654,7 @@ if (!function_exists('courier_get_shipment_journey')) {
             $events[] = [
                 'label'      => courier_customer_facing_status_label((int) $row->status_id, $row->status_description, $row->status_name),
                 'changed_at' => $row->changed_at,
+                'status_id'  => (int) $row->status_id,
             ];
         }
 
@@ -667,12 +668,33 @@ if (!function_exists('courier_get_shipment_journey')) {
                     $events[] = [
                         'label'      => $row->tag,
                         'changed_at' => $row->changed_at,
+                        'status_id'  => null,
                     ];
                 }
             }
         }
 
-        usort($events, function ($a, $b) {
+        // "Created" is always the very first thing the customer should see
+        // in their journey, even though the external sourcing pipeline's own
+        // tags (e.g. "Salibay Needs Sourcing") can legitimately carry a
+        // timestamp that ties with, or even edges out, the shipment's own
+        // creation moment (both get written within the same request when an
+        // order is caught up via the self-heal/re-import path — see
+        // self_heal_stuck_international_orders() in Fulfilment.php). Pin it
+        // as the oldest entry unconditionally rather than trusting raw
+        // timestamp comparison for this one anchor event.
+        $created_status = $CI->db->where('status_name', 'created')->get(db_prefix() . '_shipment_statuses')->row();
+        $created_status_id = $created_status ? (int) $created_status->id : null;
+
+        usort($events, function ($a, $b) use ($created_status_id) {
+            $a_is_created = $created_status_id !== null && ($a['status_id'] ?? null) === $created_status_id;
+            $b_is_created = $created_status_id !== null && ($b['status_id'] ?? null) === $created_status_id;
+            if ($a_is_created && !$b_is_created) {
+                return 1;
+            }
+            if ($b_is_created && !$a_is_created) {
+                return -1;
+            }
             return strcmp($b['changed_at'], $a['changed_at']);
         });
 
