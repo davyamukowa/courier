@@ -1789,7 +1789,8 @@ $tab_urls = [
                     journey.forEach(function (ev) {
                         const item = document.createElement('div');
                         item.className = 'timeline-item';
-                        item.innerHTML = '<h4>' + escapeHtml(ev.label) + '</h4>' +
+                        item.innerHTML = '<h4>' + escapeHtml(ev.title) + '</h4>' +
+                            (ev.message ? '<p>' + escapeHtml(ev.message) + '</p>' : '') +
                             '<p class="tl-time">' + fmtDate(ev.changed_at) + '</p>';
                         jc.appendChild(item);
                     });
