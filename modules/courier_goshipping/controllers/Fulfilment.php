@@ -299,7 +299,7 @@ class Fulfilment extends AdminController
         }
 
         echo json_encode([
-            'draw' => $this->input->post('draw'),
+            'draw' => (int) $this->input->post('draw'),
             'recordsTotal' => $total_records,
             'recordsFiltered' => $total_filtered,
             'data' => $data,
@@ -1360,7 +1360,7 @@ class Fulfilment extends AdminController
         }
 
         $json_out = json_encode([
-            'draw' => $this->input->post('draw'),
+            'draw' => (int) $this->input->post('draw'),
             'recordsTotal' => $total_records,
             'recordsFiltered' => $total_filtered,
             'data' => $data,
@@ -1543,7 +1543,7 @@ class Fulfilment extends AdminController
         }
 
         echo json_encode([
-            'draw' => $this->input->post('draw'),
+            'draw' => (int) $this->input->post('draw'),
             'recordsTotal' => $total_records,
             'recordsFiltered' => $total_filtered,
             'data' => $data,
@@ -1647,7 +1647,7 @@ class Fulfilment extends AdminController
         }
 
         echo json_encode([
-            'draw' => $this->input->post('draw'),
+            'draw' => (int) $this->input->post('draw'),
             'recordsTotal' => $total_records,
             'recordsFiltered' => $total_filtered,
             'data' => $data,
@@ -1728,7 +1728,7 @@ class Fulfilment extends AdminController
         }
 
         echo json_encode([
-            'draw' => $this->input->post('draw'),
+            'draw' => (int) $this->input->post('draw'),
             'recordsTotal' => $total_records,
             'recordsFiltered' => $total_filtered,
             'data' => $data,
