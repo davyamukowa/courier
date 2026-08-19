@@ -3043,8 +3043,8 @@ class Shipments extends AdminController
                     $dispatched_rider_name = $assigned_staff_for_note ? trim($assigned_staff_for_note->firstname . ' ' . $assigned_staff_for_note->lastname) : null;
                 }
                 $notes = $dispatched_rider_name
-                    ? 'Dispatched - Assigned to ' . $dispatched_rider_name
-                    : 'Dispatched';
+                    ? 'Assigned to ' . $dispatched_rider_name
+                    : null;
             } elseif ($new_status_id === 5) {
                 $assigned_staff_id = (int) ($this->db->select('staff_id')->where('id', (int) $id)->get(db_prefix() . '_shipments')->row()->staff_id ?? 0);
                 $rider_name = null;
@@ -3053,8 +3053,8 @@ class Shipments extends AdminController
                     $rider_name = $assigned_staff ? trim($assigned_staff->firstname . ' ' . $assigned_staff->lastname) : null;
                 }
                 $notes = $rider_name
-                    ? "Your order is in transit and has been assigned to Rider {$rider_name}. He will call you when he arrives."
-                    : 'Your order is in transit.';
+                    ? "Your order has been assigned to Rider {$rider_name}. He will call you when he arrives."
+                    : null;
             }
 
             $this->db->insert(db_prefix() . '_shipment_status_history', [
