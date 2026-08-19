@@ -98,8 +98,8 @@ class Salibay_delivery extends App_Controller
         $notes = null;
         if ($new_status_id === 5) {
             $notes = $rider_name
-                ? "Your order is in transit and has been assigned to Rider {$rider_name}. He will call you when he arrives."
-                : 'Your order is in transit.';
+                ? "Your order has been assigned to Rider {$rider_name}. He will call you when he arrives."
+                : null;
         }
 
         $this->db->insert(db_prefix() . '_shipment_status_history', [
