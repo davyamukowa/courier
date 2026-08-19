@@ -204,7 +204,7 @@ echo '<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/selec
                                         <option value="2" <?= $this->session->userdata('status_id') == '2' ? 'selected' : '' ?>>Picked Up</option>
                                         <option value="3" <?= $this->session->userdata('status_id') == '3' ? 'selected' : '' ?>>Received</option>
                                         <option value="4" <?= $this->session->userdata('status_id') == '4' ? 'selected' : '' ?>>Dispatched</option>
-                                        <option value="5" <?= $this->session->userdata('status_id') == '5' ? 'selected' : '' ?>>Local Delivery</option>
+                                        <option value="5" <?= $this->session->userdata('status_id') == '5' ? 'selected' : '' ?>>Local Delivery - In Transit</option>
                                         <option value="6" <?= $this->session->userdata('status_id') == '6' ? 'selected' : '' ?>>Arrived at Destination</option>
                                         <option value="8" <?= $this->session->userdata('status_id') == '8' ? 'selected' : '' ?>>Delivered</option>
                                         <option value="9" <?= $this->session->userdata('status_id') == '9' ? 'selected' : '' ?>>Cancelled</option>
