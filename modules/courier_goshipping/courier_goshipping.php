@@ -86,6 +86,7 @@ class Courier_Logistic_System {
         hooks()->add_action('admin_init', [$this, 'run_db_upgrades_v44']);
         hooks()->add_action('admin_init', [$this, 'run_db_upgrades_v45']);
         hooks()->add_action('admin_init', [$this, 'run_db_upgrades_v46']);
+        hooks()->add_action('admin_init', [$this, 'run_db_upgrades_v47']);
         hooks()->add_action('admin_init', [$this, 'run_scheduled_log_pruning']);
         // Register email templates (idempotent — skips if slug already exists)
         hooks()->add_action('admin_init', [$this, 'register_email_templates']);
@@ -2038,6 +2039,34 @@ class Courier_Logistic_System {
         }
 
         update_option('courier_schema_v46_done', '1');
+    }
+
+    /**
+     * v47: universal status-flow simplification (both general Go Shipping
+     * and Salibay shipments, per explicit instruction) —
+     * - status 5 renamed "In Transit" -> "Local Delivery" (short label shown
+     *   in the stepper/badges/dropdown; the long customer-facing sentence is
+     *   built dynamically per-event in courier_get_shipment_journey()/the
+     *   status-change call sites, not stored here).
+     * - status 7 ("Out for Delivery") retired — marked inactive rather than
+     *   deleted, so old shipments that already have a status-7 history row
+     *   keep displaying it correctly; going forward it's skipped in the
+     *   stepper/dropdown views (see waybill.php, tracking.php) and rejected
+     *   by Shipments::update_status().
+     */
+    public function run_db_upgrades_v47() {
+        if (get_option('courier_schema_v47_done')) return;
+        $CI = &get_instance();
+
+        $statuses_table = db_prefix() . '_shipment_statuses';
+        if ($CI->db->table_exists($statuses_table)) {
+            $CI->db->where('id', 5)->update($statuses_table, ['description' => 'Local Delivery']);
+            if ($CI->db->field_exists('active', $statuses_table)) {
+                $CI->db->where('id', 7)->update($statuses_table, ['active' => 0]);
+            }
+        }
+
+        update_option('courier_schema_v47_done', '1');
     }
 
     /**
