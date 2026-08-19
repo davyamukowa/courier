@@ -217,7 +217,7 @@ if (!function_exists('courier_customer_facing_status_label')) {
             10 => 'Your order has arrived at the airport and is being prepared for its flight.',
             11 => 'Your order has been shipped and is currently in the air, on its way to Kenya.',
             12 => 'Your order has landed in Kenya and is clearing customs.',
-            13 => "Your order has arrived at our warehouse. We'll keep you updated as it heads to you.",
+            13 => "Your order has arrived at our Local warehouse. We'll keep you updated as it heads to you.",
         ];
 
         return $friendly[(int) $status_id] ?? ($description ?: ucfirst(str_replace('_', ' ', (string) $status_name)));
