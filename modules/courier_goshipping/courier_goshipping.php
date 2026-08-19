@@ -2851,4 +2851,5 @@ class Courier_Logistic_System {
 // add_filter('csrf_exclude_uris', ...) registered from this file fires too
 // late to have any effect (see that file's header comment).
 
-// In
+// Instantiate the module class to initialize it
+new Courier_Logistic_System();
