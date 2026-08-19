@@ -2733,6 +2733,14 @@ class Fulfilment extends AdminController
                         'shopify_db_order_id' => $order_id,
                     ]);
                 }
+                try {
+                    courier_send_international_leg_status_email($shipment_id, 10);
+                } catch (\Throwable $e) {
+                    $this->write_integration_log('error', 'shipment', 'International leg status email crashed: ' . $e->getMessage(), [
+                        'shipment_id' => $shipment_id,
+                        'shopify_db_order_id' => $order_id,
+                    ]);
+                }
             }
         }
 
