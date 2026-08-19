@@ -2107,6 +2107,32 @@ class Courier_Logistic_System {
     }
 
     /**
+     * v50: fixes a long-standing typo bug in run_db_upgrades_v26() — when the
+     * fallback default branch was created and the home country's short_name
+     * couldn't be resolved, the name built as `($country->short_name ??
+     * 'Head Office') . ' Office'` collapsed to the literal doubled string
+     * "Head Office Office" (the null-coalesce fallback word "Office" plus
+     * the unconditional trailing " Office" suffix). That branch has been
+     * sitting in production with this name ever since, surfacing as the
+     * garbled "Sender Name" on any shipment that falls back to it (e.g. an
+     * order whose Shopify tags didn't carry a route/classification tag
+     * before the shipment was created). One-time rename only — the
+     * generator itself is also fixed above so a fresh install never
+     * reproduces this.
+     */
+    public function run_db_upgrades_v50() {
+        if (get_option('courier_schema_v50_done')) return;
+        $CI = &get_instance();
+
+        $branches_table = db_prefix() . '_courier_branches';
+        if ($CI->db->table_exists($branches_table)) {
+            $CI->db->where('name', 'Head Office Office')->update($branches_table, ['name' => 'Head Office']);
+        }
+
+        update_option('courier_schema_v50_done', '1');
+    }
+
+    /**
      * Prunes old, purely-diagnostic rows that grow unbounded with order
      * volume and are never needed once they age out — NOT the same as
      * shipment_status_history/courier_sourcing_events, which are real
