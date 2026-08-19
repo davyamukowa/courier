@@ -921,7 +921,7 @@ class Courier_Logistic_System {
         if (!$has_default) {
             $country = $home_country_id ? $CI->db->where('country_id', $home_country_id)->get(db_prefix() . 'countries')->row() : null;
             $CI->db->insert(db_prefix() . '_courier_branches', [
-                'name'        => ($country->short_name ?? 'Head Office') . ' Office',
+                'name'        => (!empty($country->short_name)) ? ($country->short_name . ' Office') : 'Head Office',
                 'code'        => 'HQ',
                 'branch_type' => 'local',
                 'country_id'  => $home_country_id ?: null,
