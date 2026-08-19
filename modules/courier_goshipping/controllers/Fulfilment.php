@@ -126,6 +126,14 @@ class Fulfilment extends AdminController
                         'shopify_db_order_id' => $row->order_id,
                     ], $row->store_id);
                 }
+                try {
+                    courier_send_international_leg_status_email($row->shipment_id, 10);
+                } catch (\Throwable $e) {
+                    $this->write_integration_log('error', 'shipment', 'Self-heal international leg status email crashed: ' . $e->getMessage(), [
+                        'shipment_id' => $row->shipment_id,
+                        'shopify_db_order_id' => $row->order_id,
+                    ], $row->store_id);
+                }
             }
         }
     }
