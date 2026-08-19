@@ -662,6 +662,10 @@
                                 <?php
                                 $displayCounter = 1; // Initialize a counter for display purposes
                                 foreach ($statuses as $status):
+                                    // "Out for Delivery" (7) was retired — go
+                                    // straight from Local Delivery (5) to
+                                    // Delivered (8).
+                                    if ($status->id == 7) continue;
                                     // Check if we should skip the pickup step
                                     if ($status->id != 2 || !empty($shipment_details['shipment']->pickup_id)):
                                         // Adjust the display counter based on the pickup condition
