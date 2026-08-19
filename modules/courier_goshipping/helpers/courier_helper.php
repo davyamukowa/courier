@@ -708,9 +708,11 @@ if (!function_exists('courier_send_sender_tracking_email')) {
  * _shipment_status_history table, so this just reads that one shipment's
  * full history and doesn't need to resolve any linked/sibling shipment.
  *
- * Returns a flat array of ['label' => string, 'changed_at' => 'Y-m-d H:i:s']
- * sorted newest-first, ready to hand straight to the tracker view as the
- * single unified journey list (latest update at the top).
+ * Returns a flat array of ['title' => string, 'message' => string|null,
+ * 'changed_at' => 'Y-m-d H:i:s'] sorted newest-first, ready to hand straight
+ * to the tracker view as the single unified journey list (latest update at
+ * the top) — title bold, message (when present) a smaller/faded line below
+ * it, same two-line layout as the admin waybill's History panel.
  */
 if (!function_exists('courier_get_shipment_journey')) {
     function courier_get_shipment_journey($shipment_id)
