@@ -430,6 +430,74 @@ if (!function_exists('courier_send_shipment_in_transit_email')) {
 }
 
 /**
+ * Emails the customer at each stage of the international air-freight leg
+ * (international_status_id 10-13 — At Origin Airport, In Transit (Air),
+ * Arrived Destination Airport, Arrived Go Shipping Warehouse). International
+ * tracking only ever exists on a Salibay-sourced shipment (see the module's
+ * own CLAUDE.md — international_status_id is NULL for every plain Go
+ * Shipping shipment), but this still checks the shopify_orders link
+ * explicitly rather than assuming, per the module's guard-every-call-site
+ * convention (see courier_send_shipment_in_transit_email()'s own comment on
+ * why relying on the caller alone isn't good enough).
+ *
+ * Called from every place international_status_id gets set: the initial
+ * activation to 10 (Shopify_connector::activate_international_air_freight_leg(),
+ * both create_courier_shipment() fallbacks, and
+ * Fulfilment::self_heal_stuck_international_orders()), and staff progressing
+ * the leg through Shipments::update_international_status() (11-13, or a
+ * manual re-send of 10).
+ */
+if (!function_exists('courier_send_international_leg_status_email')) {
+    function courier_send_international_leg_status_email($shipment_id, $international_status_id)
+    {
+        $international_status_id = (int) $international_status_id;
+
+        $titles = [
+            10 => 'At Origin Airport',
+            11 => 'In Transit (Air)',
+            12 => 'Arrived Destination Airport',
+            13 => 'Arrived Go Shipping Warehouse',
+        ];
+        if (!isset($titles[$international_status_id])) {
+            return false;
+        }
+
+        $CI = &get_instance();
+        if (!$CI->db->table_exists(db_prefix() . 'shopify_orders')
+            || !$CI->db->where('gs_shipment_id', (int) $shipment_id)->get(db_prefix() . 'shopify_orders')->row()
+        ) {
+            return false;
+        }
+
+        $resolved = courier_resolve_shipment_recipient_email($shipment_id);
+        if (!$resolved) {
+            return false;
+        }
+
+        $waybill = $resolved['shipment']->waybill_number ?: $resolved['shipment']->tracking_id;
+
+        try {
+            courier_ensure_notification_email_templates();
+            $sent = mail_template('Salibay_international_leg_status_update', 'courier_goshipping', $resolved['email'], [
+                '{recipient_name}' => $resolved['recipient_name'],
+                '{status_title}'   => $titles[$international_status_id],
+                '{status_message}' => courier_customer_facing_status_label($international_status_id, $titles[$international_status_id], $titles[$international_status_id]),
+                '{waybill_number}' => $waybill,
+                '{tracking_link}'  => courier_customer_tracking_link($waybill),
+                '{company_name}'   => get_option('companyname'),
+            ])->send();
+            if (!$sent) {
+                log_message('error', "Salibay international-leg-status email to {$resolved['email']} for shipment #{$shipment_id} (status {$international_status_id}) was not sent (see activity log for the reason — missing/inactive template or SMTP failure).");
+            }
+            return (bool) $sent;
+        } catch (\Throwable $e) {
+            log_message('error', 'Salibay international-leg-status email crashed: ' . $e->getMessage());
+            return false;
+        }
+    }
+}
+
+/**
  * Sends the actual formatted waybill — the same email behind the manual
  * "Send Waybill by Email" button on the waybill page (see
  * Shipments::send_waybill_email()) — to a shipment's recipient. Fired
