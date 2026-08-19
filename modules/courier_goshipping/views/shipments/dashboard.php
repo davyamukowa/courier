@@ -7,9 +7,8 @@ $status_cards = [
     ['id'=>'2', 'label'=>'Picked Up',             'icon'=>'fa-truck',           'color'=>'courier-stat-blue',   ],
     ['id'=>'3', 'label'=>'Received',              'icon'=>'fa-inbox',           'color'=>'courier-stat-teal',   ],
     ['id'=>'4', 'label'=>'Dispatched',            'icon'=>'fa-truck-loading',   'color'=>'courier-stat-orange', ],
-    ['id'=>'5', 'label'=>'In Transit',            'icon'=>'fa-shipping-fast',   'color'=>'courier-stat-purple', ],
+    ['id'=>'5', 'label'=>'Local Delivery',        'icon'=>'fa-shipping-fast',   'color'=>'courier-stat-purple', ],
     ['id'=>'6', 'label'=>'Arrived Destination',   'icon'=>'fa-map-pin',         'color'=>'courier-stat-indigo', ],
-    ['id'=>'7', 'label'=>'Out for Delivery',      'icon'=>'fa-map-marker-alt',  'color'=>'courier-stat-yellow', ],
     ['id'=>'8', 'label'=>'Delivered',             'icon'=>'fa-check-circle',    'color'=>'courier-stat-green',  ],
     ['id'=>'9', 'label'=>'Cancelled',             'icon'=>'fa-times-circle',    'color'=>'courier-stat-red',    ],
 ];
