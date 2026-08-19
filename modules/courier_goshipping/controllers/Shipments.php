@@ -2542,22 +2542,21 @@ class Shipments extends AdminController
                     $acting_staff_id = get_staff_user_id();
                     $acting_staff = $this->db->select('firstname, lastname')->where('staffid', $acting_staff_id)->get(db_prefix() . 'staff')->row();
                     $assigned_staff = $this->db->select('firstname, lastname')->where('staffid', $assigned_staff_id)->get(db_prefix() . 'staff')->row();
-                    $assigned_staff_name = $assigned_staff ? trim($assigned_staff->firstname . ' ' . $assigned_staff->lastname) : ('staff #' . $assigned_staff_id);
-
                     // Assigning a rider/agent is also the moment the parcel
                     // is considered "dispatched" — advance the domestic
                     // status track too, universally (general Go Shipping and
                     // Salibay alike), as long as the shipment hasn't already
                     // moved further along (re-assigning on an in-transit/
                     // delivered shipment must never roll status backwards).
+                    // The customer-facing note always reads as a dispatch
+                    // event regardless, per explicit instruction — no more
+                    // generic "Assigned to {name}" wording on the journey.
                     $dispatched_status = $this->db->where('status_name', 'dispatched')->get(db_prefix() . '_shipment_statuses')->row();
                     if ($dispatched_status && $current_status_id < (int) $dispatched_status->id) {
                         $this->db->where('id', (int) $id)->update(db_prefix() . '_shipments', ['status_id' => (int) $dispatched_status->id]);
                         $current_status_id = (int) $dispatched_status->id;
-                        $note = 'Your order has been Dispatched and assigned to the rider.';
-                    } else {
-                        $note = 'Assigned to ' . $assigned_staff_name;
                     }
+                    $note = 'Your order has been dispatched and assigned to the rider.';
 
                     $this->db->insert(db_prefix() . '_shipment_status_history', [
                         'shipment_id'         => (int) $id,
