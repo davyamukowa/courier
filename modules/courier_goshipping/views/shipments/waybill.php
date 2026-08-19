@@ -538,18 +538,12 @@
                         <i class="fa fa-history"></i> History
                     </div>
                     <div style="padding:10px 14px; font-size:12px; line-height:1.6; color:#444; max-height:260px; overflow-y:auto;">
-                        <?php $pod = $shipment_details['delivery_details'] ?? null; ?>
                         <?php foreach ($status_history as $h): ?>
                             <?php
                                 $actor = trim((string) ($h->staff_firstname ?? '') . ' ' . (string) ($h->staff_lastname ?? ''));
                                 if ($actor === '') {
                                     $actor = $h->changed_by_label ?: 'System';
                                 }
-                                // Show who actually signed for the parcel —
-                                // and the signature itself — right on the
-                                // "Delivered" entry, not only in the
-                                // separate Proof of Delivery card below.
-                                $is_delivered_entry = (($h->status_name ?? '') === 'delivered') && !empty($pod) && !empty($pod->signature_url);
                             ?>
                             <div style="padding:6px 0; border-bottom:1px solid #eee;">
                                 <strong><?php echo htmlspecialchars($h->status_description ?: $h->status_name); ?></strong><br>
@@ -557,20 +551,13 @@
                                 <?php if (!empty($h->notes)): ?>
                                     <br><span style="color:#999;"><?php echo htmlspecialchars($h->notes); ?></span>
                                 <?php endif; ?>
-                                <?php if ($is_delivered_entry): ?>
-                                    <br><span style="color:#2e7d32;">Signed by: <?php echo htmlspecialchars(trim($pod->first_name . ' ' . $pod->last_name)); ?></span>
-                                    <div style="margin-top:6px;">
-                                        <img src="<?php echo base_url('modules/courier_goshipping/' . $pod->signature_url); ?>"
-                                             alt="Customer signature" style="max-width:160px; background:#fff; border:1px solid #eee; border-radius:4px;">
-                                    </div>
-                                <?php endif; ?>
                             </div>
                         <?php endforeach; ?>
                     </div>
                 </div>
                 <?php endif; ?>
 
-                <!-- Proof of delivery: captured customer signature (and photo, if any) -->
+                <!-- Proof of delivery: captured customer signature (and photo, if any) — its own standalone card, below History -->
                 <?php if (!empty($shipment_details['delivery_details']) && !empty($shipment_details['delivery_details']->signature_url)): ?>
                 <?php $pod = $shipment_details['delivery_details']; ?>
                 <div class="courier-sidebar" style="margin-top:12px;">
