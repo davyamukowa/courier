@@ -50,6 +50,84 @@ class Fulfilment extends AdminController
         ) {
             $this->db->query('ALTER TABLE `' . db_prefix() . 'shopify_orders` ADD COLUMN `branch_id` INT NULL DEFAULT NULL;');
         }
+
+        $this->self_heal_stuck_international_orders();
+    }
+
+    /**
+     * Belt-and-suspenders recovery for the bug fixed this session:
+     * activate_international_air_freight_leg() (Shopify_connector.php) marks
+     * an order's salibay_ready_for_intl_fulfillment flag the moment the
+     * "Ready for International Fulfillment" tag is seen, even if no shipment
+     * exists yet — and that flag is a ONE-SHOT guard, so no future
+     * orders/updated webhook will ever re-attempt activation once it's set.
+     * create_courier_shipment() in both this controller and
+     * Shopify_connector.php now consult the flag at creation time so a
+     * shipment is born already activated (see this session's fix) — but that
+     * only covers the moment of creation. If a shipment is created some other
+     * way, or the create-time check is ever bypassed by a future code path,
+     * the order is otherwise stuck forever with no error and no retry.
+     *
+     * Rather than rely solely on that one call site staying correct forever,
+     * self-heal here too: every time a staffer opens Salibay Fulfilment,
+     * reconcile any order whose flag says the tag arrived but whose linked
+     * shipment never actually got its international leg activated. Cheap
+     * (LIMIT 20, only touches rows that are actually stuck) and idempotent —
+     * activate_international_status() itself already no-ops if
+     * international_status_id is already set.
+     */
+    private function self_heal_stuck_international_orders()
+    {
+        if (
+            !$this->db->table_exists(db_prefix() . 'shopify_orders')
+            || !$this->db->field_exists('salibay_ready_for_intl_fulfillment', db_prefix() . 'shopify_orders')
+        ) {
+            return;
+        }
+
+        // Throttle to once/minute across all staff — this runs in every
+        // Fulfilment page load's constructor, and the reconciliation query
+        // plus any fix-up work is unnecessary overhead on every single
+        // request when nothing is actually stuck.
+        $last_run = (int) get_option('courier_intl_selfheal_last_run');
+        if ($last_run && (time() - $last_run) < 60) {
+            return;
+        }
+        update_option('courier_intl_selfheal_last_run', time());
+
+        $stuck = $this->db->query('
+            SELECT so.id AS order_id, so.store_id, s.id AS shipment_id
+            FROM ' . db_prefix() . 'shopify_orders so
+            INNER JOIN ' . db_prefix() . '_shipments s ON s.id = so.gs_shipment_id
+            WHERE so.salibay_ready_for_intl_fulfillment = 1
+              AND s.international_status_id IS NULL
+            LIMIT 20
+        ')->result();
+
+        if (empty($stuck)) {
+            return;
+        }
+
+        foreach ($stuck as $row) {
+            if ($this->db->where('id', $row->shipment_id)->get(db_prefix() . '_shipments')->row()->shipping_mode !== 'AIR (AIR FREIGHT)') {
+                $this->db->where('id', $row->shipment_id)->update(db_prefix() . '_shipments', [
+                    'shipping_category' => 'international',
+                    'shipping_mode'     => 'AIR (AIR FREIGHT)',
+                ]);
+            }
+
+            if ($this->shopify_connector_model->activate_international_status($row->shipment_id)) {
+                log_activity("Salibay self-heal: international tracking activated on shipment #{$row->shipment_id} (Shopify order #{$row->order_id}) — flag was set but activation never completed.");
+                try {
+                    $this->shopify_connector_model->push_shopify_fulfillment_status($row->shipment_id, 10);
+                } catch (\Throwable $e) {
+                    $this->write_integration_log('error', 'shipment', 'Self-heal Shopify fulfillment push crashed: ' . $e->getMessage(), [
+                        'shipment_id' => $row->shipment_id,
+                        'shopify_db_order_id' => $row->order_id,
+                    ], $row->store_id);
+                }
+            }
+        }
     }
 
     public function index()
