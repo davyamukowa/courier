@@ -3043,8 +3043,8 @@ class Shipments extends AdminController
                     $rider_name = $assigned_staff ? trim($assigned_staff->firstname . ' ' . $assigned_staff->lastname) : null;
                 }
                 $notes = $rider_name
-                    ? "Your Order is in Local Transit and has been assigned Rider {$rider_name}."
-                    : 'Your Order is in Local Transit.';
+                    ? "Your order is in transit and has been assigned to Rider {$rider_name}. He will call you when he arrives."
+                    : 'Your order is in transit.';
             }
 
             $this->db->insert(db_prefix() . '_shipment_status_history', [
