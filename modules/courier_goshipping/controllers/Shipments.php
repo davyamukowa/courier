@@ -2998,6 +2998,15 @@ class Shipments extends AdminController
         try {
             $new_status_id = (int) $this->input->post('status_id');
 
+            if ($new_status_id === 7) {
+                // "Out for Delivery" was retired (courier_goshipping.php
+                // run_db_upgrades_v47) in favor of going straight from Local
+                // Delivery (5) to Delivered (8) — reject it here too, not
+                // just hide it from the dropdown, in case anything still
+                // posts it directly.
+                throw new Exception('This status is no longer used. Please choose "Delivered" once the rider completes delivery.');
+            }
+
             // Can't progress domestic/last-mile tracking while this order's
             // international air-freight leg is still in flight — the parcel
             // physically isn't at our warehouse yet. See
