@@ -88,6 +88,7 @@ class Courier_Logistic_System {
         hooks()->add_action('admin_init', [$this, 'run_db_upgrades_v46']);
         hooks()->add_action('admin_init', [$this, 'run_db_upgrades_v47']);
         hooks()->add_action('admin_init', [$this, 'run_db_upgrades_v48']);
+        hooks()->add_action('admin_init', [$this, 'run_db_upgrades_v49']);
         hooks()->add_action('admin_init', [$this, 'run_scheduled_log_pruning']);
         // Register email templates (idempotent — skips if slug already exists)
         hooks()->add_action('admin_init', [$this, 'register_email_templates']);
@@ -2088,6 +2089,24 @@ class Courier_Logistic_System {
     }
 
     /**
+     * v49: international leg statuses 12/13 grammar fix — "Arrived
+     * Destination Airport" / "Arrived Go Shipping Warehouse" read as a
+     * missing preposition; "Arrived at ..." is correct English.
+     */
+    public function run_db_upgrades_v49() {
+        if (get_option('courier_schema_v49_done')) return;
+        $CI = &get_instance();
+
+        $statuses_table = db_prefix() . '_shipment_statuses';
+        if ($CI->db->table_exists($statuses_table)) {
+            $CI->db->where('id', 12)->update($statuses_table, ['description' => 'Arrived at Destination Airport']);
+            $CI->db->where('id', 13)->update($statuses_table, ['description' => 'Arrived at Go Shipping Warehouse']);
+        }
+
+        update_option('courier_schema_v49_done', '1');
+    }
+
+    /**
      * Prunes old, purely-diagnostic rows that grow unbounded with order
      * volume and are never needed once they age out — NOT the same as
      * shipment_status_history/courier_sourcing_events, which are real
@@ -2851,5 +2870,4 @@ class Courier_Logistic_System {
 // add_filter('csrf_exclude_uris', ...) registered from this file fires too
 // late to have any effect (see that file's header comment).
 
-// Instantiate the module class to initialize it
-new Courier_Logistic_System();
+// In
