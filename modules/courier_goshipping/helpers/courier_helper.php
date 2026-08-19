@@ -697,7 +697,8 @@ if (!function_exists('courier_send_sender_tracking_email')) {
  * full history and doesn't need to resolve any linked/sibling shipment.
  *
  * Returns a flat array of ['label' => string, 'changed_at' => 'Y-m-d H:i:s']
- * sorted newest-first, ready to hand straight to the tracker view.
+ * sorted oldest-first (chronological), ready to hand straight to the tracker
+ * view as the single unified journey list.
  */
 if (!function_exists('courier_get_shipment_journey')) {
     function courier_get_shipment_journey($shipment_id)
