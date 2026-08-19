@@ -2557,7 +2557,7 @@ class Shipments extends AdminController
                     }
                     $assigned_staff = $this->db->select('firstname, lastname')->where('staffid', $assigned_staff_id)->get(db_prefix() . 'staff')->row();
                     $assigned_staff_name = $assigned_staff ? trim($assigned_staff->firstname . ' ' . $assigned_staff->lastname) : ('staff #' . $assigned_staff_id);
-                    $note = 'Dispatched - Assigned to ' . $assigned_staff_name;
+                    $note = 'Assigned to ' . $assigned_staff_name;
 
                     $this->db->insert(db_prefix() . '_shipment_status_history', [
                         'shipment_id'         => (int) $id,
