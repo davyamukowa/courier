@@ -2541,7 +2541,6 @@ class Shipments extends AdminController
                     $current_status_id = (int) $this->db->select('status_id')->where('id', (int) $id)->get(db_prefix() . '_shipments')->row()->status_id;
                     $acting_staff_id = get_staff_user_id();
                     $acting_staff = $this->db->select('firstname, lastname')->where('staffid', $acting_staff_id)->get(db_prefix() . 'staff')->row();
-                    $assigned_staff = $this->db->select('firstname, lastname')->where('staffid', $assigned_staff_id)->get(db_prefix() . 'staff')->row();
                     // Assigning a rider/agent is also the moment the parcel
                     // is considered "dispatched" — advance the domestic
                     // status track too, universally (general Go Shipping and
