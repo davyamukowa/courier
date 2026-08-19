@@ -11,6 +11,151 @@ class Shopify_connector_model extends App_Model
         parent::__construct();
     }
 
+    /**
+     * Fetches Shopify's own live webhook subscription list, syncs our local
+     * tblshopify_webhooks to match reality, and registers any topic that's
+     * genuinely missing. This is the core of the "Register All Webhooks"
+     * button (Shopify_connector::register_webhooks()) — pulled out here (a
+     * model, not the controller) specifically so it can ALSO run silently on
+     * a schedule (see shopify_connector_scheduled_webhook_reconciliation()
+     * in the module's shopify_connector.php entry file, hooked to
+     * admin_init) without needing a real HTTP request/controller context.
+     *
+     * Why this matters for production: Shopify silently auto-unsubscribes a
+     * webhook topic after 8 consecutive delivery failures, with NO
+     * notification to us — our own tblshopify_webhooks.is_active stays
+     * stale/wrong forever unless something re-checks against Shopify's own
+     * live list. That's exactly what happened once already this session
+     * (orders/updated silently stopped arriving for hours while our own UI
+     * still showed it as "Active"). Safe to call repeatedly/automatically —
+     * it never deletes or duplicates a subscription that's already correct
+     * on Shopify's side, it only fills in what's actually missing.
+     */
+    public function reconcile_webhooks($store, $endpoint)
+    {
+        $topics = [
+            'orders/create', 'orders/updated', 'orders/cancelled', 'orders/paid',
+            'refunds/create', 'products/update', 'inventory_items/update'
+        ];
+
+        $success_count = 0;
+        $missing_before = [];
+
+        // 1. Fetch existing webhooks from Shopify to sync our local DB and avoid "already taken" errors
+        $url = "https://{$store->shop_domain}/admin/api/{$store->api_version}/webhooks.json";
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            "Content-Type: application/json",
+            "X-Shopify-Access-Token: {$store->access_token}"
+        ]);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        $response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        $existing_topics = [];
+        if ($http_code == 200) {
+            $data = json_decode($response, true);
+            if (!empty($data['webhooks'])) {
+                foreach ($data['webhooks'] as $wh) {
+                    if (strpos($wh['address'], 'shopify_connector/webhook') !== false) {
+                        $existing_topics[] = $wh['topic'];
+
+                        // Sync to local DB
+                        $exists = $this->db->where('store_id', $store->id)->where('topic', $wh['topic'])->get(db_prefix() . 'shopify_webhooks')->row();
+                        if ($exists) {
+                            $this->db->where('id', $exists->id)->update(db_prefix() . 'shopify_webhooks', [
+                                'shopify_webhook_id' => $wh['id'],
+                                'address' => $wh['address'],
+                                'is_active' => 1
+                            ]);
+                        } else {
+                            $this->db->insert(db_prefix() . 'shopify_webhooks', [
+                                'store_id' => $store->id,
+                                'shopify_webhook_id' => $wh['id'],
+                                'topic' => $wh['topic'],
+                                'address' => $wh['address'],
+                                'is_active' => 1,
+                                'created_at' => date('Y-m-d H:i:s')
+                            ]);
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Register any missing topics
+        foreach ($topics as $topic) {
+            if (in_array($topic, $existing_topics)) {
+                $success_count++;
+                continue; // Already exists and synced!
+            }
+
+            $missing_before[] = $topic;
+
+            $payload = json_encode([
+                'webhook' => [
+                    'topic' => $topic,
+                    'address' => $endpoint,
+                    'format' => 'json'
+                ]
+            ]);
+
+            $ch = curl_init($url);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                "Content-Type: application/json",
+                "X-Shopify-Access-Token: {$store->access_token}"
+            ]);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+            $response = curl_exec($ch);
+            $curl_error = curl_error($ch);
+            $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($http_code == 201 || $http_code == 200) {
+                $res_data = json_decode($response, true);
+                $webhook_id = isset($res_data['webhook']['id']) ? $res_data['webhook']['id'] : null;
+
+                // Save to local DB
+                if ($webhook_id) {
+                    $this->db->insert(db_prefix() . 'shopify_webhooks', [
+                        'store_id' => $store->id,
+                        'shopify_webhook_id' => $webhook_id,
+                        'topic' => $topic,
+                        'address' => $endpoint,
+                        'is_active' => 1,
+                        'created_at' => date('Y-m-d H:i:s')
+                    ]);
+                }
+                $success_count++;
+            } else {
+                $this->db->insert(db_prefix() . 'shopify_integration_logs', [
+                    'store_id' => $store->id,
+                    'log_level' => 'error',
+                    'category' => 'webhook_registration',
+                    'message' => "Failed to register webhook for topic {$topic}: HTTP {$http_code} " . ($curl_error ?: $response),
+                    'context' => json_encode(['topic' => $topic, 'address' => $endpoint]),
+                    'created_at' => date('Y-m-d H:i:s')
+                ]);
+            }
+        }
+
+        if (!empty($missing_before)) {
+            $this->db->insert(db_prefix() . 'shopify_integration_logs', [
+                'store_id' => $store->id,
+                'log_level' => 'warning',
+                'category' => 'webhook_registration',
+                'message' => 'Webhook reconciliation found topic(s) missing from Shopify (likely auto-unsubscribed after repeated delivery failures) and re-registered them: ' . implode(', ', $missing_before),
+                'context' => json_encode(['topics' => $missing_before]),
+                'created_at' => date('Y-m-d H:i:s')
+            ]);
+        }
+
+        return ['success_count' => $success_count, 'total' => count($topics), 'missing_before' => $missing_before];
+    }
+
     private function encrypt($data)
     {
         if (empty($data)) return $data;
