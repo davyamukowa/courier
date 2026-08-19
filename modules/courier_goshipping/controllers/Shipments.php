@@ -3028,9 +3028,31 @@ class Shipments extends AdminController
             // Record the status change in the shipment_status_histories table
             $acting_staff_id = get_staff_user_id();
             $acting_staff = $this->db->select('firstname, lastname')->where('staffid', $acting_staff_id)->get(db_prefix() . 'staff')->row();
+
+            // Customer-facing wording for the two statuses staff most often
+            // set manually from this same dropdown (a rider is usually
+            // assigned via assign_agent(), which writes its own matching
+            // note — but staff can also jump straight to these via Update
+            // Status, so build the same wording here too).
+            $notes = null;
+            if ($new_status_id === 4) {
+                $notes = 'Your order has been Dispatched and assigned to the rider.';
+            } elseif ($new_status_id === 5) {
+                $assigned_staff_id = (int) ($this->db->select('staff_id')->where('id', (int) $id)->get(db_prefix() . '_shipments')->row()->staff_id ?? 0);
+                $rider_name = null;
+                if ($assigned_staff_id) {
+                    $assigned_staff = $this->db->select('firstname, lastname')->where('staffid', $assigned_staff_id)->get(db_prefix() . 'staff')->row();
+                    $rider_name = $assigned_staff ? trim($assigned_staff->firstname . ' ' . $assigned_staff->lastname) : null;
+                }
+                $notes = $rider_name
+                    ? "Your Order is in Local Transit and has been assigned Rider {$rider_name}."
+                    : 'Your Order is in Local Transit.';
+            }
+
             $this->db->insert(db_prefix() . '_shipment_status_history', [
                 'shipment_id'         => $id,
                 'status_id'           => $new_status_id,
+                'notes'               => $notes,
                 'changed_at'          => date('Y-m-d H:i:s'),
                 'changed_by_staff_id' => $acting_staff_id,
                 'changed_by_label'    => $acting_staff ? trim($acting_staff->firstname . ' ' . $acting_staff->lastname) : null,
