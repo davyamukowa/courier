@@ -1778,22 +1778,10 @@ $tab_urls = [
                     $('#recipient_address').text('N/A');
                 }
 
-                // Timeline
-                $('.timeline-item').hide();
-                let latestDate = null;
-                for (let i = 1; i <= parseInt(shipment.status_id); i++) {
-                    const hist = (d.shipment_history || []).find(h => parseInt(h.status_id) === i);
-                    const dt   = hist ? fmtDate(hist.changed_at) : (latestDate || '');
-                    if (hist) latestDate = dt;
-                    $('#time-' + i).text(dt);
-                    $('#status-' + i).show();
-                }
-
-                // Full journey — sourcing pipeline milestones + both shipment
-                // legs (international air-freight + domestic last-mile, if
-                // this order has one), newest first. Separate from the fixed
-                // 8-step tracker above: an arbitrary-length detailed log
-                // rather than a fixed progress indicator.
+                // Shipment Journey — the single unified timeline: sourcing
+                // pipeline milestones + both shipment legs (international
+                // air-freight + domestic last-mile, if this order has one),
+                // oldest first (top of page = start of the journey).
                 const journey = data.data.journey || [];
                 const jc = document.getElementById('journey-timeline');
                 jc.innerHTML = '';
