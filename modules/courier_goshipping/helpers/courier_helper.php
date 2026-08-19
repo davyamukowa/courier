@@ -750,23 +750,26 @@ if (!function_exists('courier_get_shipment_journey')) {
             ->result();
 
         foreach ($history as $row) {
-            // Every step shows its backend status title first, then — only
+            // Every step shows its backend status title (bold), then — only
             // when there's something more specific to say than the title
-            // itself (a per-event note like "Assigned to {rider}", or one of
-            // the international leg's friendly messages) — a dash and that
-            // message. A step with nothing extra to add (Created, Received,
-            // Delivered, ...) just shows its title alone.
+            // itself (a per-event note like "Your order has been assigned to
+            // Rider {name}...", or one of the international leg's friendly
+            // messages) — a separate, smaller/faded description line below
+            // it, same two-line layout as the admin History panel. A step
+            // with nothing extra to add (Created, Received, Delivered, ...)
+            // just shows its title, no description line.
             $title = $row->status_description ?: ucfirst(str_replace('_', ' ', (string) $row->status_name));
             $message = !empty($row->notes)
                 ? $row->notes
                 : courier_customer_facing_status_label((int) $row->status_id, null, null, false);
 
-            $label = ($message !== null && $message !== '' && $message !== $title)
-                ? "{$title} - {$message}"
-                : $title;
+            if ($message === $title) {
+                $message = null;
+            }
 
             $events[] = [
-                'label'      => $label,
+                'title'      => $title,
+                'message'    => $message,
                 'changed_at' => $row->changed_at,
                 'status_id'  => (int) $row->status_id,
             ];
