@@ -802,7 +802,8 @@ if (!function_exists('courier_get_shipment_journey')) {
                     ->result();
                 foreach ($sourcing_events as $row) {
                     $events[] = [
-                        'label'      => $row->tag,
+                        'title'      => $row->tag,
+                        'message'    => null,
                         'changed_at' => $row->changed_at,
                         'status_id'  => null,
                     ];
