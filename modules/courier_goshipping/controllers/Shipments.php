@@ -3065,6 +3065,7 @@ class Shipments extends AdminController
                 'changed_by_staff_id' => $acting_staff_id,
                 'changed_by_label'    => $acting_staff ? trim($acting_staff->firstname . ' ' . $acting_staff->lastname) : null,
             ]);
+            $status_history_id = $this->db->insert_id();
 
             $departure_points = $this->input->post('departure_points');
 
