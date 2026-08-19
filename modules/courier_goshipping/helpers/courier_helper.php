@@ -211,7 +211,7 @@ if (!function_exists('courier_resolve_branch_from_route_tag')) {
  * those are already reasonably customer-appropriate.
  */
 if (!function_exists('courier_customer_facing_status_label')) {
-    function courier_customer_facing_status_label($status_id, $description, $status_name)
+    function courier_customer_facing_status_label($status_id, $description, $status_name, $fallback_to_description = true)
     {
         $friendly = [
             10 => 'Your order has arrived at the airport and is being prepared for its flight.',
@@ -220,7 +220,19 @@ if (!function_exists('courier_customer_facing_status_label')) {
             13 => "Your order has arrived at our Local warehouse. We'll keep you updated as it heads to you.",
         ];
 
-        return $friendly[(int) $status_id] ?? ($description ?: ucfirst(str_replace('_', ' ', (string) $status_name)));
+        if (isset($friendly[(int) $status_id])) {
+            return $friendly[(int) $status_id];
+        }
+
+        // $fallback_to_description=false means "only the distinct friendly
+        // message, or nothing" — used by courier_get_shipment_journey() to
+        // tell "no extra message beyond the status title itself" apart from
+        // "there IS one", since the title is now shown separately.
+        if (!$fallback_to_description) {
+            return null;
+        }
+
+        return $description ?: ucfirst(str_replace('_', ' ', (string) $status_name));
     }
 }
 
