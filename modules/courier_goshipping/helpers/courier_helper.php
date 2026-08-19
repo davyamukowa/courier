@@ -327,6 +327,21 @@ if (!function_exists('courier_ensure_notification_email_templates')) {
             'Courier: Sender Tracking Info',
             'courier_sender_tracking_info'
         );
+
+        create_email_template(
+            'Update on your order — {status_title} — Waybill {waybill_number} - {company_name}',
+            '<p>Dear {recipient_name},</p>
+<p>{status_message}</p>
+<p><strong>Waybill Number:</strong> {waybill_number}</p>
+<div style="text-align:center;margin:28px 0;">
+  <a href="{tracking_link}" style="display:inline-block;padding:18px 44px;background:#0a2a52;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:bold;font-size:18px;">Track Your Shipment</a>
+</div>
+<p>Or copy and paste this link into your browser:<br>{tracking_link}</p>
+<p>Best regards,<br>{company_name}</p>',
+            'courier',
+            'Salibay: International Leg Status Update',
+            'salibay_international_leg_status_update'
+        );
     }
 }
 
