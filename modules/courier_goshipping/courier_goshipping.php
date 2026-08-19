@@ -2130,6 +2130,18 @@ class Courier_Logistic_System {
             $CI->db->where('name', 'Head Office Office')->update($branches_table, ['name' => 'Head Office']);
         }
 
+        // The bad branch name was already split into first_name="Head",
+        // last_name="Office Office" and copied onto every shipment sender
+        // that fell back to this branch (courier_get_invoice_info() ->
+        // reroute_shipment_to_branch()/create_courier_shipment()'s
+        // explode(' ', ..., 2)) before this fix — those existing sender
+        // rows keep showing the garbled name until corrected here too.
+        $senders_table = db_prefix() . '_shipment_senders';
+        if ($CI->db->table_exists($senders_table)) {
+            $CI->db->where('first_name', 'Head')->where('last_name', 'Office Office')
+                ->update($senders_table, ['last_name' => 'Office']);
+        }
+
         update_option('courier_schema_v50_done', '1');
     }
 
