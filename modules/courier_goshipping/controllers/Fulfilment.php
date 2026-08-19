@@ -2603,9 +2603,16 @@ class Fulfilment extends AdminController
         // &mode=courier&mode_type=none.
         $is_salibay_global = ($order->salibay_classification ?? null) === 'global'
             || ($fulfilling_branch && $fulfilling_branch->branch_type === 'international');
+        // Same race as Shopify_connector::create_courier_shipment() — the
+        // sourcing pipeline's "Ready for International Fulfillment" tag can
+        // arrive (and get latched by activate_international_air_freight_leg())
+        // before a staffer has clicked "Create Shipment" here. If so, skip the
+        // "COURIER (NONE)" placeholder and start straight in AIR (AIR FREIGHT)
+        // with the international leg already active.
+        $already_ready_for_air_freight = !empty($order->salibay_ready_for_intl_fulfillment);
         $shipment_data = [
             'shipping_mode' => $location['shipping_category'] === 'international'
-                ? ($is_salibay_global ? 'COURIER (NONE)' : 'AIR (INTERNATIONAL)')
+                ? ($already_ready_for_air_freight ? 'AIR (AIR FREIGHT)' : ($is_salibay_global ? 'COURIER (NONE)' : 'AIR (INTERNATIONAL)'))
                 : 'Courier',
             'shipping_category' => $location['shipping_category'],
             'tracking_id' => $tracking_number,
