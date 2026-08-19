@@ -3034,7 +3034,7 @@ class Shipments extends AdminController
             // Status, so build the same wording here too).
             $notes = null;
             if ($new_status_id === 4) {
-                $notes = 'Your order has been Dispatched and assigned to the rider.';
+                $notes = 'Your order has been dispatched and assigned to the rider.';
             } elseif ($new_status_id === 5) {
                 $assigned_staff_id = (int) ($this->db->select('staff_id')->where('id', (int) $id)->get(db_prefix() . '_shipments')->row()->staff_id ?? 0);
                 $rider_name = null;
