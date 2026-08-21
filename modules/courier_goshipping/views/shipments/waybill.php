@@ -1739,22 +1739,48 @@ $('#wb_cpm_submit').on('click', function () {
                 <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
                 <h4 class="modal-title"><i class="fa fa-user-plus"></i> Assign Shipment to Agent / Staff</h4>
             </div>
-            <?php echo form_open(admin_url('courier_goshipping/shipments/assign_agent/' . $wb_sid)); ?>
+            <?php
+                $_current_assignee_id = (int) $shipment_details['shipment']->staff_id;
+                $_current_is_agent = false;
+                foreach ($staff_members as $staff) {
+                    if ((int) $staff->staffid === $_current_assignee_id) {
+                        $_current_is_agent = !empty($staff->agent_id);
+                        break;
+                    }
+                }
+            ?>
+            <?php echo form_open(admin_url('courier_goshipping/shipments/assign_agent/' . $wb_sid), ['id' => 'assign_agent_staff_form']); ?>
             <div class="modal-body">
-                <div class="form-group">
-                    <label for="assigned_staff_id" class="control-label">Select Agent / Staff</label>
-                    <select name="assigned_staff_id" id="assigned_staff_id" class="selectpicker" data-width="100%" data-none-selected-text="Select Agent or Staff" data-live-search="true" required>
-                        <option value=""></option>
-                        <?php foreach ($staff_members as $staff): ?>
-                            <option value="<?php echo $staff->staffid; ?>" <?php echo ((int)$shipment_details['shipment']->staff_id === (int)$staff->staffid) ? 'selected' : ''; ?>>
-                                <?php
-                                    echo htmlspecialchars($staff->firstname . ' ' . $staff->lastname)
-                                        . (!empty($staff->agent_id) ? ' (Agent' . (!empty($staff->agent_code) ? ' #' . $staff->agent_code : '') . ')' : ' (Staff)');
-                                ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
+                <div class="row">
+                    <div class="col-sm-6">
+                        <div class="form-group">
+                            <label for="assign_staff_select" class="control-label">Select Staff</label>
+                            <select id="assign_staff_select" class="selectpicker" data-width="100%" data-none-selected-text="Select Staff" data-live-search="true">
+                                <option value=""></option>
+                                <?php foreach ($staff_members as $staff): if (!empty($staff->agent_id)) continue; ?>
+                                    <option value="<?php echo $staff->staffid; ?>" <?php echo (!$_current_is_agent && $_current_assignee_id === (int) $staff->staffid) ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($staff->firstname . ' ' . $staff->lastname); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="form-group">
+                            <label for="assign_agent_select" class="control-label">Select Agent</label>
+                            <select id="assign_agent_select" class="selectpicker" data-width="100%" data-none-selected-text="Select Agent" data-live-search="true">
+                                <option value=""></option>
+                                <?php foreach ($staff_members as $staff): if (empty($staff->agent_id)) continue; ?>
+                                    <option value="<?php echo $staff->staffid; ?>" <?php echo ($_current_is_agent && $_current_assignee_id === (int) $staff->staffid) ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($staff->firstname . ' ' . $staff->lastname) . (!empty($staff->agent_code) ? ' (#' . $staff->agent_code . ')' : ''); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
                 </div>
+                <p id="assign_agent_staff_error" class="text-danger" style="display:none; margin-top:-6px;">Please select either a Staff or an Agent.</p>
+                <input type="hidden" name="assigned_staff_id" id="assigned_staff_id">
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
@@ -1764,6 +1790,50 @@ $('#wb_cpm_submit').on('click', function () {
         </div>
     </div>
 </div>
+
+<script>
+$(function () {
+    var $staffSelect  = $('#assign_staff_select');
+    var $agentSelect  = $('#assign_agent_select');
+    var $hidden       = $('#assigned_staff_id');
+
+    function syncHidden(source) {
+        var $other = source === 'staff' ? $agentSelect : $staffSelect;
+        var $self  = source === 'staff' ? $staffSelect : $agentSelect;
+        var val    = $self.val();
+
+        if (val) {
+            $other.val('').selectpicker('refresh');
+            $hidden.val(val);
+        } else {
+            $hidden.val('');
+        }
+    }
+
+    $staffSelect.on('change', function () { syncHidden('staff'); });
+    $agentSelect.on('change', function () { syncHidden('agent'); });
+
+    // Initialize hidden field from whichever select is preselected on open.
+    $('#assign_agent_modal').on('show.bs.modal', function () {
+        if ($staffSelect.val()) {
+            syncHidden('staff');
+        } else if ($agentSelect.val()) {
+            syncHidden('agent');
+        } else {
+            $hidden.val('');
+        }
+    });
+
+    $('#assign_agent_staff_form').on('submit', function (e) {
+        if (!$hidden.val()) {
+            e.preventDefault();
+            $('#assign_agent_staff_error').show();
+        } else {
+            $('#assign_agent_staff_error').hide();
+        }
+    });
+});
+</script>
 
 <!-- ── Assign Rider Modal ─────────────────────────────── -->
 <div class="modal fade" id="assign_rider_modal" tabindex="-1" role="dialog">
