@@ -2340,6 +2340,14 @@ class Courier_Logistic_System {
         $reject_message = null;
 
         try {
+            // Login happens outside any courier_goshipping controller (which
+            // is normally what loads this helper), so courier_helper.php's
+            // functions — courier_get_staff_branch_ids() etc. — are never
+            // autoloaded here. Without this, every call below fatals with
+            // "Call to undefined function", which is exactly what was
+            // showing up as the generic DEBUG error on the login page.
+            $CI->load->helper('courier_goshipping/courier');
+
             $staff_id = get_staff_user_id();
 
             if (is_admin($staff_id)) {
