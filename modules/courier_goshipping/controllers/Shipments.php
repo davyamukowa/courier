@@ -3746,6 +3746,24 @@ class Shipments extends AdminController
     }
 
     /**
+     * Resolves the 3-tier shipment visibility (own/branch/global) for the
+     * current staff member — see courier_resolve_visibility_scope()'s
+     * docblock. Returns exactly one of staff_id/branch_ids non-null (never
+     * both — Shipment_model's scoped methods now expect strict mutual
+     * exclusivity, see their own docblocks for why).
+     */
+    private function resolve_shipment_visibility()
+    {
+        $scope = courier_resolve_visibility_scope('courier-shipments', 'view_branch_shipments', 'view_all_shipments');
+
+        return [
+            'scope'      => $scope,
+            'staff_id'   => $scope === 'own' ? get_staff_user_id() : null,
+            'branch_ids' => $scope === 'branch' ? (courier_get_staff_branch_ids() ?: [0]) : null,
+        ];
+    }
+
+    /**
      * Parse the posted shipment_date, reject future dates, fall back to today.
      * Returns a Y-m-d string safe for use in created_at and invoice date fields.
      */
