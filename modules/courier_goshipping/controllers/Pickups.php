@@ -9,6 +9,7 @@ class Pickups extends AdminController
         parent::__construct();
         if (!is_admin()
             && !has_permission('courier-pickups', '', 'view_all_pickups')
+            && !has_permission('courier-pickups', '', 'view_branch_pickups')
             && !has_permission('courier-pickups', '', 'view_own_pickups')) {
             access_denied('Courier - Pickups');
         }
