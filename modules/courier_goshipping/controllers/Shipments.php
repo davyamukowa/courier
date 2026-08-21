@@ -3478,6 +3478,7 @@ class Shipments extends AdminController
     {
         return is_admin()
             || staff_can('view_manifests', 'courier-manifests')
+            || staff_can('view_branch_manifests', 'courier-manifests')
             || staff_can('view_own_manifests', 'courier-manifests');
     }
 
