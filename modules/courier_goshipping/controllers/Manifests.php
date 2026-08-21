@@ -8,7 +8,16 @@ class Manifests extends AdminController
     public function __construct()
     {
         parent::__construct();
-        if (!is_admin() && !has_permission('courier-manifests', '', 'view_manifests')) {
+        // view_own_manifests holders used to get access_denied() here
+        // outright — tbl_manifests has no staff_id/creator column at all
+        // (it's raw AWB freight entries, not tied to who entered them), so
+        // 'own' can't be meaningfully distinguished from 'branch' for this
+        // feature; both are let in and scoped by branch below, same as
+        // view_branch_manifests.
+        if (!is_admin()
+            && !has_permission('courier-manifests', '', 'view_manifests')
+            && !has_permission('courier-manifests', '', 'view_branch_manifests')
+            && !has_permission('courier-manifests', '', 'view_own_manifests')) {
             access_denied('Courier - Manifests');
         }
         $this->load->helper('courier_goshipping/courier'); // Load the helper specific to the courier module
