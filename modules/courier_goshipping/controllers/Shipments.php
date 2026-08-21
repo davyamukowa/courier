@@ -1705,14 +1705,18 @@ class Shipments extends AdminController
     {
         if (!is_admin()
             && !staff_can('view_invoices', 'courier-invoices')
+            && !staff_can('view_branch_invoices', 'courier-invoices')
             && !staff_can('view_own_invoices', 'courier-invoices')) {
             access_denied('Courier - Invoices');
         }
 
-        $can_all = is_admin() || staff_can('view_invoices', 'courier-invoices');
-        $staff_id = $can_all ? null : get_staff_user_id();
+        // 3-tier visibility (own/branch/global) — see
+        // courier_resolve_visibility_scope()'s docblock.
+        $scope = courier_resolve_visibility_scope('courier-invoices', 'view_branch_invoices', 'view_invoices');
+        $staff_id   = $scope === 'own'    ? get_staff_user_id() : null;
+        $branch_ids = $scope === 'branch' ? (courier_get_staff_branch_ids() ?: [0]) : null;
 
-        $data['invoices'] = $this->Shipment_model->get_invoices_by_shipment_invoice_ids($staff_id);
+        $data['invoices'] = $this->Shipment_model->get_invoices_by_shipment_invoice_ids($staff_id, $branch_ids);
         $this->load->view('shipments/invoices', $data);
     }
 
