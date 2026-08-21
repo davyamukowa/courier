@@ -2365,23 +2365,7 @@ class Courier_Logistic_System {
             $reject_message = $reject_message ?: 'Something went wrong validating your branch. Please try logging in again.';
         }
 
-        // Flashdata MUST be set before the session is destroyed by logout()
-        // (sess_destroy() below) — setting it after was the actual bug:
-        // set_flashdata() writing into a session that logout() had already
-        // torn down was fataling out on this exact reject path, which used
-        // to be reached only by a rare multi-branch "wrong selection" case
-        // and is now hit far more often (every single-branch staff member
-        // who doesn't explicitly select their branch).
-        set_alert('danger', $reject_message);
-
-        try {
-            $CI->load->model('Authentication_model');
-            $CI->Authentication_model->logout();
-        } catch (\Throwable $e) {
-            log_message('error', 'validate_staff_branch_on_login logout() crashed: ' . $e->getMessage());
-        }
-
-        redirect(admin_url('authentication'));
+        $this->_kick_to_login($reject_message);
     }
 
     /**
