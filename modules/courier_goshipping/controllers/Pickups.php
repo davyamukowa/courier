@@ -86,15 +86,17 @@ class Pickups extends AdminController
     public function index()
     {
         $staff_id   = get_staff_user_id();
-        $branch_ids = $this->get_staff_branch_ids();
         $user_role  = $this->Driver_model->get_staff_role($staff_id);
 
-        if (staff_can('view_all_pickups', 'courier-pickups')) {
-            $data['pickups'] = $this->Pickup_model->get(false, null, null, null, $branch_ids);
-        } elseif ($user_role === 'Fleet: Driver') {
+        if ($user_role === 'Fleet: Driver') {
             $data['pickups'] = $this->Pickup_model->get(false, null, $staff_id, 'driver');
         } else {
-            $data['pickups'] = $this->Pickup_model->get(false, null, $staff_id, null, $branch_ids);
+            // 3-tier visibility (own/branch/global) — see
+            // courier_resolve_visibility_scope()'s docblock.
+            $pickup_scope = courier_resolve_visibility_scope('courier-pickups', 'view_branch_pickups', 'view_all_pickups');
+            $pickup_staff_id   = $pickup_scope === 'own'    ? $staff_id : null;
+            $pickup_branch_ids = $pickup_scope === 'branch' ? (courier_get_staff_branch_ids() ?: [0]) : null;
+            $data['pickups'] = $this->Pickup_model->get(false, null, $pickup_staff_id, null, $pickup_branch_ids);
         }
 
         $this->load->view('pickups/index', $data);
