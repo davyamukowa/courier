@@ -271,4 +271,11 @@ class Branches extends AdminController
         $max_sequence = 0;
 
         foreach ($rows as $row) {
-            if (preg_match('#/B/' . preg_quote((string) $year, '#') . '/(\d+)$#', (st
+            if (preg_match('#/B/' . preg_quote((string) $year, '#') . '/(\d+)$#', (string) ($row->code ?? ''), $matches)) {
+                $max_sequence = max($max_sequence, (int) $matches[1]);
+            }
+        }
+
+        return $max_sequence + 1;
+    }
+}
