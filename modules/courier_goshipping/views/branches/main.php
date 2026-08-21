@@ -275,6 +275,7 @@ function openEditBranchModal(branch) {
     document.getElementById('branch_address').value = branch.address || '';
     document.getElementById('branch_phone').value = branch.phone || '';
     document.getElementById('branch_email').value = branch.email || '';
+    document.getElementById('branch_currency_id').value = branch.currency_id || '';
     document.getElementById('branch_is_default').checked = !!parseInt(branch.is_default);
     document.getElementById('branch_is_active').checked = !!parseInt(branch.is_active);
     document.getElementById('branch_active_wrap').style.display = 'block';
