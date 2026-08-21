@@ -29,18 +29,21 @@ class Pickups extends AdminController
         $group = $this->input->get('group', true) ?? 'dashboard';
 
         $staff_id   = get_staff_user_id();
-        $branch_ids = $this->get_staff_branch_ids();
         $statuses   = ['pending', 'picked_up', 'delivered'];
         $pickup_counts = [];
         $user_role = $this->Driver_model->get_staff_role($staff_id);
 
+        // 3-tier visibility (own/branch/global) — see
+        // courier_resolve_visibility_scope()'s docblock.
+        $pickup_scope = courier_resolve_visibility_scope('courier-pickups', 'view_branch_pickups', 'view_all_pickups');
+        $pickup_staff_id   = $pickup_scope === 'own'    ? $staff_id : null;
+        $pickup_branch_ids = $pickup_scope === 'branch' ? (courier_get_staff_branch_ids() ?: [0]) : null;
+
         foreach ($statuses as $status) {
             if ($user_role === 'Fleet: Driver') {
                 $pickup_counts[$status] = $this->Pickup_model->get_pickup_count_by_status($status, $staff_id, 'driver');
-            } elseif (staff_can('view_all_pickups', 'courier-pickups')) {
-                $pickup_counts[$status] = $this->Pickup_model->get(true, $status, null, null, $branch_ids);
             } else {
-                $pickup_counts[$status] = $this->Pickup_model->get(true, $status, $staff_id, null, $branch_ids);
+                $pickup_counts[$status] = $this->Pickup_model->get(true, $status, $pickup_staff_id, null, $pickup_branch_ids);
             }
         }
 
