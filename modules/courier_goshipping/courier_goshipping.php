@@ -3038,8 +3038,9 @@ class Courier_Logistic_System {
 
         // Manifests
         $config['capabilities'] = [
-            'view_own_manifests' => 'View (Own)',
-            'view_manifests'   => 'View (Global)',
+            'view_own_manifests'    => 'View (Own)',
+            'view_branch_manifests' => 'View (Branch)',
+            'view_manifests'        => 'View (Global)',
             'create_manifests' => 'Create',
             'edit_manifests'   => 'Edit',
             'delete_manifests' => 'Delete',
@@ -3115,4 +3116,5 @@ class Courier_Logistic_System {
 // add_filter('csrf_exclude_uris', ...) registered from this file fires too
 // late to have any effect (see that file's header comment).
 
-// Instantiate the modul
+// Instantiate the module class to initialize it
+new Courier_Logistic_System();
