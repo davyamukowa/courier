@@ -1788,20 +1788,30 @@ class Shipments extends AdminController
         if (!$this->_assert_branch_ownership($details)) {
             return false;
         }
-        if (is_admin() || staff_can('view_all_shipments', 'courier-shipments')) {
+
+        // 3-tier visibility (own/branch/global) — see
+        // resolve_shipment_visibility()/courier_resolve_visibility_scope().
+        $scope = courier_resolve_visibility_scope('courier-shipments', 'view_branch_shipments', 'view_all_shipments');
+
+        if ($scope === 'global') {
             return true;
         }
-        // Unassigned (staff_id = 0) shipments — the norm for auto-created
-        // Salibay/Shopify orders until someone actually picks them up — must
-        // stay openable by any "view own" staff within the shipment's own
-        // branch, same rule Shipment_model::get_shipments_details() already
-        // uses for the list itself ("(s.staff_id = X OR s.staff_id = 0)").
-        // This check used to require an exact staff_id match with no such
-        // exception, so a branch-assigned staff member could see an
-        // unassigned shipment in their list but got "Access denied" the
-        // moment they tried to actually open it.
+
+        if ($scope === 'branch') {
+            // _assert_branch_ownership() above already confirmed this
+            // shipment's branch is one of mine — under the 'branch' tier
+            // that's sufficient, not just shipments explicitly assigned to
+            // me (including unassigned ones, e.g. auto-created
+            // Salibay/Shopify orders nobody has picked up yet).
+            return true;
+        }
+
+        // 'own' — strict: only a shipment actually assigned to me. Unlike
+        // the old 2-tier model, unassigned (staff_id = 0) shipments are
+        // deliberately NOT included here any more — they belong to the
+        // 'branch' tier now, per explicit instruction.
         $shipment_staff_id = (int) $details['shipment']->staff_id;
-        if ($shipment_staff_id !== 0 && $shipment_staff_id !== (int) get_staff_user_id()) {
+        if ($shipment_staff_id !== (int) get_staff_user_id()) {
             set_alert('danger', 'Access denied — this shipment does not belong to you.');
             redirect(admin_url('courier_goshipping/shipments/main'));
             return false;
