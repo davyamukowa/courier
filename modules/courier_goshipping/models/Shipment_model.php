@@ -115,13 +115,18 @@ class Shipment_model extends App_Model
         return $this->db->insert_id();
     }
 
-    public function get_invoices_by_shipment_invoice_ids($staff_id = null)
+    public function get_invoices_by_shipment_invoice_ids($staff_id = null, $branch_ids = null)
     {
         // Fetch the invoice_ids from the tbl_shipments
         $this->db->select('id as shipment_id, invoice_id');
         $this->db->from(db_prefix() . '_shipments');
         if (!empty($staff_id)) {
+            // Strict "own" — see get_shipments_details()'s comment for why
+            // unassigned shipments/invoices are deliberately excluded here.
             $this->db->where('staff_id', $staff_id);
+        }
+        if ($branch_ids !== null) {
+            $this->db->where_in('branch_id', !empty($branch_ids) ? (array) $branch_ids : [0]);
         }
         $query = $this->db->get();
         $shipments = $query->result();
