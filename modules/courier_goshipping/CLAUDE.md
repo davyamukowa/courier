@@ -22,6 +22,37 @@ This was an explicit, repeated instruction from the project owner after Salibay-
 in this module caused (or was suspected of causing) friction with plain courier operations.
 Any change here should be checked against this rule before shipping.
 
+## Change-safety protocol — never regress a feature that's already been closed out as working
+
+The project owner has repeatedly flagged regressions where a change made for one feature
+(e.g. the "Assign Agent / Staff" button) silently broke or altered unrelated, already-working
+Salibay or general courier functionality (e.g. the rider assignment flow) because they share
+the same view/controller/table. **Treat every already-shipped, confirmed-working flow in this
+module as load-bearing** — do not refactor, rename, or "clean up" code near it as a side effect
+of an unrelated task.
+
+Before touching anything in `Shipments.php`, `Fulfilment.php`, `Shopify_connector*`,
+`Salibay_delivery.php`, `Rider_api.php`/`Rider_app.php`, or their views:
+
+1. **Scope the change narrowly.** Only touch the exact button/field/query the request is
+   about. If a helper or query is shared by multiple features (e.g. `staff_members`,
+   `courier_riders`, `push_shopify_fulfillment_status()`), changing its shape/behavior affects
+   every caller — enumerate those callers first (`grep`) and check each one still gets what it
+   expects.
+2. **Don't merge or "simplify" two features into one code path** unless explicitly asked. The
+   earlier bug in this exact area (one modal silently swapping between showing riders and
+   showing agents/staff depending on `salibay_delivery_link`) was caused by exactly this kind
+   of well-intentioned merge. Prefer two explicit, separate code paths/buttons/modals over one
+   clever conditional one, even if it looks like duplication.
+3. **After the change, re-check the general (non-Salibay) path still behaves exactly as
+   before**, not just the Salibay path (or vice versa) — per "The one rule" above. A change
+   that only gets tested against the flow it was written for is exactly how these regressions
+   have slipped through previously.
+4. **When in doubt about blast radius, ask or use a reviewing subagent** rather than guessing.
+   For a change that touches a shared view/controller, it's worth spawning a second pass (a
+   code-review agent, or `/code-review`) specifically checking "does this change alter the
+   behavior of any feature other than the one requested?" before considering the task done.
+
 ## How to tell "Salibay shipment" from "general shipment" in code
 
 A shipment is Salibay-sourced **if and only if** a row exists in `tblshopify_orders` with
