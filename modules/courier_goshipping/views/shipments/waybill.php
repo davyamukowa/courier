@@ -275,6 +275,25 @@
 
         // Wait for the content to load before printing
         printFrame.onload = function () {
+            // Auto-shrink to guarantee a single A4 page: if the rendered
+            // content is taller than one printable page (e.g. a shipment
+            // with several package rows), scale the whole box down instead
+            // of letting it spill onto a second sheet. CSS transform: scale
+            // does apply during printing in evergreen browsers.
+            const container = printDocument.querySelector('.waybill-container');
+            if (container) {
+                const A4_HEIGHT_MM = 297;
+                const PAGE_MARGIN_MM = 8;
+                const usableHeightPx = (A4_HEIGHT_MM - (PAGE_MARGIN_MM * 2)) * (96 / 25.4);
+
+                if (container.scrollHeight > usableHeightPx) {
+                    const scale = usableHeightPx / container.scrollHeight;
+                    container.style.transformOrigin = 'top left';
+                    container.style.transform = 'scale(' + scale + ')';
+                    container.style.width = (100 / scale) + '%';
+                }
+            }
+
             printFrame.contentWindow.focus();
             printFrame.contentWindow.print();
 
