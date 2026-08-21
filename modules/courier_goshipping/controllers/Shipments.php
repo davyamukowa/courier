@@ -16,6 +16,7 @@ class Shipments extends AdminController
         if (!in_array($method, $invoice_methods)) {
             if (!is_admin()
                 && !has_permission('courier-shipments', '', 'view_all_shipments')
+                && !has_permission('courier-shipments', '', 'view_branch_shipments')
                 && !has_permission('courier-shipments', '', 'view_own_shipments')) {
                 access_denied('Courier - Shipments');
             }
