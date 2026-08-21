@@ -2167,6 +2167,27 @@ class Courier_Logistic_System {
     }
 
     /**
+     * v52: adds currency_id to tbl_courier_branches — lets a branch (e.g.
+     * Dubai/China offices) operate in a different currency than the
+     * org-wide base currency (e.g. Kenya's KES). NULL means "use the base
+     * currency", so every existing branch keeps behaving exactly as before
+     * until an admin explicitly sets one via Branches > Edit. See
+     * courier_get_branch_currency_id() in helpers/courier_helper.php for
+     * how this is resolved with fallback.
+     */
+    public function run_db_upgrades_v52() {
+        if (get_option('courier_schema_v52_done')) return;
+        $CI = &get_instance();
+
+        $branches_table = db_prefix() . '_courier_branches';
+        if ($CI->db->table_exists($branches_table) && !$CI->db->field_exists('currency_id', $branches_table)) {
+            $CI->db->query('ALTER TABLE `' . $branches_table . '` ADD COLUMN `currency_id` INT NULL DEFAULT NULL AFTER `is_default`');
+        }
+
+        update_option('courier_schema_v52_done', '1');
+    }
+
+    /**
      * Prunes old, purely-diagnostic rows that grow unbounded with order
      * volume and are never needed once they age out — NOT the same as
      * shipment_status_history/courier_sourcing_events, which are real
