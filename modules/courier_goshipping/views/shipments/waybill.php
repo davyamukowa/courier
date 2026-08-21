@@ -649,13 +649,25 @@
                         <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
                         <script>
                         function downloadWaybillPdf() {
+                            const el = document.getElementById('waybill-section');
+                            // The 60px top margin only exists to give the on-screen page
+                            // breathing room below the action buttons — carried into the
+                            // captured element it wastes vertical space that was tipping
+                            // the content onto a second page. Zeroed for the capture only,
+                            // then restored so the live page is unaffected.
+                            const originalMarginTop = el.style.marginTop;
+                            el.style.marginTop = '0';
+
+                            const restore = () => { el.style.marginTop = originalMarginTop; };
+
                             html2pdf().set({
-                                margin:[10,10,10,10],
+                                margin:[8,8,8,8],
                                 filename:'waybill-<?php echo htmlspecialchars($shipment_details['shipment']->waybill_number ?? ''); ?>.pdf',
                                 image:{type:'jpeg',quality:0.98},
                                 html2canvas:{scale:2,useCORS:true},
-                                jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}
-                            }).from(document.getElementById('waybill-section')).save();
+                                jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
+                                pagebreak:{mode:['avoid-all','css','legacy']}
+                            }).from(el).save().then(restore).catch(restore);
                         }
                         </script>
 
