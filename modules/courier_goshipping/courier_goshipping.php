@@ -2279,10 +2279,10 @@ class Courier_Logistic_System {
         ?>
         <div class="form-group" id="courier-branch-group" style="margin-bottom:20px;">
             <label for="courier_branch_id" class="control-label !tw-mb-3">
-                Select Country / Office
+                Select Country / Office <span style="color:#c62828;">*</span>
             </label>
             <select name="courier_branch_id" id="courier_branch_id" class="form-control">
-                <option value="">-- Select Country / Office (if applicable) --</option>
+                <option value="">-- Select Country / Office --</option>
                 <?php foreach ($grouped as $country_label => $offices): ?>
                 <?php if (count($offices) === 1): ?>
                 <option value="<?= (int) $offices[0]['id']; ?>"><?= htmlspecialchars($country_label, ENT_QUOTES); ?></option>
