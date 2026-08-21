@@ -2335,31 +2335,52 @@ class Courier_Logistic_System {
      */
     public function validate_staff_branch_on_login() {
         $CI = &get_instance();
-        $staff_id = get_staff_user_id();
+        $reject_message = null;
 
-        if (is_admin($staff_id)) {
-            return;
+        try {
+            $staff_id = get_staff_user_id();
+
+            if (is_admin($staff_id)) {
+                return;
+            }
+
+            $branch_ids = courier_get_staff_branch_ids($staff_id);
+
+            if (!empty($branch_ids)) {
+                $submitted = (int) $CI->input->post('courier_branch_id');
+                if ($submitted > 0 && in_array($submitted, $branch_ids, true)) {
+                    $CI->session->set_userdata('courier_active_branch_id', $submitted);
+                    return;
+                }
+                $reject_message = 'Please select the country/branch you are assigned to, to continue.';
+            } else {
+                $reject_message = 'Your account has no country/branch assigned yet. Please contact an administrator.';
+            }
+        } catch (\Throwable $e) {
+            // Never let a bug here surface as a raw 500 on the login request
+            // — fail safe by logging out and sending the user back to the
+            // login page instead of leaving a half-authenticated session.
+            log_message('error', 'validate_staff_branch_on_login crashed: ' . $e->getMessage());
+            $reject_message = $reject_message ?: 'Something went wrong validating your branch. Please try logging in again.';
         }
 
-        $branch_ids = courier_get_staff_branch_ids($staff_id);
-        if (empty($branch_ids)) {
+        // Flashdata MUST be set before the session is destroyed by logout()
+        // (sess_destroy() below) — setting it after was the actual bug:
+        // set_flashdata() writing into a session that logout() had already
+        // torn down was fataling out on this exact reject path, which used
+        // to be reached only by a rare multi-branch "wrong selection" case
+        // and is now hit far more often (every single-branch staff member
+        // who doesn't explicitly select their branch).
+        set_alert('danger', $reject_message);
+
+        try {
             $CI->load->model('Authentication_model');
             $CI->Authentication_model->logout();
-            set_alert('danger', 'Your account has no country/branch assigned yet. Please contact an administrator.');
-            redirect(admin_url('authentication'));
-            return;
+        } catch (\Throwable $e) {
+            log_message('error', 'validate_staff_branch_on_login logout() crashed: ' . $e->getMessage());
         }
 
-        $submitted = (int) $CI->input->post('courier_branch_id');
-        if ($submitted <= 0 || !in_array($submitted, $branch_ids, true)) {
-            $CI->load->model('Authentication_model');
-            $CI->Authentication_model->logout();
-            set_alert('danger', 'Please select the country/branch you are assigned to, to continue.');
-            redirect(admin_url('authentication'));
-            return;
-        }
-
-        $CI->session->set_userdata('courier_active_branch_id', $submitted);
+        redirect(admin_url('authentication'));
     }
 
     /**
