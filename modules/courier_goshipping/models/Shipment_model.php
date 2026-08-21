@@ -168,12 +168,13 @@ class Shipment_model extends App_Model
         $this->db->order_by('s.created_at', 'DESC');
 
         if (!empty($staff_id)) {
-            // Unassigned shipments (staff_id = 0 — the norm now for
-            // auto-created Shopify/Salibay orders, which are branch-general
-            // until someone actually assigns/acts on them) must still be
-            // visible to any staff restricted to "my shipments only" — not
-            // just ones explicitly assigned to them.
-            $this->db->where('(s.staff_id = ' . (int) $staff_id . ' OR s.staff_id = 0)', null, false);
+            // Strict "own" — no OR staff_id = 0. Unassigned shipments (the
+            // norm for auto-created Shopify/Salibay orders) belong to the
+            // 'branch' tier, not 'own', since they always carry a real
+            // branch_id regardless of assignment. Callers must not also pass
+            // $branch_ids alongside this — see
+            // courier_resolve_visibility_scope()'s docblock.
+            $this->db->where('s.staff_id', (int) $staff_id);
         }
 
         if ($branch_ids !== null) {
