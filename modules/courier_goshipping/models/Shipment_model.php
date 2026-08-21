@@ -44,9 +44,11 @@ class Shipment_model extends App_Model
         }
 
         if ($staff_id !== null) {
-            // Unassigned shipments (staff_id = 0) are branch-general — see
-            // the same rule in get_shipments_details().
-            $this->db->where('(s.staff_id = ' . (int) $staff_id . ' OR s.staff_id = 0)', null, false);
+            // Strict "own" — no OR staff_id = 0. Unassigned shipments belong
+            // to the 'branch' tier (they always carry a real branch_id) not
+            // 'own'. Callers must not also pass $branch_ids alongside this —
+            // see courier_resolve_visibility_scope()'s docblock.
+            $this->db->where('s.staff_id', (int) $staff_id);
         }
 
         if ($branch_ids !== null) {
