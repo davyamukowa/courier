@@ -396,7 +396,12 @@ class Pickups extends AdminController
             }
         }
 
-        if (!is_admin() && !staff_can('view_all_pickups', 'courier-pickups')
+        // 3-tier visibility (own/branch/global) — see
+        // courier_resolve_visibility_scope()'s docblock. 'branch' is
+        // sufficient here since the branch-isolation check above already
+        // confirmed this pickup belongs to one of my branches.
+        $pickup_scope = courier_resolve_visibility_scope('courier-pickups', 'view_branch_pickups', 'view_all_pickups');
+        if ($pickup_scope === 'own'
             && (int)($data['pickup']['staff_id'] ?? 0) !== (int)get_staff_user_id()) {
             set_alert('danger', 'Access denied — this pickup does not belong to you.');
             redirect('admin/courier_goshipping/pickups/main');
