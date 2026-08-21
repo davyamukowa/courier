@@ -100,6 +100,7 @@ class Courier_Logistic_System {
         hooks()->add_action('after_admin_login_form_start',   [$this, 'inject_login_branch_selector']);
         hooks()->add_action('after_staff_login',              [$this, 'validate_staff_branch_on_login']);
         hooks()->add_action('admin_init',                     [$this, 'enforce_active_branch_session']);
+        hooks()->add_action('before_admin_login_form_close',  [$this, 'inject_login_email_persistence_script']);
         hooks()->add_filter('before_create_staff_member',     [$this, 'strip_courier_branch_from_data']);
         hooks()->add_filter('before_update_staff_member',     [$this, 'strip_courier_branch_from_data']);
         hooks()->add_action('staff_member_created',           [$this, 'save_staff_branches']);
