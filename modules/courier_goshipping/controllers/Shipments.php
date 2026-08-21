@@ -505,7 +505,7 @@ class Shipments extends AdminController
 
         // TEMP DIAGNOSTIC — remove once the agent visibility issue is confirmed fixed.
         // Plain file at public_html/shipment_debug.log — open directly via File Manager.
-        file_put_contents(FCPATH . 'shipment_debug.log', '[' . date('Y-m-d H:i:s') . "] LISTING staff_id={$staff_id} type={$type} branch={$_debug_branch} result_count=" . count($data['shipment_details'] ?? []) . ' branch_ids=' . json_encode($branch_ids) . ' can_view_all=' . (staff_can('view_all_shipments', 'courier-shipments') ? '1' : '0') . " has_active_filter={$has_active_filter}\n", FILE_APPEND);
+        file_put_contents(FCPATH . 'shipment_debug.log', '[' . date('Y-m-d H:i:s') . "] LISTING staff_id={$staff_id} type={$type} branch={$_debug_branch} result_count=" . count($data['shipment_details'] ?? []) . ' scope=' . $visibility['scope'] . ' branch_ids=' . json_encode($visibility['branch_ids']) . ' can_view_all=' . (staff_can('view_all_shipments', 'courier-shipments') ? '1' : '0') . " has_active_filter={$has_active_filter}\n", FILE_APPEND);
 
         // Check if no shipments were found
         $data['no_shipments'] = $this->session->userdata('no_shipments') ?? false;
