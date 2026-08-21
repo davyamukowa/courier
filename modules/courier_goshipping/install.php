@@ -18,7 +18,7 @@ if (!$CI->db->table_exists(db_prefix() . '_courier_companies')) {
 
     // Insert data into `tbl_courier_companies`
     $CI->db->query('INSERT INTO `' . db_prefix() . '_courier_companies` (`id`, `company_name`, `prefix`, `type`) VALUES
-    (1, "GO Shipping", "GOSHP", "internal"),
+    (1, "Go Shipping Cargo", "GOSHP", "internal"),
     (2, "DELL", "DELL", "third_party"),
     (3, "FedEx", "FEDE", "third_party"),
     (4, "Dafric", "DAFR", "third_party"),

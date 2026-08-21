@@ -2147,6 +2147,25 @@ class Courier_Logistic_System {
     }
 
     /**
+     * v51: renames the built-in internal courier company from "GO Shipping"
+     * to "Go Shipping Cargo" — the internal-type row (id 1 by default, but
+     * matched by type='internal' to be safe) is the one shown in the
+     * "Logistic Company" dropdown as the default option for normal staff.
+     */
+    public function run_db_upgrades_v51() {
+        if (get_option('courier_schema_v51_done')) return;
+        $CI = &get_instance();
+
+        $companies_table = db_prefix() . '_courier_companies';
+        if ($CI->db->table_exists($companies_table)) {
+            $CI->db->where('type', 'internal')->where('company_name', 'GO Shipping')
+                ->update($companies_table, ['company_name' => 'Go Shipping Cargo']);
+        }
+
+        update_option('courier_schema_v51_done', '1');
+    }
+
+    /**
      * Prunes old, purely-diagnostic rows that grow unbounded with order
      * volume and are never needed once they age out — NOT the same as
      * shipment_status_history/courier_sourcing_events, which are real
