@@ -2429,13 +2429,33 @@ class Courier_Logistic_System {
      */
     private function _kick_to_login($message) {
         $CI = &get_instance();
+
         set_alert('danger', $message);
+
+        // Deliberately NOT Authentication_model::logout() — that calls
+        // sess_destroy(), which throws away the ENTIRE session, including
+        // the flashdata message set immediately above (a session can't
+        // carry a message into its own destruction) — that's why the error
+        // was never actually showing up on the login page. Unsetting just
+        // the staff-auth flags is enough to fail is_staff_logged_in() on the
+        // very next request (bouncing back here), while the session itself
+        // — and the flash message inside it — survives to be shown there.
+        $CI->session->unset_userdata('staff_logged_in');
+        $CI->session->unset_userdata('staff_user_id');
+
+        // Still clear the "Remember Me" autologin cookie, or it would
+        // silently re-authenticate this same staff member (bypassing this
+        // whole check, since Authentication_model::autologin() runs on
+        // every request and sets staff_logged_in directly — see
+        // enforce_active_branch_session()'s docblock) the moment they load
+        // any page again.
         try {
-            $CI->load->model('Authentication_model');
-            $CI->Authentication_model->logout();
+            $CI->load->helper('cookie');
+            delete_cookie('autologin', 'aal');
         } catch (\Throwable $e) {
-            log_message('error', '_kick_to_login logout() crashed: ' . $e->getMessage());
+            log_message('error', '_kick_to_login autologin cookie cleanup crashed: ' . $e->getMessage());
         }
+
         redirect(admin_url('authentication'));
     }
 
