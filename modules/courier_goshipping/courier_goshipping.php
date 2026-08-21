@@ -2370,6 +2370,45 @@ class Courier_Logistic_System {
     }
 
     /**
+     * The core login form (application/views/authentication/login_admin.php
+     * — a core file, so it can't be edited without breaking the modules-only
+     * cPanel deploy pipeline, see root CLAUDE.md) doesn't preserve the
+     * email/password fields via set_value() at all — any redirect back to
+     * it (including this module's own branch-rejection redirect) leaves
+     * both blank, which is tiresome to retype every time a login gets
+     * bounced. Since this is a real core-file limitation, not something
+     * this module can fix server-side, it's patched client-side instead:
+     * remembers just the email (never the password, for obvious security
+     * reasons — browsers' own saved-password autofill should handle that
+     * half) in sessionStorage across the redirect.
+     */
+    public function inject_login_email_persistence_script() {
+        ?>
+        <script>
+        (function () {
+            var emailField = document.getElementById('email');
+            if (!emailField) { return; }
+            try {
+                var saved = sessionStorage.getItem('courier_login_email');
+                if (saved && !emailField.value) {
+                    emailField.value = saved;
+                }
+            } catch (e) {}
+
+            var form = emailField.closest('form');
+            if (form) {
+                form.addEventListener('submit', function () {
+                    try {
+                        sessionStorage.setItem('courier_login_email', emailField.value || '');
+                    } catch (e) {}
+                });
+            }
+        })();
+        </script>
+        <?php
+    }
+
+    /**
      * validate_staff_branch_on_login() only ever runs at the moment of a
      * genuine login THROUGH the login form (it's fired from the
      * "after_staff_login" hook, which only fires from
