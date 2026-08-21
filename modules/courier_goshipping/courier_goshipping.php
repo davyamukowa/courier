@@ -2450,6 +2450,12 @@ class Courier_Logistic_System {
                 return;
             }
 
+            // This fires on admin_init for EVERY admin page, not just
+            // courier_goshipping's own controllers (which load this helper
+            // themselves) — must load it explicitly here too, same reason
+            // as validate_staff_branch_on_login() above.
+            $CI->load->helper('courier_goshipping/courier');
+
             $staff_id = get_staff_user_id();
             if (is_admin($staff_id)) {
                 return;
