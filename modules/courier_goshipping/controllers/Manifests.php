@@ -26,7 +26,11 @@ class Manifests extends AdminController
 
     public function index()
     {
-        $branch_ids = courier_staff_can_view_all_branches() ? null : courier_get_staff_branch_ids();
+        // 'own' and 'branch' both resolve to the same branch-scoped query —
+        // see the constructor's comment for why (no staff_id/creator column
+        // to filter 'own' by on this feature).
+        $scope = courier_resolve_visibility_scope('courier-manifests', 'view_branch_manifests', 'view_manifests');
+        $branch_ids = $scope === 'global' ? null : (courier_get_staff_branch_ids() ?: [0]);
         $data['manifests'] = $this->Manifest_model->get_manifests($branch_ids);
         $this->load->view('manifests/index', $data);
     }
@@ -108,7 +112,8 @@ class Manifests extends AdminController
 
     public function view($manifest_number)
     {
-        $branch_ids = courier_staff_can_view_all_branches() ? null : courier_get_staff_branch_ids();
+        $scope = courier_resolve_visibility_scope('courier-manifests', 'view_branch_manifests', 'view_manifests');
+        $branch_ids = $scope === 'global' ? null : (courier_get_staff_branch_ids() ?: [0]);
         $data['manifest_records'] = $this->Manifest_model->get_records($manifest_number, $branch_ids);
         if (empty($data['manifest_records'])) {
             set_alert('danger', 'Manifest not found or does not belong to your branch.');
