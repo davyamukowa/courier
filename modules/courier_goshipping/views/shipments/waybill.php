@@ -649,25 +649,60 @@
                         <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
                         <script>
                         function downloadWaybillPdf() {
-                            const el = document.getElementById('waybill-section');
-                            // The 60px top margin only exists to give the on-screen page
-                            // breathing room below the action buttons — carried into the
-                            // captured element it wastes vertical space that was tipping
-                            // the content onto a second page. Zeroed for the capture only,
-                            // then restored so the live page is unaffected.
-                            const originalMarginTop = el.style.marginTop;
-                            el.style.marginTop = '0';
+                            // Render an off-screen CLONE rather than the live element:
+                            // 1. A few px of padding around the clone gives html2canvas
+                            //    room to rasterize the container's own border fully —
+                            //    capturing the bordered element flush against the canvas
+                            //    edge was clipping its right/bottom border by a pixel or
+                            //    two. 2. The 60px top margin (only there for breathing
+                            //    room below the on-screen action buttons) is dropped
+                            //    entirely instead of temporarily mutating the live page.
+                            const source = document.getElementById('waybill-section');
+                            const clone = source.cloneNode(true);
+                            clone.style.marginTop = '0';
 
-                            const restore = () => { el.style.marginTop = originalMarginTop; };
+                            const wrapper = document.createElement('div');
+                            wrapper.style.position = 'fixed';
+                            wrapper.style.left = '-99999px';
+                            wrapper.style.top = '0';
+                            wrapper.style.padding = '4px';
+                            wrapper.style.background = '#fff';
+                            wrapper.appendChild(clone);
+                            document.body.appendChild(wrapper);
 
-                            html2pdf().set({
-                                margin:[8,8,8,8],
-                                filename:'waybill-<?php echo htmlspecialchars($shipment_details['shipment']->waybill_number ?? ''); ?>.pdf',
-                                image:{type:'jpeg',quality:0.98},
-                                html2canvas:{scale:2,useCORS:true},
-                                jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
-                                pagebreak:{mode:['avoid-all','css','legacy']}
-                            }).from(el).save().then(restore).catch(restore);
+                            html2canvas(clone, {scale: 2, useCORS: true}).then(function (canvas) {
+                                document.body.removeChild(wrapper);
+
+                                // Manual jsPDF placement (rather than html2pdf's default
+                                // fit-width-only behavior) so the image is shrunk to fit
+                                // BOTH the page width and height — guarantees everything
+                                // lands on a single A4 page regardless of how many package
+                                // rows/terms lines the content ends up with, instead of
+                                // spilling onto a second page whenever it's a bit tall.
+                                const pdf = new jspdf.jsPDF({unit: 'mm', format: 'a4', orientation: 'portrait'});
+                                const pageWidth  = pdf.internal.pageSize.getWidth();
+                                const pageHeight = pdf.internal.pageSize.getHeight();
+                                const margin = 8;
+                                const maxW = pageWidth - (margin * 2);
+                                const maxH = pageHeight - (margin * 2);
+
+                                let imgW = maxW;
+                                let imgH = (canvas.height * imgW) / canvas.width;
+                                if (imgH > maxH) {
+                                    const shrink = maxH / imgH;
+                                    imgH = maxH;
+                                    imgW = imgW * shrink;
+                                }
+
+                                const x = (pageWidth - imgW) / 2;
+                                const y = margin;
+                                pdf.addImage(canvas.toDataURL('image/jpeg', 0.98), 'JPEG', x, y, imgW, imgH);
+                                pdf.save('waybill-<?php echo htmlspecialchars($shipment_details['shipment']->waybill_number ?? ''); ?>.pdf');
+                            }).catch(function () {
+                                if (wrapper.parentNode) {
+                                    document.body.removeChild(wrapper);
+                                }
+                            });
                         }
                         </script>
 
