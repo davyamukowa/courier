@@ -147,6 +147,16 @@
                             </div>
                         </div>
                     </div>
+                    <div class="form-group">
+                        <label>Currency</label>
+                        <select name="currency_id" id="branch_currency_id" class="form-control">
+                            <option value="">-- Use base currency (<?php echo htmlspecialchars(get_base_currency()->name ?? ''); ?>) --</option>
+                            <?php foreach ($currencies as $cur): ?>
+                                <option value="<?php echo (int) $cur->id; ?>"><?php echo htmlspecialchars($cur->name); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <p class="text-muted mtop5 mbot0">Shipments created by staff assigned to this branch default to this currency instead of the org-wide base currency (e.g. Dubai/China offices billing in USD).</p>
+                    </div>
                     <div class="checkbox">
                         <label><input type="checkbox" name="is_default" id="branch_is_default" value="1"> Default branch (fallback for unresolved orders)</label>
                     </div>
