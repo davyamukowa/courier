@@ -146,6 +146,9 @@ class Branches extends AdminController
             'is_active'   => 1,
             'is_default'  => $this->input->post('is_default') ? 1 : 0,
         ];
+        if ($this->db->field_exists('currency_id', db_prefix() . '_courier_branches')) {
+            $data['currency_id'] = $this->input->post('currency_id') ?: null;
+        }
 
         $id = $this->CourierBranch_model->add($data);
         if ($id) {
@@ -180,6 +183,9 @@ class Branches extends AdminController
             'is_active'   => $this->input->post('is_active') ? 1 : 0,
             'is_default'  => $this->input->post('is_default') ? 1 : 0,
         ];
+        if ($this->db->field_exists('currency_id', db_prefix() . '_courier_branches')) {
+            $data['currency_id'] = $this->input->post('currency_id') ?: null;
+        }
 
         if ($this->CourierBranch_model->update((int) $id, $data)) {
             echo json_encode(['success' => true, 'message' => 'Branch updated successfully.']);
@@ -265,11 +271,4 @@ class Branches extends AdminController
         $max_sequence = 0;
 
         foreach ($rows as $row) {
-            if (preg_match('#/B/' . preg_quote((string) $year, '#') . '/(\d+)$#', (string) ($row->code ?? ''), $matches)) {
-                $max_sequence = max($max_sequence, (int) $matches[1]);
-            }
-        }
-
-        return $max_sequence + 1;
-    }
-}
+            if (preg_match('#/B/' . preg_quote((string) $year, '#') . '/(\d+)$#', (st
