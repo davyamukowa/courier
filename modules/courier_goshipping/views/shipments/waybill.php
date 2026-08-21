@@ -9,10 +9,16 @@
 
 <script>
     function printWaybill() {
-        // Create a new iframe for printing
+        // Create a new iframe for printing — sized to actual A4 CSS px so the
+        // content lays out at real page proportions instead of whatever
+        // default width an unstyled offscreen iframe happens to get (which
+        // was leaving the printed page mostly blank on the right).
         const printFrame = document.createElement('iframe');
         printFrame.style.position = 'absolute';
         printFrame.style.top = '-1000px';
+        printFrame.style.width = '210mm';
+        printFrame.style.height = '297mm';
+        printFrame.style.border = '0';
         document.body.appendChild(printFrame);
 
         const printDocument = printFrame.contentDocument || printFrame.contentWindow.document;
