@@ -578,7 +578,7 @@ if (!function_exists('courier_send_shipment_waybill_email')) {
 
             courier_ensure_notification_email_templates();
 
-            $sent = mail_template('Courier_waybill_to_customer', 'courier_goshipping', $to_email, [
+            $mail = mail_template('Courier_waybill_to_customer', 'courier_goshipping', $to_email, [
                 '{recipient_name}' => $recip_name ?: 'Customer',
                 '{sender_name}'    => $sender_name,
                 '{waybill_number}' => $waybill,
@@ -586,7 +586,11 @@ if (!function_exists('courier_send_shipment_waybill_email')) {
                 '{status}'         => $status_name,
                 '{company_name}'   => $company_name,
                 '{tracking_link}'  => $tracking_url,
-            ])->send();
+            ]);
+
+            courier_attach_waybill_pdfs($mail, (int) $shipment_id);
+
+            $sent = $mail->send();
 
             if (!$sent) {
                 log_message('error', "Waybill email to {$to_email} for shipment #{$shipment_id} was not sent.");
