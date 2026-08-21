@@ -894,6 +894,50 @@ if (!function_exists('courier_generate_commercial_invoice_pdf')) {
 }
 
 /**
+ * Attaches the waybill PDF (always) and, only for a plain non-Salibay
+ * shipment, the commercial invoice PDF too, onto a not-yet-sent
+ * App_mail_template instance. Salibay/Shopify orders are marketplace orders
+ * with no commercial-value declaration of our own — see
+ * modules/courier_goshipping/CLAUDE.md's "How to tell Salibay shipment from
+ * general shipment" section for why the gs_shipment_id existence check is
+ * the only correct way to make that call. Never throws: a PDF generation
+ * failure just means the email goes out without that attachment, exactly
+ * like every other notification helper in this file.
+ */
+if (!function_exists('courier_attach_waybill_pdfs')) {
+    function courier_attach_waybill_pdfs($mail, $shipment_id)
+    {
+        try {
+            $waybill_pdf = courier_generate_waybill_pdf($shipment_id);
+            if ($waybill_pdf !== null) {
+                $mail->add_attachment([
+                    'attachment' => $waybill_pdf,
+                    'filename'   => 'Waybill-' . $shipment_id . '.pdf',
+                    'type'       => 'application/pdf',
+                ]);
+            }
+
+            $CI = &get_instance();
+            $is_salibay = $CI->db->table_exists(db_prefix() . 'shopify_orders')
+                && $CI->db->where('gs_shipment_id', (int) $shipment_id)->get(db_prefix() . 'shopify_orders')->row();
+
+            if (!$is_salibay) {
+                $commercial_invoice_pdf = courier_generate_commercial_invoice_pdf($shipment_id);
+                if ($commercial_invoice_pdf !== null) {
+                    $mail->add_attachment([
+                        'attachment' => $commercial_invoice_pdf,
+                        'filename'   => 'Commercial-Invoice-' . $shipment_id . '.pdf',
+                        'type'       => 'application/pdf',
+                    ]);
+                }
+            }
+        } catch (\Throwable $e) {
+            log_message('error', 'courier_attach_waybill_pdfs crashed for shipment #' . $shipment_id . ': ' . $e->getMessage());
+        }
+    }
+}
+
+/**
  * Loads a shipment's sender's usable email + display name — mirrors
  * courier_resolve_shipment_recipient_email() but for the sender side
  * (individual shipment_senders row, or shipment_companies row when the
