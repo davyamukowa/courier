@@ -720,7 +720,7 @@ if (!function_exists('courier_generate_waybill_pdf')) {
                 </div>
                 <table cellpadding="4" style="width:100%;border-collapse:collapse;margin-top:6px;">
                     <tr>
-                        <th ' . $th . '>' . htmlspecialchars($sender_lines['name'] !== '' ? 'Sender' : 'Sender') . '</th>
+                        <th ' . $th . '>Sender</th>
                         <td ' . $td . '>' . htmlspecialchars($sender_lines['name']) . '</td>
                         <th ' . $th . '>Receiver</th>
                         <td ' . $td . '>' . htmlspecialchars($recipient_lines['name']) . '</td>
