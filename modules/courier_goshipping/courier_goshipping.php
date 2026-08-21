@@ -3049,8 +3049,9 @@ class Courier_Logistic_System {
 
         // Invoices & Receipts
         $config['capabilities'] = [
-            'view_own_invoices' => 'View (Own)',
-            'view_invoices'    => 'View (Global)',
+            'view_own_invoices'    => 'View (Own)',
+            'view_branch_invoices' => 'View (Branch)',
+            'view_invoices'        => 'View (Global)',
             'create_invoices'  => 'Create',
             'delete_invoices'  => 'Delete',
             'view_receipts'    => 'View Receipts',
