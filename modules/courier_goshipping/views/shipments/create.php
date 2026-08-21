@@ -1313,34 +1313,49 @@ echo '<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/selec
                                                     <?php
                                                     /* Resolve display value — multiple fallbacks */
                                                     $_selected_id = (int) set_value('courier_company_id');
-                                                    if ($_selected_id <= 0 && !empty($courier_companies) && is_array($courier_companies)) {
+                                                    $_internal_company = null;
+                                                    if (!empty($courier_companies) && is_array($courier_companies)) {
                                                         foreach ($courier_companies as $_default_company) {
-                                                            if (($type ?? '') === 'domestic' && strtolower((string) ($_default_company->type ?? '')) === 'internal') {
-                                                                $_selected_id = (int) ($_default_company->id ?? 0);
+                                                            if (strtolower((string) ($_default_company->type ?? '')) === 'internal') {
+                                                                $_internal_company = $_default_company;
                                                                 break;
                                                             }
                                                         }
                                                     }
+                                                    if ($_selected_id <= 0 && ($type ?? '') === 'domestic' && $_internal_company) {
+                                                        $_selected_id = (int) ($_internal_company->id ?? 0);
+                                                    }
                                                     ?>
-                                                    <select name="courier_company_id"
-                                                            id="courier_company_id"
-                                                            class="custom-select"
-                                                            style="background:#f0fff4; border:1.5px solid #28a745; color:#155724; font-weight:600;">
-                                                        <option value="0">Select Logistic Company</option>
-                                                        <?php if (!empty($courier_companies) && is_array($courier_companies)): ?>
-                                                            <?php foreach ($courier_companies as $_company_option): ?>
-                                                                <?php
-                                                                $_company_id = (int) ($_company_option->id ?? 0);
-                                                                $_company_name = (string) ($_company_option->company_name ?? '');
-                                                                $_company_kind = strtolower((string) ($_company_option->type ?? ''));
-                                                                $_suffix = $_company_kind !== '' ? ' (' . strtoupper($_company_kind) . ')' : '';
-                                                                ?>
-                                                                <option value="<?php echo $_company_id; ?>" <?php echo $_selected_id === $_company_id ? 'selected' : ''; ?>>
-                                                                    <?php echo htmlspecialchars($_company_name . $_suffix); ?>
-                                                                </option>
-                                                            <?php endforeach; ?>
-                                                        <?php endif; ?>
-                                                    </select>
+                                                    <?php if (is_admin()): ?>
+                                                        <select name="courier_company_id"
+                                                                id="courier_company_id"
+                                                                class="custom-select"
+                                                                style="background:#f0fff4; border:1.5px solid #28a745; color:#155724; font-weight:600;">
+                                                            <option value="0">Select Logistic Company</option>
+                                                            <?php if (!empty($courier_companies) && is_array($courier_companies)): ?>
+                                                                <?php foreach ($courier_companies as $_company_option): ?>
+                                                                    <?php
+                                                                    $_company_id = (int) ($_company_option->id ?? 0);
+                                                                    $_company_name = (string) ($_company_option->company_name ?? '');
+                                                                    $_company_kind = strtolower((string) ($_company_option->type ?? ''));
+                                                                    $_suffix = $_company_kind !== '' ? ' (' . strtoupper($_company_kind) . ')' : '';
+                                                                    ?>
+                                                                    <option value="<?php echo $_company_id; ?>" <?php echo $_selected_id === $_company_id ? 'selected' : ''; ?>>
+                                                                        <?php echo htmlspecialchars($_company_name . $_suffix); ?>
+                                                                    </option>
+                                                                <?php endforeach; ?>
+                                                            <?php endif; ?>
+                                                        </select>
+                                                    <?php else: ?>
+                                                        <?php
+                                                        $_locked_id   = $_internal_company ? (int) ($_internal_company->id ?? 0) : 0;
+                                                        $_locked_name = $_internal_company ? (string) ($_internal_company->company_name ?? 'Go Shipping Cargo') : 'Go Shipping Cargo';
+                                                        ?>
+                                                        <input type="text" readonly class="custom-input"
+                                                               value="<?php echo htmlspecialchars($_locked_name, ENT_QUOTES); ?>"
+                                                               style="background:#f0fff4; border:1.5px solid #28a745; color:#155724; font-weight:600;">
+                                                        <input type="hidden" name="courier_company_id" id="courier_company_id" value="<?php echo $_locked_id; ?>">
+                                                    <?php endif; ?>
                                                 </div>
                                             </div>
                                         </div>
