@@ -2371,10 +2371,7 @@ class Courier_Logistic_System {
             // — fail safe by logging out and sending the user back to the
             // login page instead of leaving a half-authenticated session.
             log_message('error', 'validate_staff_branch_on_login crashed: ' . $e->getMessage());
-            // TEMP DIAGNOSTIC — surfaces the real exception message in the
-            // login page itself since this cPanel account has no SSH/log
-            // access. Remove once the actual cause is confirmed fixed.
-            $reject_message = $reject_message ?: ('DEBUG: ' . $e->getMessage() . ' (' . basename($e->getFile()) . ':' . $e->getLine() . ')');
+            $reject_message = $reject_message ?: 'Something went wrong validating your branch. Please try logging in again.';
         }
 
         $this->_kick_to_login($reject_message);
