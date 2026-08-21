@@ -738,7 +738,7 @@
                         $_ci              = courier_get_invoice_info($shipment_details['shipment']->branch_id ?? null);
                         $logistic_company = $_ci['name'] ?: '';
                         ?>
-                        <div style="margin-top:60px;" id="waybill-section" class="waybill-container">
+                        <div style="margin-top:60px;border:2px solid #0d47a1;border-top:4px solid #c62828;" id="waybill-section" class="waybill-container">
                             <?php if ($company_logo_url): ?>
                             <img class="watermark" style="opacity:0.08;"
                                  src="<?php echo $company_logo_url; ?>"
