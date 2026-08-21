@@ -692,7 +692,13 @@ echo '<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/selec
                                                    style="display: block; font-weight: bold; margin-top:-12px; margin-bottom: 5px; font-size: 18px;">Shipping
                                                 Currency
                                             </label>
-                                            <?php echo form_dropdown('currency_id', array_column($currencies, 'name', 'id'), set_value('currency_id', get_base_currency()->id), ['id' => 'currency_id', 'class' => 'custom-select']); ?>
+                                            <?php
+                                            // Defaults to the logged-in staff's active branch currency
+                                            // (e.g. Dubai/China staff default to USD, Kenya to KES) —
+                                            // still just a default, staff can still override it below.
+                                            $_default_currency_id = courier_get_branch_currency_id(courier_get_session_branch_id());
+                                            ?>
+                                            <?php echo form_dropdown('currency_id', array_column($currencies, 'name', 'id'), set_value('currency_id', $_default_currency_id), ['id' => 'currency_id', 'class' => 'custom-select']); ?>
                                             <?php echo form_error('currency_id', '<div class="error-message">', '</div>'); ?>
                                         </label>
                                     </div>
