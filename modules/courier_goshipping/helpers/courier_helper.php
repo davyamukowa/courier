@@ -1278,6 +1278,33 @@ if (!function_exists('courier_get_invoice_info')) {
     }
 }
 
+/**
+ * Resolves the currency a branch should invoice in — e.g. Dubai/China
+ * offices billing in USD while the Kenya head office (and every branch that
+ * hasn't been given an explicit override) keeps using the org-wide base
+ * currency (KES). Same override-with-fallback shape as
+ * courier_get_invoice_info() above. NULL/0 $branch_id (no branch resolved,
+ * e.g. an admin with no branch assignment) also falls back to base currency.
+ * Never throws — a missing/invalid branch currency_id just falls back.
+ */
+if (!function_exists('courier_get_branch_currency_id')) {
+    function courier_get_branch_currency_id($branch_id = null)
+    {
+        if (!empty($branch_id)) {
+            $CI = &get_instance();
+            if ($CI->db->table_exists(db_prefix() . '_courier_branches') && $CI->db->field_exists('currency_id', db_prefix() . '_courier_branches')) {
+                $branch = $CI->db->select('currency_id')->where('id', (int) $branch_id)->get(db_prefix() . '_courier_branches')->row();
+                if (!empty($branch->currency_id)) {
+                    return (int) $branch->currency_id;
+                }
+            }
+        }
+
+        $base_currency = get_base_currency();
+        return $base_currency ? (int) $base_currency->id : 1;
+    }
+}
+
 
 
 
