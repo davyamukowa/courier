@@ -4,15 +4,12 @@
     margin: auto;
     background: white;
     padding: 10px 20px;
-    /* Colored border baked directly into this base (unscoped) rule rather
-       than only in a ".gs-waybill-page .waybill-container" override — the
-       "Download PDF" (html2pdf.js) and print flows clone/re-host this
-       element outside its original .gs-waybill-page ancestor, and a
-       clone that loses its ancestor also loses any styling that only
-       existed as a descendant-scoped override. Keeping it here means the
-       border survives being cloned/detached. */
-    border: 2px solid #0d47a1;
-    border-top: 4px solid #c62828;
+    /* Plain default border — the waybill page overrides this with its
+       blue/red brand colors both via a scoped CSS rule (on-screen) and via
+       an inline style (for the "Download PDF" capture, see waybill.php).
+       This file is also linked by commercial_invoice.php, which keeps this
+       plain border, so the color isn't hardcoded here. */
+    border: 2px solid #333;
     border-radius: 10px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
     z-index: 2;
