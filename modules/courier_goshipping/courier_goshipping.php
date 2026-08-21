@@ -2385,6 +2385,77 @@ class Courier_Logistic_System {
     }
 
     /**
+     * validate_staff_branch_on_login() only ever runs at the moment of a
+     * genuine login THROUGH the login form (it's fired from the
+     * "after_staff_login" hook, which only fires from
+     * Authentication::admin()'s controller method). It does NOT run for a
+     * session that becomes authenticated any other way — most importantly
+     * Perfex's own "Remember Me" autologin cookie, which
+     * Authentication_model::autologin() applies on every single request
+     * (App_Controller's constructor calls it unconditionally) by setting the
+     * staff_logged_in session flag DIRECTLY, completely bypassing the login
+     * controller and this module's branch check entirely. A staff member
+     * who ticked "Remember Me" before this feature existed (or whose branch
+     * assignment changes after they're already logged in) could therefore
+     * reach the admin area with no verified courier_active_branch_id at all.
+     *
+     * This closes that gap: runs on every admin page load (admin_init only
+     * ever fires for an already-authenticated session — see
+     * AdminController's is_staff_logged_in() guard above it — so this can
+     * never loop with the login page itself) and re-checks the same
+     * assigned-branch rule validate_staff_branch_on_login() enforces at
+     * login. Cheap by design: one session read plus one cached is_admin()
+     * lookup on the common (already-valid) path.
+     */
+    public function enforce_active_branch_session() {
+        $CI = &get_instance();
+
+        try {
+            if (!is_staff_logged_in()) {
+                return;
+            }
+
+            $staff_id = get_staff_user_id();
+            if (is_admin($staff_id)) {
+                return;
+            }
+
+            $branch_ids = courier_get_staff_branch_ids($staff_id);
+            if (empty($branch_ids)) {
+                // No branch assigned at all — same rule as login-time.
+                $this->_kick_to_login('Your account has no country/branch assigned yet. Please contact an administrator.');
+                return;
+            }
+
+            $active = (int) $CI->session->userdata('courier_active_branch_id');
+            if ($active <= 0 || !in_array($active, $branch_ids, true)) {
+                $this->_kick_to_login('Please log in again and select the country/branch you are assigned to.');
+            }
+        } catch (\Throwable $e) {
+            log_message('error', 'enforce_active_branch_session crashed: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Shared by enforce_active_branch_session() — logs the current staff
+     * member out and sends them back to the login page with a message. Not
+     * used by validate_staff_branch_on_login() itself, which needs its own
+     * try/catch-wrapped variant (it runs pre-redirect, inside the login
+     * request, before any response has been sent).
+     */
+    private function _kick_to_login($message) {
+        $CI = &get_instance();
+        set_alert('danger', $message);
+        try {
+            $CI->load->model('Authentication_model');
+            $CI->Authentication_model->logout();
+        } catch (\Throwable $e) {
+            log_message('error', '_kick_to_login logout() crashed: ' . $e->getMessage());
+        }
+        redirect(admin_url('authentication'));
+    }
+
+    /**
      * Filter: remove courier_branch_ids[]/courier_default_branch_id from the
      * staff data array before DB insert/update. Saves the values in instance
      * variables so save_staff_branches() can use them.
