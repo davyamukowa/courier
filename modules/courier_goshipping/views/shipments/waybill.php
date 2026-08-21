@@ -615,10 +615,6 @@
                             </a>
                             <?php endif; ?>
                             <?php if (is_admin() || staff_can('edit_shipments', 'courier-shipments')): ?>
-                            <a class="custom-button" href="#" data-toggle="modal" data-target="#assign_agent_modal"
-                               style="background:#0d47a1; color:#fff; border-color:#0d47a1;">
-                                <i class="fa fa-user-plus" style="margin-right:5px;"></i> Assign Agent / Staff
-                            </a>
                             <a class="custom-button" href="#" data-toggle="modal" data-target="#assign_rider_modal"
                                style="background:#00695c; color:#fff; border-color:#00695c;">
                                 <i class="fa fa-motorcycle" style="margin-right:5px;"></i> Assign Rider
