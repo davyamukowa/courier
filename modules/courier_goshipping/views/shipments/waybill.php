@@ -16,11 +16,31 @@
         document.body.appendChild(printFrame);
 
         const printDocument = printFrame.contentDocument || printFrame.contentWindow.document;
+        // .innerHTML only captures the CHILDREN of #waybill-section, not the
+        // element itself — so the wrapper's own class="waybill-container"
+        // (which carries the border AND the position:relative the watermark
+        // needs to center itself against) never makes it into this print
+        // document. That's what was producing a borderless page with the
+        // watermark stretched full-bleed instead of centered — it's rewrapped
+        // in an actual .waybill-container div below to restore both.
         const printContents = document.getElementById('waybill-section').innerHTML;
 
-        // Inline CSS with padding for waybill container
+        // Mirrors assets/waybill.css — kept in sync manually since this is a
+        // fully isolated document that doesn't link that stylesheet.
         const cssStyles = `<style>
     @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;700&display=swap');
+
+    @page {
+        size: A4;
+        margin: 8mm;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+        margin: 0;
+        padding: 0;
+    }
 
     body {
         font-family: 'Open Sans', Arial, sans-serif;
@@ -29,30 +49,27 @@
     .waybill-container {
         position: relative;
         max-width: 800px;
-        margin: auto;
+        margin: 0 auto;
         background: white;
-        padding: 20px 30px;
-        border: 2px solid #333;
+        padding: 14px 20px;
+        border: 2px solid #0d47a1;
+        border-top: 4px solid #c62828;
         border-radius: 10px;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         z-index: 2;
     }
+
     .watermark {
         position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        object-fit: fill; /* Stretches to fill vertically and horizontally */
-        opacity: 0.1;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        /* Width-only sizing (no object-fit) — see assets/waybill.css for why. */
+        width: 60%;
+        height: auto;
+        display: block;
+        opacity: 0.06;
         pointer-events: none;
-        z-index: -1;
-    }
-
-    @media print {
-        .watermark{
-                    display: block; /* Ensure watermark is visible in print */
-        }
+        z-index: 1;
     }
 
     .header {
@@ -66,33 +83,35 @@
     }
 
     .header img {
-        max-width: 150px;
+        max-width: 130px;
         height: auto;
     }
 
     .header .waybill-number {
-        font-size: 14px;
+        font-size: 13px;
         font-weight: bold;
         text-align: center;
     }
 
     .header .date {
-        font-size: 16px;
+        font-size: 13px;
         font-weight: bold;
     }
 
     .title {
         text-align: center;
-        margin-top: 10px;
-        font-size: 18px;
+        margin-top: 8px;
+        font-size: 16px;
         font-weight: bold;
         text-transform: uppercase;
     }
 
     .info-table {
         width: 100%;
-        margin-top: 10px;
+        margin-top: 8px;
         border-collapse: collapse;
+        position: relative;
+        z-index: 2;
     }
 
     .company-title {
@@ -101,10 +120,10 @@
 
     .info-table th,
     .info-table td {
-        padding: 2px;
+        padding: 3px 4px;
         border: 1px solid #333;
         text-align: left;
-        font-size: 10px;
+        font-size: 9.5px;
     }
 
     .info-table th {
@@ -119,7 +138,9 @@
     .shipping-section {
         display: flex;
         flex-direction: column;
-        margin-top: 20px;
+        margin-top: 10px;
+        position: relative;
+        z-index: 2;
     }
 
     .shipping-info {
@@ -174,14 +195,14 @@
 
     .footer {
         text-align: center;
-        margin-top: 20px;
-        font-size: 14px;
+        margin-top: 10px;
+        font-size: 11px;
         position: relative;
         z-index: 2;
     }
 
     .company-section {
-        margin-top: 20px;
+        margin-top: 10px;
     }
 
     .company-section h3 {
@@ -192,11 +213,13 @@
     }
 
     .terms {
-        margin-top: 10px;
-        font-size: 12px;
-        line-height: 1.5;
+        position: relative;
+        z-index: 2;
+        margin-top: 8px;
+        font-size: 9px;
+        line-height: 1.35;
         border-top: 2px solid #333;
-        padding-top: 10px;
+        padding-top: 6px;
     }
 
     .terms h4 {
@@ -220,13 +243,15 @@
     }
 
     .terms .column p {
-        margin: 0; /* Remove margin between paragraphs */
+        margin: 0 0 2px; /* Remove margin between paragraphs */
         padding: 0; /* Remove padding */
     }
 </style>
 `;
 
-        // Write the contents to the iframe's document
+        // Write the contents to the iframe's document — rewrapped in a real
+        // .waybill-container div (see comment above) so the border and the
+        // watermark's centering both work.
         printDocument.open();
         printDocument.write(`
             <html>
@@ -235,7 +260,7 @@
                 ${cssStyles}
             </head>
             <body>
-                ${printContents}
+                <div class="waybill-container">${printContents}</div>
             </body>
             </html>
         `);
