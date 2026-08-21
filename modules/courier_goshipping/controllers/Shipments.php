@@ -63,11 +63,13 @@ class Shipments extends AdminController
         $branch_ids = $this->get_staff_branch_ids();
         $can_all    = staff_can('view_all_shipments', 'courier-shipments');
 
-        // Single GROUP BY query for all status counts
+        // Single GROUP BY query for all status counts — 3-tier visibility
+        // (own/branch/global), see resolve_shipment_visibility().
+        $shipment_visibility = $this->resolve_shipment_visibility();
         $this->db->select('s.status_id, COUNT(*) as cnt', false);
         $this->db->from(db_prefix() . '_shipments s');
-        if (!$can_all)      { $this->db->where('s.staff_id', $staff_id); }
-        if ($branch_ids !== null) { $this->db->where_in('s.branch_id', !empty($branch_ids) ? $branch_ids : [0]); }
+        if ($shipment_visibility['staff_id'] !== null)   { $this->db->where('s.staff_id', $shipment_visibility['staff_id']); }
+        if ($shipment_visibility['branch_ids'] !== null) { $this->db->where_in('s.branch_id', $shipment_visibility['branch_ids']); }
         $this->db->group_by('s.status_id');
         $counts_raw = $this->db->get()->result();
         $shipment_counts = [];
