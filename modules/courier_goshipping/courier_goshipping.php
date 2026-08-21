@@ -2250,10 +2250,13 @@ class Courier_Logistic_System {
         // pre-filtered to just one agent's assignment — it lists every active
         // office, grouped by country so "Kenya" reads as one group covering
         // Nairobi/Nakuru/Kisumu etc., rather than one flat list of office
-        // names. Staff assigned to exactly one office never need to touch
-        // this at all — validate_staff_branch_on_login() auto-resolves it
-        // silently; this selector only matters for staff/agents covering
-        // more than one office.
+        // names. Selection is mandatory for every non-admin staff member,
+        // even one assigned to only a single office — see
+        // validate_staff_branch_on_login(), which now rejects login outright
+        // if this isn't submitted or doesn't match their assignment. Perfex
+        // super admins never see this enforced (they bypass it entirely) but
+        // the field is still shown to them since login doesn't know who's
+        // logging in yet.
         $branches = $CI->db->select('b.id, b.name, b.country_id, c.short_name as country_name')
                             ->from(db_prefix() . '_courier_branches b')
                             ->join(db_prefix() . 'countries c', 'c.country_id = b.country_id', 'left')
