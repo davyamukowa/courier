@@ -27,6 +27,11 @@ class Agent_model extends App_Model
             return $this->db->get($this->table)->row();
         }
 
+        // Newest-created agent first — there's no created_at column on this
+        // table, so id DESC (auto-increment) is the only available proxy for
+        // creation order.
+        $this->db->order_by(db_prefix().'_agents.id', 'DESC');
+
         return $this->db->get($this->table)->result();
     }
 
