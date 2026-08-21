@@ -1241,6 +1241,40 @@ if (!function_exists('courier_apply_branch_scope')) {
 }
 
 /**
+ * Resolves which of the 3 visibility tiers a staff member has for a
+ * courier_goshipping feature that registers the view_own_X / view_branch_X /
+ * view_all_X (or the legacy un-suffixed view_X "global" name used by
+ * manifests/invoices) capability triplet — 'global' (see every branch),
+ * 'branch' (see everything in their assigned branch(es)), or 'own' (see only
+ * records created-by/assigned-to them specifically). Global wins if granted
+ * (staff_can() already returns true for admins); branch wins over own if
+ * both are somehow granted; defaults to 'own' — the most restrictive tier —
+ * if neither branch nor global is granted, matching this module's existing
+ * default-deny-outward posture elsewhere.
+ *
+ * Per explicit instruction: 'own' means literally "staff_id = me", nothing
+ * more — unlike the old 2-tier model, unassigned (staff_id = 0) records are
+ * NOT included under 'own' any more (they still show up under 'branch',
+ * since every shipment has a real branch_id stamped on it regardless of
+ * assignment — see Shipments::store()). Callers must therefore apply
+ * EXACTLY ONE of a strict staff_id filter (own) or a branch_id filter
+ * (branch) or no filter at all (global) — never combine staff_id and
+ * branch_id filtering together the way the old code accidentally did.
+ */
+if (!function_exists('courier_resolve_visibility_scope')) {
+    function courier_resolve_visibility_scope($feature, $branch_cap, $global_cap, $staff_id = null)
+    {
+        if (staff_can($global_cap, $feature, $staff_id)) {
+            return 'global';
+        }
+        if (staff_can($branch_cap, $feature, $staff_id)) {
+            return 'branch';
+        }
+        return 'own';
+    }
+}
+
+/**
  * Returns the company info to stamp on courier invoices, receipts, quotations,
  * waybills, and manifests.
  *
