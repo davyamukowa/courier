@@ -27,6 +27,7 @@ class Branches extends AdminController
         $data['countries'] = $this->db->order_by('short_name', 'asc')->get(db_prefix() . 'countries')->result();
         $data['next_branch_sequence'] = $this->get_next_branch_sequence();
         $data['title'] = 'Branches / Offices';
+        $data['currencies'] = $this->db->get(db_prefix() . 'currencies')->result();
         $data['can_manage'] = is_admin() || has_permission('courier-branches', '', 'create_branches') || has_permission('courier-branches', '', 'edit_branches');
 
         // Staff assignment is managed per-branch, from that branch's own
