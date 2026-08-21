@@ -383,17 +383,15 @@ class Shipments extends AdminController
                 $endDate = isset($dates[1]) ? $dates[1] : $dates[0];
             }
 
-            // Handle status and other parameters
-            $staff_id    = get_staff_user_id();
-            $branch_ids  = $this->get_staff_branch_ids();
+            // Handle status and other parameters — 3-tier visibility
+            // (own/branch/global), see resolve_shipment_visibility().
+            $visibility  = $this->resolve_shipment_visibility();
             $status_id   = $this->input->post('status_id');
             $filter_staff_id = $this->input->post('staff_id');
-            $is_view_all = staff_can('view_all_shipments', 'courier-shipments');
-            $staff_id_param = $is_view_all ? null : $staff_id;
 
             // Filter shipment details
             $data['shipment_details'] = $this->Shipment_model->filter_shipment_details(
-                $staff_id_param,
+                $visibility['staff_id'],
                 !empty($status_id) && $status_id != '0' ? $status_id : null,
                 !empty($filter_staff_id) && $filter_staff_id != '0' ? $filter_staff_id : null,
                 $startDate,
@@ -401,7 +399,7 @@ class Shipments extends AdminController
                 $type,
                 $mode,
                 $mode_type,
-                $branch_ids
+                $visibility['branch_ids']
             );
 
             $this->session->set_userdata('filterDateRange', $this->input->post('filterDateRange'));
