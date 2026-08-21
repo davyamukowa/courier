@@ -35,29 +35,31 @@ class Courier extends AdminController
 
     private function _dashboard()
     {
-        $staff_id   = get_staff_user_id();
-        $branch_ids = $this->get_staff_branch_ids();
-        $can_all    = staff_can('view_all_shipments', 'courier-shipments');
+        $staff_id = get_staff_user_id();
+
+        // 3-tier visibility (own/branch/global) per feature — see
+        // courier_resolve_visibility_scope()'s docblock. Exactly one of
+        // staff_id/branch_ids is non-null (or neither, for 'global') —
+        // never combine them, that was the bug this replaces.
+        $ship_scope = courier_resolve_visibility_scope('courier-shipments', 'view_branch_shipments', 'view_all_shipments');
+        $ship_staff_id   = $ship_scope === 'own'    ? $staff_id : null;
+        $ship_branch_ids = $ship_scope === 'branch' ? (courier_get_staff_branch_ids() ?: [0]) : null;
+
+        $pickup_scope = courier_resolve_visibility_scope('courier-pickups', 'view_branch_pickups', 'view_all_pickups');
+        $pickup_staff_id   = $pickup_scope === 'own'    ? $staff_id : null;
+        $pickup_branch_ids = $pickup_scope === 'branch' ? (courier_get_staff_branch_ids() ?: [0]) : null;
 
         // Total shipments
-        $data['total_shipments'] = $can_all
-            ? $this->Shipment_model->get_shipment_count_by_status(null, null, $branch_ids)
-            : $this->Shipment_model->get_shipment_count_by_status(null, $staff_id, $branch_ids);
+        $data['total_shipments'] = $this->Shipment_model->get_shipment_count_by_status(null, $ship_staff_id, $ship_branch_ids);
 
         // Pending pickups
-        $can_pickups = staff_can('view_all_pickups', 'courier-pickups');
-        $data['total_pickups'] = $can_pickups
-            ? $this->Pickup_model->get(true, null, null, null, $branch_ids)
-            : $this->Pickup_model->get(true, null, $staff_id, null, $branch_ids);
-
-        $data['pending_pickups'] = $can_pickups
-            ? $this->Pickup_model->get(true, 'pending', null, null, $branch_ids)
-            : $this->Pickup_model->get(true, 'pending', $staff_id, null, $branch_ids);
+        $data['total_pickups']   = $this->Pickup_model->get(true, null, $pickup_staff_id, null, $pickup_branch_ids);
+        $data['pending_pickups'] = $this->Pickup_model->get(true, 'pending', $pickup_staff_id, null, $pickup_branch_ids);
 
         // Portal (customer) requests awaiting confirmation (invoice_id = 0 means not yet confirmed)
         $this->db->where('is_portal_request', 1)->where('invoice_id', 0);
-        if (!$can_all) { $this->db->where('(staff_id = ' . (int) $staff_id . ' OR staff_id = 0)', null, false); }
-        if ($branch_ids !== null) { $this->db->where_in('branch_id', !empty($branch_ids) ? $branch_ids : [0]); }
+        if ($ship_staff_id !== null)   { $this->db->where('staff_id', $ship_staff_id); }
+        if ($ship_branch_ids !== null) { $this->db->where_in('branch_id', $ship_branch_ids); }
         $data['portal_requests'] = (int)$this->db->get(db_prefix() . '_shipments')->num_rows();
 
         // Courier companies
@@ -66,8 +68,8 @@ class Courier extends AdminController
         // Per-status shipment counts (single GROUP BY query)
         $this->db->select('s.status_id, COUNT(*) as cnt', false);
         $this->db->from(db_prefix() . '_shipments s');
-        if (!$can_all)   { $this->db->where('s.staff_id', $staff_id); }
-        if ($branch_ids !== null) { $this->db->where_in('s.branch_id', !empty($branch_ids) ? $branch_ids : [0]); }
+        if ($ship_staff_id !== null)   { $this->db->where('s.staff_id', $ship_staff_id); }
+        if ($ship_branch_ids !== null) { $this->db->where_in('s.branch_id', $ship_branch_ids); }
         $this->db->group_by('s.status_id');
         $sc_raw = $this->db->get()->result();
         $sc = [];
@@ -77,14 +79,14 @@ class Courier extends AdminController
 
         // Today's and this month's totals
         $this->db->where('DATE(created_at)', date('Y-m-d'));
-        if (!$can_all) { $this->db->where('(staff_id = ' . (int) $staff_id . ' OR staff_id = 0)', null, false); }
-        if ($branch_ids !== null) { $this->db->where_in('branch_id', !empty($branch_ids) ? $branch_ids : [0]); }
+        if ($ship_staff_id !== null)   { $this->db->where('staff_id', $ship_staff_id); }
+        if ($ship_branch_ids !== null) { $this->db->where_in('branch_id', $ship_branch_ids); }
         $data['today_count'] = (int)$this->db->count_all_results(db_prefix() . '_shipments');
 
         $this->db->where('YEAR(created_at)', date('Y'));
         $this->db->where('MONTH(created_at)', date('n'));
-        if (!$can_all) { $this->db->where('(staff_id = ' . (int) $staff_id . ' OR staff_id = 0)', null, false); }
-        if ($branch_ids !== null) { $this->db->where_in('branch_id', !empty($branch_ids) ? $branch_ids : [0]); }
+        if ($ship_staff_id !== null)   { $this->db->where('staff_id', $ship_staff_id); }
+        if ($ship_branch_ids !== null) { $this->db->where_in('branch_id', $ship_branch_ids); }
         $data['month_count'] = (int)$this->db->count_all_results(db_prefix() . '_shipments');
 
         // Recent 8 shipments with sender/recipient names and status
@@ -97,8 +99,8 @@ class Courier extends AdminController
             ->join(db_prefix() . '_shipment_senders sn',    'sh.sender_id    = sn.id', 'left')
             ->join(db_prefix() . '_shipment_recipients rp', 'sh.recipient_id = rp.id', 'left')
             ->join(db_prefix() . '_shipment_statuses ss',   'sh.status_id    = ss.id', 'left');
-        if (!$can_all) { $recent_q->where('(sh.staff_id = ' . (int) $staff_id . ' OR sh.staff_id = 0)', null, false); }
-        if ($branch_ids !== null) { $recent_q->where_in('sh.branch_id', !empty($branch_ids) ? $branch_ids : [0]); }
+        if ($ship_staff_id !== null)   { $recent_q->where('sh.staff_id', $ship_staff_id); }
+        if ($ship_branch_ids !== null) { $recent_q->where_in('sh.branch_id', $ship_branch_ids); }
         $data['recent_shipments'] = $recent_q->order_by('sh.id', 'DESC')->limit(8)->get()->result();
 
         // Status badge classes (keyed by status_name slug)
