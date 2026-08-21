@@ -1073,7 +1073,11 @@ class Shipments extends AdminController
         }
 
         $posted_currency = (int)$this->input->post('currency_id');
-        $currency_id = $posted_currency > 0 ? $posted_currency : get_base_currency()->id;
+        // Falls back to the creating staff's branch currency (e.g. Dubai/China
+        // -> USD) rather than always the org-wide base currency, for parity
+        // with the create-shipment form's own default (see create.php) in
+        // case this method is ever reached without that field posted.
+        $currency_id = $posted_currency > 0 ? $posted_currency : courier_get_branch_currency_id(courier_get_session_branch_id());
 
         // Create invoice header with placeholder totals (updated at the end)
         $shipment_date = $this->_parse_shipment_date();
