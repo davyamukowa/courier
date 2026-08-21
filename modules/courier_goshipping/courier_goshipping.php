@@ -2298,22 +2298,30 @@ class Courier_Logistic_System {
 
     /**
      * After a successful admin login, resolve which branch this session is
-     * "operating as". If the staff has 0 or 1 assigned branches, auto-resolve
-     * silently. If they have more than one, the submitted courier_branch_id
-     * must be one of their assignments, or the session is revoked.
+     * "operating as" — and enforce it. Per explicit instruction from the
+     * project owner (CEO): every non-admin staff member must explicitly
+     * select their assigned country/branch on every login, with no
+     * auto-resolve shortcut even when they only have one assignment, and a
+     * staff member with no branch assigned at all is rejected outright
+     * (contact an admin to get one assigned) rather than let through
+     * unrestricted. Perfex super admins (is_admin()) bypass this entirely,
+     * same as they bypass branch scoping everywhere else in this module —
+     * they don't belong to a single office.
      */
     public function validate_staff_branch_on_login() {
         $CI = &get_instance();
         $staff_id = get_staff_user_id();
 
-        $branch_ids = courier_get_staff_branch_ids($staff_id);
-        if (empty($branch_ids)) {
-            // No branch assigned — no restriction applied (matches legacy behaviour)
+        if (is_admin($staff_id)) {
             return;
         }
 
-        if (count($branch_ids) === 1) {
-            $CI->session->set_userdata('courier_active_branch_id', $branch_ids[0]);
+        $branch_ids = courier_get_staff_branch_ids($staff_id);
+        if (empty($branch_ids)) {
+            $CI->load->model('Authentication_model');
+            $CI->Authentication_model->logout();
+            set_alert('danger', 'Your account has no country/branch assigned yet. Please contact an administrator.');
+            redirect(admin_url('authentication'));
             return;
         }
 
@@ -2321,7 +2329,7 @@ class Courier_Logistic_System {
         if ($submitted <= 0 || !in_array($submitted, $branch_ids, true)) {
             $CI->load->model('Authentication_model');
             $CI->Authentication_model->logout();
-            set_alert('danger', 'Please select one of your assigned branches to continue.');
+            set_alert('danger', 'Please select the country/branch you are assigned to, to continue.');
             redirect(admin_url('authentication'));
             return;
         }
