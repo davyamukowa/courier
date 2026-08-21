@@ -2289,14 +2289,30 @@ class Shipments extends AdminController
                 ->result();
         }
 
-        // Load active staff members and agents for the assignment dropdown
-        $data['staff_members'] = $this->db->select('s.staffid, s.firstname, s.lastname, a.id as agent_id')
+        // Load active staff members and agents for the "Assign Agent / Staff"
+        // dropdown — separate from the rider list below (riders get their own
+        // "Assign Rider" button/modal, they must never be mixed into this one).
+        $data['staff_members'] = $this->db->select('s.staffid, s.firstname, s.lastname, a.id as agent_id, a.unique_number as agent_code')
             ->from(db_prefix() . 'staff s')
             ->join(db_prefix() . '_agents a', 'a.staff_id = s.staffid', 'left')
             ->where('s.active', 1)
             ->order_by('s.firstname', 'asc')
             ->get()
             ->result();
+
+        // Active couriers riders for the "Assign Rider" dropdown — always
+        // available, not just for Salibay-linked shipments (a plain general
+        // shipment can be assigned to a rider too).
+        $data['courier_riders'] = [];
+        if ($this->db->table_exists(db_prefix() . '_courier_riders')) {
+            $data['courier_riders'] = $this->db->select('r.staff_id, r.name, r.phone')
+                ->from(db_prefix() . '_courier_riders r')
+                ->where('r.staff_id IS NOT NULL', null, false)
+                ->where('r.status', 'active')
+                ->order_by('r.name', 'asc')
+                ->get()
+                ->result();
+        }
 
         // Salibay orders get a short rider link (no vehicle/odometer/GPS —
         // just Start → Deliver/Cancel) instead of the full fleet "Book a
