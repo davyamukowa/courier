@@ -1737,38 +1737,58 @@ $('#wb_cpm_submit').on('click', function () {
         <div class="modal-content">
             <div class="modal-header">
                 <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
-                <h4 class="modal-title"><i class="fa fa-user-plus"></i> <?php echo !empty($salibay_delivery_link) ? 'Assign Rider' : 'Assign Shipment to Agent / Staff'; ?></h4>
+                <h4 class="modal-title"><i class="fa fa-user-plus"></i> Assign Shipment to Agent / Staff</h4>
             </div>
             <?php echo form_open(admin_url('courier_goshipping/shipments/assign_agent/' . $wb_sid)); ?>
             <div class="modal-body">
-                <?php if (!empty($salibay_delivery_link)): ?>
-                <div class="form-group">
-                    <label for="assigned_staff_id" class="control-label">Select Rider</label>
-                    <select name="assigned_staff_id" id="assigned_staff_id" class="selectpicker" data-width="100%" data-none-selected-text="Select Rider" data-live-search="true" required>
-                        <option value=""></option>
-                        <?php foreach ($salibay_riders as $rider): ?>
-                            <option value="<?php echo $rider->staff_id; ?>" <?php echo ((int)$shipment_details['shipment']->staff_id === (int)$rider->staff_id) ? 'selected' : ''; ?>>
-                                <?php echo htmlspecialchars($rider->name . ' (' . $rider->phone . ')'); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                    <?php if (empty($salibay_riders)): ?>
-                    <p class="text-muted" style="margin-top:8px;">No riders are linked to a driver profile yet — see the Riders tab under Salibay Fulfilment.</p>
-                    <?php endif; ?>
-                </div>
-                <?php else: ?>
                 <div class="form-group">
                     <label for="assigned_staff_id" class="control-label">Select Agent / Staff</label>
                     <select name="assigned_staff_id" id="assigned_staff_id" class="selectpicker" data-width="100%" data-none-selected-text="Select Agent or Staff" data-live-search="true" required>
                         <option value=""></option>
                         <?php foreach ($staff_members as $staff): ?>
                             <option value="<?php echo $staff->staffid; ?>" <?php echo ((int)$shipment_details['shipment']->staff_id === (int)$staff->staffid) ? 'selected' : ''; ?>>
-                                <?php echo htmlspecialchars($staff->firstname . ' ' . $staff->lastname) . (!empty($staff->agent_id) ? ' (Agent)' : ' (Staff)'); ?>
+                                <?php
+                                    echo htmlspecialchars($staff->firstname . ' ' . $staff->lastname)
+                                        . (!empty($staff->agent_id) ? ' (Agent' . (!empty($staff->agent_code) ? ' #' . $staff->agent_code : '') . ')' : ' (Staff)');
+                                ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <?php endif; ?>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                <button type="submit" class="btn btn-primary">Save Assignment</button>
+            </div>
+            <?php echo form_close(); ?>
+        </div>
+    </div>
+</div>
+
+<!-- ── Assign Rider Modal ─────────────────────────────── -->
+<div class="modal fade" id="assign_rider_modal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                <h4 class="modal-title"><i class="fa fa-motorcycle"></i> Assign Rider</h4>
+            </div>
+            <?php echo form_open(admin_url('courier_goshipping/shipments/assign_agent/' . $wb_sid)); ?>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="assigned_rider_id" class="control-label">Select Rider</label>
+                    <select name="assigned_staff_id" id="assigned_rider_id" class="selectpicker" data-width="100%" data-none-selected-text="Select Rider" data-live-search="true" required>
+                        <option value=""></option>
+                        <?php foreach ($courier_riders as $rider): ?>
+                            <option value="<?php echo $rider->staff_id; ?>" <?php echo ((int)$shipment_details['shipment']->staff_id === (int)$rider->staff_id) ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($rider->name . ' (' . $rider->phone . ')'); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <?php if (empty($courier_riders)): ?>
+                    <p class="text-muted" style="margin-top:8px;">No riders are linked to a driver profile yet — see the Riders tab under Salibay Fulfilment.</p>
+                    <?php endif; ?>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
