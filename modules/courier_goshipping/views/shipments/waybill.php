@@ -48,8 +48,9 @@
 
     .waybill-container {
         position: relative;
-        max-width: 800px;
-        margin: 0 auto;
+        width: 100%;
+        box-sizing: border-box;
+        margin: 0;
         background: white;
         padding: 14px 20px;
         border: 2px solid #0d47a1;
