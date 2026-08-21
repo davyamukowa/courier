@@ -3000,8 +3000,9 @@ class Courier_Logistic_System {
 
         // Shipments
         $config['capabilities'] = [
-            'view_own_shipments'   => 'View (Own)',
-            'view_all_shipments'   => 'View (Global)',
+            'view_own_shipments'    => 'View (Own)',
+            'view_branch_shipments' => 'View (Branch)',
+            'view_all_shipments'    => 'View (Global)',
             'create_shipments'     => 'Create (All)',
             'create_shipment_road' => 'Create (Road)',
             'create_shipment_fcl'  => 'Create (FCL)',
@@ -3018,8 +3019,9 @@ class Courier_Logistic_System {
 
         // Pickups
         $config['capabilities'] = [
-            'view_own_pickups'   => 'View (Own)',
-            'view_all_pickups'   => 'View (Global)',
+            'view_own_pickups'    => 'View (Own)',
+            'view_branch_pickups' => 'View (Branch)',
+            'view_all_pickups'    => 'View (Global)',
             'create_pickups'     => 'Create',
             'edit_pickups'       => 'Edit',
             'delete_pickups'     => 'Delete',
@@ -3113,5 +3115,4 @@ class Courier_Logistic_System {
 // add_filter('csrf_exclude_uris', ...) registered from this file fires too
 // late to have any effect (see that file's header comment).
 
-// Instantiate the module class to initialize it
-new Courier_Logistic_System();
+// Instantiate the modul
