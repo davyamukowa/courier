@@ -2681,7 +2681,9 @@ class Shipments extends AdminController
             '{tracking_link}'  => $tracking_url,
         ];
 
-        $sent = mail_template('Courier_waybill_to_customer', 'courier_goshipping', $to_email, $merge)->send();
+        $mail = mail_template('Courier_waybill_to_customer', 'courier_goshipping', $to_email, $merge);
+        courier_attach_waybill_pdfs($mail, (int) $id);
+        $sent = $mail->send();
         if ($sent) {
             echo json_encode(['success' => true, 'message' => 'Waybill sent successfully to ' . $to_email]);
         } else {
