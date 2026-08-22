@@ -31,12 +31,12 @@
                                     <label>Service Type <span class="text-danger">*</span></label>
                                     <select class="form-control" id="matrix_service_type" required>
                                         <option value="">-- Select Service Type --</option>
-                                        <option value="courier">Courier (Standard Parcel)</option>
-                                        <option value="road">Road Freight</option>
-                                        <option value="lcl">Sea LCL</option>
-                                        <option value="consolidation">Sea Consolidation</option>
-                                        <option value="air_freight">Air Freight</option>
-                                        <option value="air_consolidation">Air Consolidation</option>
+                                        <option value="courier">International Courier</option>
+                                        <option value="road">International Road</option>
+                                        <option value="lcl">International by Sea — LCL</option>
+                                        <option value="consolidation">International by Sea — Consolidation</option>
+                                        <option value="air_freight">International by Air — Air Freight</option>
+                                        <option value="air_consolidation">International by Air — Air Consolidation</option>
                                         <!-- Note: Domestic is excluded per requirements -->
                                     </select>
                                 </div>
