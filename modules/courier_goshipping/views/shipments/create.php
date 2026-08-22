@@ -167,6 +167,7 @@ echo '<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/selec
     // Set this based on your PHP code or context
     const modeType = '<?php echo $mode_type; ?>'; // Adjust according to how you get the value
     const isLocalCourier = <?php echo ((($courier_type ?? 'international') === 'local') || ($type ?? '') === 'domestic') ? 'true' : 'false'; ?>;
+    const SHIPMENT_MODE = '<?php echo $mode ?? ''; ?>'; // origin_tariffs.service_type key: courier/road/lcl/consolidation/air_freight/air_consolidation
 
     document.addEventListener('DOMContentLoaded', function () {
 
