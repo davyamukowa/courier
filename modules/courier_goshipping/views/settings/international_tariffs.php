@@ -185,13 +185,20 @@ document.addEventListener('DOMContentLoaded', function() {
         var alertDiv = document.getElementById('origin-tariff-alert');
         alertDiv.style.display = 'none';
 
+        var file = fileInput.files[0];
+        var isExcel = /\.(xlsx|xls)$/i.test(file.name);
+
         var formData = new FormData();
         formData.append('origin_country', origin);
         formData.append('service_type', service);
-        formData.append('matrix_csv', fileInput.files[0]);
+        formData.append(isExcel ? 'matrix_excel' : 'matrix_csv', file);
         formData.append('<?php echo $this->security->get_csrf_token_name(); ?>', '<?php echo $this->security->get_csrf_hash(); ?>');
 
-        fetch('<?php echo admin_url("courier_goshipping/settings/upload_matrix_csv"); ?>', {
+        var uploadUrl = isExcel
+            ? '<?php echo admin_url("courier_goshipping/settings/upload_matrix_excel"); ?>'
+            : '<?php echo admin_url("courier_goshipping/settings/upload_matrix_csv"); ?>';
+
+        fetch(uploadUrl, {
             method: 'POST',
             body: formData,
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
