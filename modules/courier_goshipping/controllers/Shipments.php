@@ -1187,9 +1187,19 @@ class Shipments extends AdminController
             }
         }
 
-        // For international non-FCL, convert total chargeable weight to monetary amount
+        // For international non-FCL, convert total chargeable weight to monetary amount.
+        // Prefer the origin-tariff matrix (Kenya → destination, weight-banded,
+        // uploaded via International Tariffs settings) — falls back to the
+        // legacy flat per-kg option only if no matrix row covers this route/weight.
         if (!$is_local && $mode_type !== 'fcl') {
-            $total_amount = $total_chargeable * $mode_rate;
+            $tariff = courier_lookup_origin_tariff($sender_country, $receiver_country, $tariff_service_type, $total_chargeable);
+            if ($tariff !== null) {
+                $total_amount      = $tariff['amount'];
+                $mode_rate         = $tariff['unit_rate'];
+                $tariff_rate_type  = $tariff['rate_type'];
+            } else {
+                $total_amount = $total_chargeable * $mode_rate;
+            }
         }
 
         // ── Build shared route description ───────────────────────────────────
