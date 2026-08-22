@@ -4,8 +4,36 @@
     </div>
     <div class="panel-body">
         <p class="text-muted" style="font-size:13px; margin-bottom: 20px;">
-            Upload rate sheets keyed by origin country and service type. The portal quote calculator will match Origin &rarr; Destination to find the correct rate.
+            Upload rate sheets keyed by origin country and service type. Shipment creation and the client portal's quote calculator both match Origin &rarr; Destination &rarr; Weight to find the correct rate automatically.
         </p>
+
+        <?php
+            $kenya_origin = null;
+            foreach (($origin_tariff_origins ?? []) as $o) {
+                if (strcasecmp(trim($o['origin_country']), 'Kenya') === 0) { $kenya_origin = $o; break; }
+            }
+        ?>
+        <?php if ($kenya_origin): ?>
+        <a href="<?php echo admin_url('courier_goshipping/settings/view_origin_rates?origin=' . urlencode($kenya_origin['origin_country']) . '&service=courier'); ?>"
+           target="_blank"
+           style="display:flex; align-items:center; justify-content:space-between; gap:12px;
+                  background:linear-gradient(135deg,#2e7d32,#1b5e20); color:#fff; text-decoration:none;
+                  border-radius:8px; padding:14px 18px; margin-bottom:18px;">
+            <span style="display:flex; align-items:center; gap:12px;">
+                <i class="fa fa-plane" style="font-size:22px;"></i>
+                <span>
+                    <strong style="font-size:15px;">International Courier — Kenya &rarr; Rest of World</strong><br>
+                    <span style="font-size:12px; opacity:.85;">View or edit the full Kenya-origin courier rate sheet in an Excel-style grid</span>
+                </span>
+            </span>
+            <span><i class="fa fa-arrow-right"></i></span>
+        </a>
+        <?php else: ?>
+        <div class="alert alert-warning" style="margin-bottom:18px;">
+            <i class="fa fa-exclamation-triangle"></i> No Kenya-origin rates uploaded yet. Use the wizard below —
+            Origin Country = <strong>Kenya</strong>, Service Type = <strong>International Courier</strong> — to upload the rate sheet.
+        </div>
+        <?php endif; ?>
 
         <div class="row">
             <div class="col-md-6">
