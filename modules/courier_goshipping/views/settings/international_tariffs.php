@@ -45,14 +45,17 @@
 
                             <!-- STEP 2 -->
                             <div class="wizard-step" id="step-2" style="display:none;">
-                                <h5><strong>Step 2: Download Template</strong></h5>
+                                <h5><strong>Step 2: Download Template (optional)</strong></h5>
                                 <p class="text-muted">
-                                    Download the 2D Matrix CSV template for the selected origin and service type. 
-                                    Fill in your rates across the columns (destinations) and rows (weights/containers).
+                                    You can upload your own rate sheet directly as an <strong>.xlsx</strong> file in Step 3 —
+                                    a row of destination country codes (US, NL, DE, AE...) followed by weight-band rows
+                                    (0.5&nbsp;kg, 1.0&nbsp;kg... up to a "Price per kg" row for the over-max-weight rate)
+                                    is read automatically. Only download this CSV template if you'd rather start from a
+                                    blank sheet.
                                 </p>
                                 <div class="form-group">
                                     <button type="button" class="cgs-btn cgs-btn--outline" onclick="downloadMatrixTemplate()">
-                                        <i class="fa fa-download"></i> Download Template
+                                        <i class="fa fa-download"></i> Download CSV Template
                                     </button>
                                 </div>
                                 <hr>
@@ -64,8 +67,9 @@
                             <div class="wizard-step" id="step-3" style="display:none;">
                                 <h5><strong>Step 3: Upload Tariffs</strong></h5>
                                 <div class="form-group">
-                                    <label>Completed CSV File <span class="text-danger">*</span></label>
-                                    <input type="file" id="matrix_csv_file" accept=".csv" class="form-control">
+                                    <label>Rate Sheet File <span class="text-danger">*</span></label>
+                                    <input type="file" id="matrix_csv_file" accept=".csv,.xlsx,.xls" class="form-control">
+                                    <small class="text-muted">Accepts .xlsx (your own rate sheet, uploaded as-is) or .csv (the downloaded template).</small>
                                 </div>
                                 <hr>
                                 <button type="button" class="cgs-btn cgs-btn--outline" onclick="goToStep(2)"><i class="fa fa-arrow-left"></i> Back</button>
