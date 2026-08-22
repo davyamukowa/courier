@@ -2696,6 +2696,68 @@ function saveLogisticCompany() {
         return el ? (parseFloat(el.value) || 0) : 0;
     }
 
+    // ── Origin-tariff matrix (Kenya → destination, weight-banded) ──────────
+    // Loaded from tbl_courier_origin_tariffs via the same endpoint the
+    // "View Rates" grid uses, filtered client-side by SHIPMENT_MODE
+    // (origin_tariffs.service_type) + the selected destination country +
+    // chargeable weight. Falls back to the flat INTL_RATE below only when no
+    // matrix row covers this route/weight (e.g. that service's rate sheet
+    // hasn't been uploaded yet under Settings → International Tariffs).
+    var tariffRowsByOrigin = {};   // origin short_name -> rows[]
+    var tariffFetchInFlight = {};  // origin short_name -> true while loading
+
+    function loadTariffRows(origin) {
+        if (!origin || tariffRowsByOrigin[origin] || tariffFetchInFlight[origin]) return;
+        tariffFetchInFlight[origin] = true;
+        fetch('<?php echo admin_url("courier_goshipping/settings/origin_tariff_rates_json"); ?>?origin=' + encodeURIComponent(origin))
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                tariffRowsByOrigin[origin] = (res && res.success && res.data) ? res.data : [];
+                delete tariffFetchInFlight[origin];
+                updatePreview();
+            })
+            .catch(function () { delete tariffFetchInFlight[origin]; });
+    }
+
+    function selectedOptionText(sel) {
+        if (!sel || sel.selectedIndex < 0) return '';
+        var opt = sel.options[sel.selectedIndex];
+        return opt ? opt.textContent.trim() : '';
+    }
+
+    function getOriginCountryName() {
+        var senderType = document.querySelector('input[name="sender_type"]:checked');
+        var isCompany = senderType && senderType.value === 'company';
+        var sel = document.getElementById(isCompany ? 'contact_country_id' : 'sender_country_id');
+        return selectedOptionText(sel);
+    }
+
+    function getDestinationCountryName() {
+        var recipientType = document.querySelector('input[name="recipient_type"]:checked');
+        var isCompany = recipientType && recipientType.value === 'company';
+        var sel = document.getElementById(isCompany ? 'recipient_contact_country_id' : 'recipient_country_id');
+        return selectedOptionText(sel);
+    }
+
+    function lookupTariffAmount(originName, destName, chargeableWeight) {
+        var rows = tariffRowsByOrigin[originName];
+        if (!rows || !destName || !SHIPMENT_MODE || chargeableWeight <= 0) return null;
+
+        var match = null;
+        rows.forEach(function (r) {
+            if (r.destination_country !== destName || r.service_type !== SHIPMENT_MODE) return;
+            var wmin = parseFloat(r.weight_min), wmax = parseFloat(r.weight_max);
+            if (chargeableWeight < wmin || chargeableWeight > wmax) return;
+            if (!match || wmax < parseFloat(match.weight_max)) match = r;
+        });
+        if (!match) return null;
+
+        var rate = parseFloat(match.rate) || 0;
+        if (rate <= 0) return null;
+        var amount = (match.rate_type === 'per_kg') ? rate * chargeableWeight : rate;
+        return { amount: amount, rate: rate, rate_type: match.rate_type };
+    }
+
     function getPackageLines() {
         var lines = [];
         var rows = document.querySelectorAll('#packageTable tbody tr');
@@ -2721,11 +2783,24 @@ function saveLogisticCompany() {
                 totalKg += qty > 0 ? cw : 0; // chargeable_weight already includes qty factor in some modes
             });
             if (totalKg > 0) {
-                lines.push({
-                    desc:   'Shipping (Chargeable Weight)',
-                    detail: totalKg.toFixed(2) + ' kg × ' + INTL_RATE,
-                    amount: totalKg * INTL_RATE
-                });
+                var origin = getOriginCountryName();
+                var dest   = getDestinationCountryName();
+                loadTariffRows(origin); // no-op once cached; triggers a re-render on first load
+
+                var tariff = lookupTariffAmount(origin, dest, totalKg);
+                if (tariff) {
+                    lines.push({
+                        desc:   'Shipping (Chargeable Weight)',
+                        detail: totalKg.toFixed(2) + ' kg — ' + dest + (tariff.rate_type === 'per_kg' ? (' @ ' + tariff.rate + '/kg over max band') : ' rate sheet'),
+                        amount: tariff.amount
+                    });
+                } else {
+                    lines.push({
+                        desc:   'Shipping (Chargeable Weight)',
+                        detail: totalKg.toFixed(2) + ' kg × ' + INTL_RATE + (dest ? ' (no rate sheet for ' + dest + ' — using default)' : ''),
+                        amount: totalKg * INTL_RATE
+                    });
+                }
             }
         }
         return lines;
