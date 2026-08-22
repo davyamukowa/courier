@@ -915,6 +915,152 @@ class Settings extends AdminController
         echo json_encode(['success' => true, 'inserted' => $inserted, 'updated' => $updated, 'errors' => $errors]);
     }
 
+    /**
+     * Excel (.xlsx) counterpart of upload_matrix_csv() above — handles the
+     * real rate-sheet format the business actually produces (2 header rows:
+     * full country name, then its ISO2 code; weight-band rows down to 70kg;
+     * a trailing "Price per kg" row for the >70kg overage rate) instead of
+     * requiring staff to hand-convert to the CSV template first. Uses the
+     * dependency-free courier_parse_xlsx_rows() (see courier_helper.php) —
+     * no Composer vendor/ involved, so this works on the cPanel production
+     * deploy too (git-pulled modules/* only, no `composer install` step).
+     */
+    public function upload_matrix_excel()
+    {
+        if (!$this->input->is_ajax_request()) { show_404(); }
+        if (empty($_FILES['matrix_excel']['tmp_name'])) {
+            echo json_encode(['success' => false, 'message' => 'No file uploaded.']);
+            return;
+        }
+        $origin_country = trim($this->input->post('origin_country'));
+        $service_type   = trim($this->input->post('service_type'));
+
+        if ($origin_country === '' || $service_type === '') {
+            echo json_encode(['success' => false, 'message' => 'Please select origin country and service type.']);
+            return;
+        }
+        $ext = strtolower(pathinfo($_FILES['matrix_excel']['name'], PATHINFO_EXTENSION));
+        if (!in_array($ext, ['xlsx', 'xls'])) {
+            echo json_encode(['success' => false, 'message' => 'Please upload an .xlsx file.']);
+            return;
+        }
+
+        $origin_tbl = db_prefix() . '_courier_origin_tariffs';
+        if (!$this->db->table_exists($origin_tbl)) {
+            echo json_encode(['success' => false, 'message' => 'Origin tariff table not found.']);
+            return;
+        }
+
+        $rows = courier_parse_xlsx_rows($_FILES['matrix_excel']['tmp_name']);
+        if ($rows === false || empty($rows)) {
+            echo json_encode(['success' => false, 'message' => 'Could not read that Excel file. Make sure it is a valid .xlsx (re-save from Excel if it was edited in another tool), or use the CSV template instead.']);
+            return;
+        }
+        ksort($rows);
+
+        // ISO2 -> canonical country name (tblcountries.short_name), so the
+        // stored destination_country always matches what the recipient
+        // country dropdown displays elsewhere in the app (short_name), even
+        // though the rate sheet's own header row can have typos/abbreviations
+        // ("Sweeden", "Great Britain") that a raw string match would miss.
+        $iso2_map = [];
+        foreach ($this->db->select('iso2, short_name')->get(db_prefix() . 'countries')->result_array() as $c) {
+            if (!empty($c['iso2'])) {
+                $iso2_map[strtoupper($c['iso2'])] = $c['short_name'];
+            }
+        }
+
+        // Find the header row: the first row where at least 2 non-A cells are
+        // recognizable ISO2 codes. That's the code row (e.g. US, NL, DE — one
+        // row below the full-name row, which we don't need at all).
+        $header_row = null;
+        $col_dest   = []; // column letter => destination_country (short_name)
+        foreach ($rows as $rn => $row) {
+            $hits = [];
+            foreach ($row as $col => $val) {
+                if ($col === 'A') continue;
+                $code = strtoupper(trim((string) $val));
+                if (isset($iso2_map[$code])) {
+                    $hits[$col] = $iso2_map[$code];
+                }
+            }
+            if (count($hits) >= 2) {
+                $header_row = $rn;
+                $col_dest   = $hits;
+                break;
+            }
+        }
+
+        if ($header_row === null) {
+            echo json_encode(['success' => false, 'message' => 'Could not find the destination country header row (expected a row of 2-letter country codes like US, NL, DE, AE...).']);
+            return;
+        }
+
+        $inserted = 0; $updated = 0; $last_weight_max = 0;
+
+        foreach ($rows as $rn => $row) {
+            if ($rn <= $header_row || empty($row['A'])) continue;
+
+            $label = trim((string) $row['A']);
+            if ($label === '' || stripos($label, 'over') === 0) {
+                continue; // e.g. "Over 70 Kgs" marker row — no rate of its own
+            }
+
+            $is_per_kg_row = (stripos($label, 'price per kg') !== false || stripos($label, 'per kg') !== false);
+
+            if ($is_per_kg_row) {
+                $weight_min = $last_weight_max;
+                $weight_max = 999999;
+                $rate_type  = 'per_kg';
+            } else {
+                $wmax = (float) preg_replace('/[^0-9.]/', '', $label);
+                if ($wmax <= 0) continue; // unparseable weight label — skip row
+                $weight_min = 0;
+                $weight_max = $wmax;
+                $rate_type  = 'flat';
+                $last_weight_max = max($last_weight_max, $wmax);
+            }
+
+            foreach ($col_dest as $col => $dest) {
+                if (!isset($row[$col]) || $row[$col] === '' || $row[$col] === null) continue;
+                $rate = (float) preg_replace('/[^0-9.\-]/', '', (string) $row[$col]);
+                if ($rate <= 0) continue;
+
+                $row_data = [
+                    'origin_country'      => $origin_country,
+                    'destination_country' => $dest,
+                    'service_type'        => $service_type,
+                    'weight_min'          => $weight_min,
+                    'weight_max'          => $weight_max,
+                    'rate_type'           => $rate_type,
+                    'rate'                => $rate,
+                ];
+
+                $existing = $this->db->where([
+                    'origin_country'      => $origin_country,
+                    'destination_country' => $dest,
+                    'service_type'        => $service_type,
+                    'weight_max'          => $weight_max,
+                ])->get($origin_tbl)->row();
+
+                if ($existing) {
+                    $this->db->where('id', $existing->id)->update($origin_tbl, $row_data);
+                    $updated++;
+                } else {
+                    $this->db->insert($origin_tbl, $row_data);
+                    $inserted++;
+                }
+            }
+        }
+
+        if ($inserted === 0 && $updated === 0) {
+            echo json_encode(['success' => false, 'message' => 'No rates were found to import. Check that weight-band rows are below the country-code header row and cells contain numeric rates.']);
+            return;
+        }
+
+        echo json_encode(['success' => true, 'inserted' => $inserted, 'updated' => $updated, 'errors' => 0, 'origin' => $origin_country]);
+    }
+
     public function view_origin_rates()
     {
         $origin = trim($this->input->get('origin') ?: '');
