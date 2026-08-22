@@ -1255,17 +1255,29 @@ class Shipments extends AdminController
             }
 
         } else {
-            // International non-FCL: single line — qty = total chargeable weight, rate = mode rate
+            // International non-FCL: single line.
+            // A matched origin-tariff "flat" cell is already the total price
+            // for the whole weight band (not a per-kg rate) — qty=1 there, so
+            // the line total matches $total_amount exactly. "per_kg" (the
+            // tariff matrix's own >max-weight overage band) and the legacy
+            // flat-per-kg settings fallback both still price by chargeable
+            // weight, same as before this feature existed.
             $unit_label = ($mode_type === 'sea_consolidation') ? 'CBM' : 'kgs';
+            $is_flat_tariff = ($tariff_rate_type === 'flat');
+            $line_qty  = $is_flat_tariff ? 1 : $total_chargeable;
+            $line_rate = $is_flat_tariff ? $total_amount : $mode_rate;
+            $line_unit = $is_flat_tariff ? 'shipment' : $unit_label;
+            $weight_note = $is_flat_tariff ? ("\n" . number_format($total_chargeable, 2) . ' kg chargeable') : '';
+
             $this->Shipment_model->add_invoice_item([
-                'description'      => 'WAYBILL - ' . strtoupper($waybill_number) . "\n\n",
+                'description'      => 'WAYBILL - ' . strtoupper($waybill_number) . $weight_note . "\n\n",
                 'long_description' => $route_long_desc,
-                'qty'              => $total_chargeable,
-                'rate'             => $mode_rate,
+                'qty'              => $line_qty,
+                'rate'             => $line_rate,
                 'item_order'       => 1,
                 'rel_id'           => $invoice_id,
                 'rel_type'         => 'invoice',
-                'unit'             => $unit_label,
+                'unit'             => $line_unit,
             ]);
         }
 
