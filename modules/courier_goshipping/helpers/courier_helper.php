@@ -1339,6 +1339,166 @@ if (!function_exists('courier_get_branch_currency_id')) {
     }
 }
 
+/**
+ * Minimal, dependency-free .xlsx reader (no PhpSpreadsheet / Composer vendor
+ * required) — deliberately hand-rolled because this module deploys to
+ * production purely by `modules/*` folders being git-pulled by a cPanel cron
+ * (see root CLAUDE.md); any composer vendor/ directory is normally
+ * .gitignore'd (as modules/surveys/vendor is) and would silently never reach
+ * the live server, so a "PhpSpreadsheet is available locally" assumption
+ * would work in dev and 500 in production. An .xlsx is just a zip of XML
+ * parts, so ZipArchive + SimpleXML is enough for the flat rate-sheet shape
+ * this module needs (shared strings + a single worksheet, no styles/merges).
+ *
+ * Returns [row_number => [col_letter => raw_value]] (values are strings —
+ * numeric cells come back as their plain numeric string, since Excel stores
+ * thousands separators as display formatting only, never in the cell value),
+ * or false if the file can't be read as an xlsx (missing ZipArchive, not a
+ * zip, no worksheet found, etc).
+ */
+if (!function_exists('courier_parse_xlsx_rows')) {
+    function courier_parse_xlsx_rows($file_path)
+    {
+        if (!class_exists('ZipArchive')) {
+            return false;
+        }
+
+        $zip = new ZipArchive();
+        if ($zip->open($file_path) !== true) {
+            return false;
+        }
+
+        // Shared strings table (string cells are stored as an index into this).
+        $shared = [];
+        $ss_xml = $zip->getFromName('xl/sharedStrings.xml');
+        if ($ss_xml !== false) {
+            $ss = @simplexml_load_string($ss_xml);
+            if ($ss !== false && isset($ss->si)) {
+                foreach ($ss->si as $si) {
+                    if (isset($si->t)) {
+                        $shared[] = (string) $si->t;
+                    } else {
+                        // Rich text run (bold/italic spans) — concatenate the runs.
+                        $text = '';
+                        if (isset($si->r)) {
+                            foreach ($si->r as $r) {
+                                $text .= (string) $r->t;
+                            }
+                        }
+                        $shared[] = $text;
+                    }
+                }
+            }
+        }
+
+        // First worksheet — sheet1.xml if present, else the first sheetN.xml found.
+        $sheet_xml = $zip->getFromName('xl/worksheets/sheet1.xml');
+        if ($sheet_xml === false) {
+            for ($i = 0; $i < $zip->numFiles; $i++) {
+                $name = $zip->getNameIndex($i);
+                if (preg_match('#^xl/worksheets/sheet\d+\.xml$#', $name)) {
+                    $sheet_xml = $zip->getFromName($name);
+                    break;
+                }
+            }
+        }
+        $zip->close();
+
+        if ($sheet_xml === false) {
+            return false;
+        }
+
+        $xml = @simplexml_load_string($sheet_xml);
+        if ($xml === false || !isset($xml->sheetData)) {
+            return false;
+        }
+
+        $rows = [];
+        foreach ($xml->sheetData->row as $row) {
+            $r = (int) $row['r'];
+            if ($r <= 0) {
+                continue;
+            }
+            foreach ($row->c as $c) {
+                $ref = (string) $c['r'];
+                if (!preg_match('/^([A-Z]+)\d+$/', $ref, $m)) {
+                    continue;
+                }
+                $col  = $m[1];
+                $type = (string) $c['t'];
+
+                if ($type === 's') {
+                    $idx = isset($c->v) ? (int) $c->v : -1;
+                    $value = $shared[$idx] ?? '';
+                } elseif ($type === 'inlineStr') {
+                    $value = isset($c->is->t) ? (string) $c->is->t : '';
+                } else {
+                    $value = isset($c->v) ? (string) $c->v : null;
+                }
+
+                $rows[$r][$col] = $value;
+            }
+        }
+
+        return $rows;
+    }
+}
+
+/**
+ * Shared origin-tariff matrix lookup — Kenya (or any configured origin) →
+ * destination country, keyed by service_type, weight-banded. Used both by
+ * the client-portal quote calculator's own inline query (Tracker::calculate_quote)
+ * and by admin shipment creation (Shipments::process_invoice_and_packages) so
+ * both places agree on the same rate for the same route/weight. Cells are
+ * "flat" (a fixed price for that whole weight band — how the uploaded rate-sheet
+ * Excels are structured) or "per_kg" (used for the >70kg tail band, where the
+ * sheet gives a per-kg overage rate instead of one more flat cell).
+ *
+ * Returns ['rate_type' => .., 'unit_rate' => .., 'amount' => ..] or null if no
+ * row covers this route/weight (caller should fall back to its own default).
+ */
+if (!function_exists('courier_lookup_origin_tariff')) {
+    function courier_lookup_origin_tariff($origin_country, $destination_country, $service_type, $chargeable_weight)
+    {
+        if ($origin_country === '' || $destination_country === '' || $service_type === '' || $chargeable_weight <= 0) {
+            return null;
+        }
+
+        $CI = &get_instance();
+        $origin_tbl = db_prefix() . '_courier_origin_tariffs';
+        if (!$CI->db->table_exists($origin_tbl)) {
+            return null;
+        }
+
+        $row = $CI->db
+            ->where('origin_country', $origin_country)
+            ->where('destination_country', $destination_country)
+            ->where('service_type', $service_type)
+            ->where('weight_min <=', $chargeable_weight)
+            ->where('weight_max >=', $chargeable_weight)
+            ->order_by('weight_max', 'ASC')
+            ->get($origin_tbl)
+            ->row_array();
+
+        if (!$row) {
+            return null;
+        }
+
+        $rate = (float) $row['rate'];
+        if ($rate <= 0) {
+            return null;
+        }
+
+        $amount = ($row['rate_type'] === 'per_kg') ? $rate * $chargeable_weight : $rate;
+
+        return [
+            'rate_type'  => $row['rate_type'],
+            'unit_rate'  => $rate,
+            'amount'     => round($amount, 2),
+        ];
+    }
+}
+
 
 
 
