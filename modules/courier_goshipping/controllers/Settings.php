@@ -1098,22 +1098,26 @@ class Settings extends AdminController
             foreach ($records as $r) {
                 $dest = $r['destination_country'];
                 $w = $r['weight_max'];
-                $rate = $r['rate'];
-                
+
                 if (!in_array($dest, $destinations)) {
                     $destinations[] = $dest;
                 }
                 if (!in_array($w, $weights)) {
                     $weights[] = $w;
                 }
-                
-                $matrix_data[$w][$dest] = $rate;
+
+                $matrix_data[$w][$dest] = [
+                    'id'         => $r['id'],
+                    'rate'       => $r['rate'],
+                    'rate_type'  => $r['rate_type'],
+                    'weight_min' => $r['weight_min'],
+                ];
             }
-            
+
             sort($destinations); // Alphabetical columns
             // Weights are already sorted by ASC from DB query if we just use them, but let's re-sort to be safe.
             usort($weights, function($a, $b) { return (float)$a <=> (float)$b; });
-            
+
             $data['matrices'][] = [
                 'service' => $service,
                 'destinations' => $destinations,
@@ -1122,8 +1126,172 @@ class Settings extends AdminController
             ];
         }
 
+        $data['active_service'] = trim($this->input->get('service') ?: '');
         $data['title'] = 'View Rates: ' . $origin;
         $this->load->view('settings/view_origin_rates', $data);
+    }
+
+    /**
+     * Save a single edited/added cell in the "Excel view" grid
+     * (view_origin_rates.php) — updates by id when one exists (the cell
+     * already had a rate), otherwise inserts (blank cell the user just typed
+     * a value into, or a brand-new row/column added via the buttons below).
+     */
+    public function update_origin_tariff_cell()
+    {
+        if (!$this->input->is_ajax_request()) { show_404(); }
+
+        $id                  = (int) $this->input->post('id');
+        $origin_country      = trim($this->input->post('origin_country'));
+        $destination_country = trim($this->input->post('destination_country'));
+        $service_type        = trim($this->input->post('service_type'));
+        $weight_min          = (float) $this->input->post('weight_min');
+        $weight_max          = (float) $this->input->post('weight_max');
+        $rate_type           = $this->input->post('rate_type') === 'per_kg' ? 'per_kg' : 'flat';
+        $rate                = (float) $this->input->post('rate');
+
+        if ($origin_country === '' || $destination_country === '' || $service_type === '' || $weight_max <= 0 || $rate < 0) {
+            echo json_encode(['success' => false, 'message' => 'Missing or invalid cell data.']);
+            return;
+        }
+
+        $origin_tbl = db_prefix() . '_courier_origin_tariffs';
+        if (!$this->db->table_exists($origin_tbl)) {
+            echo json_encode(['success' => false, 'message' => 'Origin tariff table not found.']);
+            return;
+        }
+
+        $row_data = [
+            'origin_country'      => $origin_country,
+            'destination_country' => $destination_country,
+            'service_type'        => $service_type,
+            'weight_min'          => $weight_min,
+            'weight_max'          => $weight_max,
+            'rate_type'           => $rate_type,
+            'rate'                => $rate,
+        ];
+
+        if ($id > 0) {
+            $this->db->where('id', $id)->update($origin_tbl, $row_data);
+            echo json_encode(['success' => true, 'id' => $id]);
+            return;
+        }
+
+        // No id yet — this is a previously-blank cell. Match on the same key
+        // upload_matrix_csv()/upload_matrix_excel() use so re-typing a value
+        // into a cell that already has a row (e.g. loaded before this page's
+        // own insert lands) updates it instead of creating a duplicate.
+        $existing = $this->db->where([
+            'origin_country'      => $origin_country,
+            'destination_country' => $destination_country,
+            'service_type'        => $service_type,
+            'weight_max'          => $weight_max,
+        ])->get($origin_tbl)->row();
+
+        if ($existing) {
+            $this->db->where('id', $existing->id)->update($origin_tbl, $row_data);
+            echo json_encode(['success' => true, 'id' => $existing->id]);
+            return;
+        }
+
+        $this->db->insert($origin_tbl, $row_data);
+        echo json_encode(['success' => true, 'id' => $this->db->insert_id()]);
+    }
+
+    /**
+     * "+ Add Weight Band" — adds a new row to the grid at the given weight,
+     * with a blank (rate = NULL, not stored) cell under every destination
+     * that already has at least one rate for this origin+service, so the
+     * new row renders with editable-but-empty cells the user can then fill
+     * in one by one via update_origin_tariff_cell() above.
+     */
+    public function add_origin_tariff_weight_band()
+    {
+        if (!$this->input->is_ajax_request()) { show_404(); }
+
+        $origin_country = trim($this->input->post('origin_country'));
+        $service_type   = trim($this->input->post('service_type'));
+        $weight_max     = (float) $this->input->post('weight_max');
+
+        if ($origin_country === '' || $service_type === '' || $weight_max <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Please enter a valid weight.']);
+            return;
+        }
+
+        $origin_tbl = db_prefix() . '_courier_origin_tariffs';
+        $destinations = $this->db->select('destination_country')
+            ->where('origin_country', $origin_country)
+            ->where('service_type', $service_type)
+            ->group_by('destination_country')
+            ->get($origin_tbl)->result_array();
+
+        if (empty($destinations)) {
+            echo json_encode(['success' => false, 'message' => 'Add at least one destination rate first, then add more weight bands.']);
+            return;
+        }
+
+        $exists = $this->db->where('origin_country', $origin_country)
+            ->where('service_type', $service_type)
+            ->where('weight_max', $weight_max)
+            ->get($origin_tbl)->row();
+        if ($exists) {
+            echo json_encode(['success' => false, 'message' => 'That weight band already exists.']);
+            return;
+        }
+
+        echo json_encode([
+            'success'      => true,
+            'weight_max'   => $weight_max,
+            'destinations' => array_column($destinations, 'destination_country'),
+        ]);
+    }
+
+    /**
+     * "+ Add Destination" — same idea as add_origin_tariff_weight_band()
+     * above but for a new column: returns the existing weight bands so the
+     * grid can render the new destination with a blank editable cell at
+     * each one.
+     */
+    public function add_origin_tariff_destination()
+    {
+        if (!$this->input->is_ajax_request()) { show_404(); }
+
+        $origin_country = trim($this->input->post('origin_country'));
+        $service_type   = trim($this->input->post('service_type'));
+        $destination    = trim($this->input->post('destination_country'));
+
+        if ($origin_country === '' || $service_type === '' || $destination === '') {
+            echo json_encode(['success' => false, 'message' => 'Please select a destination country.']);
+            return;
+        }
+
+        $origin_tbl = db_prefix() . '_courier_origin_tariffs';
+        $weights = $this->db->select('weight_max')
+            ->where('origin_country', $origin_country)
+            ->where('service_type', $service_type)
+            ->group_by('weight_max')
+            ->order_by('weight_max', 'ASC')
+            ->get($origin_tbl)->result_array();
+
+        if (empty($weights)) {
+            echo json_encode(['success' => false, 'message' => 'Add at least one weight band first, then add more destinations.']);
+            return;
+        }
+
+        $exists = $this->db->where('origin_country', $origin_country)
+            ->where('service_type', $service_type)
+            ->where('destination_country', $destination)
+            ->get($origin_tbl)->row();
+        if ($exists) {
+            echo json_encode(['success' => false, 'message' => 'That destination already has rates for this service.']);
+            return;
+        }
+
+        echo json_encode([
+            'success'     => true,
+            'destination' => $destination,
+            'weights'     => array_column($weights, 'weight_max'),
+        ]);
     }
 
     public function delete_origin_tariff($origin_country)
