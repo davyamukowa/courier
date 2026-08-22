@@ -1107,7 +1107,11 @@ class Shipments extends AdminController
         $is_local = (get_option('courier_type') === 'local')
                  || (get_option('courier_type') !== 'local' && $this->input->post('type') === 'domestic');
 
-        // Rate lookup for international non-FCL modes
+        // Rate lookup for international non-FCL modes — legacy flat-per-kg
+        // fallback, used only when no origin-tariff matrix row covers this
+        // route/weight (e.g. a service that hasn't had a rate sheet uploaded
+        // yet). See courier_lookup_origin_tariff() in courier_helper.php for
+        // the real, destination-aware pricing this now prefers.
         $rate_map = [
             'lcl'               => 'courier_rate_sea_lcl',
             'sea_consolidation' => 'courier_rate_sea_consolidation',
@@ -1116,6 +1120,15 @@ class Shipments extends AdminController
         ];
         $rate_option = $rate_map[$mode_type] ?? 'courier_rate_road';
         $mode_rate   = (float)(get_option($rate_option) ?: 1);
+
+        // $mode (e.g. 'courier','road','lcl','consolidation','air_freight',
+        // 'air_consolidation') is the origin_tariffs.service_type value —
+        // matches what the Upload Wizard on the International Tariffs
+        // settings page and the client-portal quote calculator both key rates
+        // by. $mode_type ('none'/'fcl'/etc) is a different, narrower field
+        // and is NOT the same axis, so it must not be used for this lookup.
+        $tariff_service_type = $this->input->post('mode');
+        $tariff_rate_type    = null; // set once a matrix row is matched, for the invoice line's unit label
 
         $total_amount     = 0;  // monetary total for invoice
         $total_chargeable = 0;  // chargeable weight/CBM (used as invoice line qty)
