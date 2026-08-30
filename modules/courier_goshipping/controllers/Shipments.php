@@ -1151,7 +1151,12 @@ class Shipments extends AdminController
             if ($mode_type === 'fcl') {
                 $fcl_opt        = $data['fcl_options'][$i] ?? '';
                 $fcl_opt_key    = strtolower(str_replace(["'", " "], "", $fcl_opt));
-                $container_rate = (float)(get_option('courier_rate_sea_fcl_' . $fcl_opt_key) ?: 1);
+                // Prefer the uploaded origin-tariff matrix (destination-aware
+                // container rate) — falls back to the flat Settings ->
+                // Customization option only if no matrix row covers this
+                // route/container. See courier_lookup_origin_fcl_rate().
+                $container_rate = courier_lookup_origin_fcl_rate($sender_country, $receiver_country, $fcl_opt_key)
+                    ?? (float)(get_option('courier_rate_sea_fcl_' . $fcl_opt_key) ?: 1);
                 $total_amount  += (int)$quantity * $container_rate;
 
                 $this->ShipmentFCLPackage_model->add([
