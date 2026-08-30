@@ -61,10 +61,11 @@
                                         <option value="">-- Select Service Type --</option>
                                         <option value="courier">International Courier</option>
                                         <option value="road">International Road</option>
-                                        <option value="lcl">International by Sea — LCL</option>
-                                        <option value="consolidation">International by Sea — Consolidation</option>
                                         <option value="air_freight">International by Air — Air Freight</option>
                                         <option value="air_consolidation">International by Air — Air Consolidation</option>
+                                        <option value="fcl">International by Sea — FCL</option>
+                                        <option value="lcl">International by Sea — LCL</option>
+                                        <option value="consolidation">International by Sea — Consolidation</option>
                                         <!-- Note: Domestic is excluded per requirements -->
                                     </select>
                                 </div>
