@@ -643,10 +643,12 @@ if (!function_exists('_courier_pdf_party_lines')) {
  * NOT a reuse of the admin waybill.php/commercial_invoice.php views: those are
  * full interactive admin pages (flexbox, box-shadow, watermark image, print
  * JS) that TCPDF's limited HTML/CSS renderer can't reproduce — this builds a
- * lighter, print-safe layout with the same underlying data instead.
+ * lighter, print-safe layout that mirrors the same fields/branding/terms
+ * instead, with the logo watermarked behind the content via TCPDF's own
+ * alpha-image API (writeHTML's <img> can't do CSS opacity).
  */
 if (!function_exists('_courier_render_pdf')) {
-    function _courier_render_pdf($html, $title)
+    function _courier_render_pdf($html, $title, $watermark_path = null)
     {
         if (!class_exists('TCPDF', false)) {
             require_once(APPPATH . 'vendor/tecnickcom/tcpdf/tcpdf.php');
@@ -661,9 +663,119 @@ if (!function_exists('_courier_render_pdf')) {
         $pdf->SetMargins(12, 12, 12);
         $pdf->SetAutoPageBreak(true, 12);
         $pdf->AddPage();
+
+        if ($watermark_path && file_exists($watermark_path)) {
+            $pdf->SetAlpha(0.07);
+            $pdf->Image($watermark_path, 55, 100, 100, 100, '', '', '', false, 300, '', false, false, 0);
+            $pdf->SetAlpha(1);
+        }
+
         $pdf->writeHTML($html, true, false, true, false, '');
 
         return $pdf->Output($title . '.pdf', 'S');
+    }
+}
+
+/**
+ * Local filesystem path to the company logo (dark variant preferred, same
+ * fallback order as waybill.php/commercial_invoice.php), or null if none is
+ * set/the file is missing. A local path — not base_url() — is used for the
+ * TCPDF <img> tags below so embedding never depends on an outbound HTTP
+ * fetch back to this same server.
+ */
+if (!function_exists('_courier_pdf_logo_path')) {
+    function _courier_pdf_logo_path()
+    {
+        $file = get_option('company_logo_dark') ?: get_option('company_logo');
+        if (empty($file)) {
+            return null;
+        }
+        $path = FCPATH . 'uploads/company/' . $file;
+        return file_exists($path) ? $path : null;
+    }
+}
+
+/**
+ * Local filesystem path to a CODE_128 barcode PNG for $code, generating and
+ * caching it under the same modules/courier_goshipping/assets/barcodes/
+ * directory the admin waybill page's generate_barcode() uses — so a shipment
+ * viewed in-admin and one only ever emailed share the same cached file
+ * instead of generating it twice. Registers the Picqer barcode library's own
+ * autoloader (copied from Shipments.php::barcodeAutoloader) since these
+ * PDF generators can be called from contexts — Fulfilment.php,
+ * Shopify_connector.php, the "waybill created" auto-email path — that never
+ * instantiate Shipments and so never register it themselves. Returns null
+ * (never throws) if the code can't be generated.
+ */
+if (!function_exists('_courier_pdf_barcode_path')) {
+    function _courier_pdf_barcode_path($code)
+    {
+        if (empty($code)) {
+            return null;
+        }
+        try {
+            if (!class_exists('Picqer\\Barcode\\BarcodeGeneratorPNG', false)) {
+                spl_autoload_register(function ($class) {
+                    $base_dir = FCPATH . 'modules/courier_goshipping/libraries/php-barcode-generator-main/src/';
+                    $file = $base_dir . str_replace(['Picqer\\Barcode\\', '\\'], ['', '/'], $class) . '.php';
+                    if (file_exists($file)) {
+                        require_once $file;
+                    }
+                });
+            }
+            if (!class_exists('Picqer\\Barcode\\BarcodeGeneratorPNG')) {
+                return null;
+            }
+
+            $directory = FCPATH . 'modules/courier_goshipping/assets/barcodes/';
+            if (!file_exists($directory)) {
+                mkdir($directory, 0755, true);
+            }
+            $safe_code = str_replace(['/', '\\', ':', '*', '?', '"', '<', '>', '|'], '_', $code);
+            $file_path = $directory . $safe_code . '.png';
+
+            if (!file_exists($file_path)) {
+                $generator = new Picqer\Barcode\BarcodeGeneratorPNG();
+                file_put_contents($file_path, $generator->getBarcode($code, $generator::TYPE_CODE_128));
+            }
+
+            return $file_path;
+        } catch (\Throwable $e) {
+            log_message('error', 'PDF barcode generation crashed: ' . $e->getMessage());
+            return null;
+        }
+    }
+}
+
+/**
+ * Static Terms & Conditions block shared by the waybill PDF and the admin
+ * waybill.php view — kept as one copy here so the two never drift apart.
+ */
+if (!function_exists('_courier_pdf_terms_html')) {
+    function _courier_pdf_terms_html()
+    {
+        return '
+            <div style="margin-top:14px;font-size:10px;font-weight:bold;color:#0d47a1;border-bottom:1px solid #b9c9e0;padding-bottom:2px;">Terms and Conditions</div>
+            <table cellpadding="2" style="width:100%;margin-top:4px;">
+                <tr>
+                    <td style="width:50%;font-size:7.5px;vertical-align:top;border:none;">
+                        <p><b>1. General Conditions:</b> Use of our services implies acceptance of these terms and applicable laws.</p>
+                        <p><b>2. Delivery Times:</b> We estimate delivery times but do not guarantee specific dates. Delays may occur.</p>
+                        <p><b>3. Package Restrictions:</b> Ensure package contents comply with laws. Some items may be restricted or prohibited.</p>
+                        <p><b>4. Shipping Charges:</b> Charges are based on weight, dimensions, and destination. Additional fees may apply.</p>
+                        <p><b>5. Claims and Liability:</b> We are not liable for issues after delivery. Claims must be reported within a specified period.</p>
+                    </td>
+                    <td style="width:50%;font-size:7.5px;vertical-align:top;border:none;">
+                        <p><b>6. Customs and Duties:</b> You are responsible for customs fees and taxes for international shipments.</p>
+                        <p><b>7. Insurance:</b> Optional insurance covers package value up to a limit. Refer to our policy for details.</p>
+                        <p><b>8. Address Accuracy:</b> Ensure correct address details to avoid delays or issues.</p>
+                        <p><b>9. Changes to Terms:</b> Terms may be updated. Review regularly for any changes.</p>
+                        <p><b>10. Contact Information:</b> For questions or concerns, contact our customer service.</p>
+                    </td>
+                </tr>
+            </table>
+            <div style="font-size:8px;color:#333;margin-top:4px;">Thank you for using our services. We strive to provide reliable delivery solutions.</div>
+        ';
     }
 }
 
