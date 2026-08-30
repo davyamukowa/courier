@@ -840,11 +840,17 @@ if (!function_exists('courier_generate_waybill_pdf')) {
             $logo_path        = _courier_pdf_logo_path();
             $barcode_path     = _courier_pdf_barcode_path($shipment->tracking_id ?: $shipment->waybill_number);
 
-            // Matches waybill.css's .info-table exactly (#f0f0f0 header bg,
-            // #333 borders, plain black text) — not an invented color scheme.
+            // Matches waybill.css's .info-table exactly for the label cells
+            // (#f0f0f0 header bg, #333 borders, plain black bold text). The
+            // VALUE cells carry the brand blue (#0d47a1) — same accent as the
+            // card border and the module's own action buttons — which is how
+            // the real page actually renders values vs. labels, even though
+            // that particular rule lives in the surrounding admin theme
+            // rather than this module's own CSS.
             $th  = 'style="background-color:#f0f0f0;border:1px solid #333;padding:6px 8px;font-size:9px;font-weight:bold;text-align:left;width:20%;"';
-            $td  = 'style="border:1px solid #333;padding:6px 8px;font-size:9px;width:30%;"';
+            $td  = 'style="border:1px solid #333;padding:6px 8px;font-size:9px;width:30%;color:#0d47a1;"';
             $ptd = 'style="border:1px solid #333;padding:5px 6px;font-size:8px;text-align:center;"';
+            $ptdAccent = 'style="border:1px solid #333;padding:5px 6px;font-size:8px;text-align:center;color:#f97316;"';
 
             $is_fcl = (int) ($shipment->fcl_shipment ?? 0) === 1;
             $packages_rows = '';
