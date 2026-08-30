@@ -501,7 +501,7 @@
                         </a>
                         <?php endif; ?>
 
-                        <?php if (is_admin()): ?>
+                        <?php if (!empty($can_view_commercial_invoice)): ?>
                         <?php
                         $ci_url = !empty($shipment_details['shipment']->commercial_invoice_url)
                             ? base_url($shipment_details['shipment']->commercial_invoice_url)
