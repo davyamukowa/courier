@@ -891,18 +891,18 @@ if (!function_exists('courier_generate_waybill_pdf')) {
 
             $company_label = !empty($shipment->company_type) ? htmlspecialchars($shipment->company_type) : 'Courier Company';
 
-            $html = '
+            $inner_html = '
                 <table cellpadding="0" style="width:100%;border-collapse:collapse;">
                     <tr>
-                        <td style="width:33%;text-align:left;vertical-align:middle;border:none;">' . $logo_cell . '</td>
-                        <td style="width:34%;text-align:center;vertical-align:middle;border:none;">
-                            <span style="font-size:15px;font-weight:bold;color:#0d47a1;">WAYBILL</span><br>
-                            <span style="font-size:10px;color:#555;">Waybill Number: ' . $waybill_number . '</span>
+                        <td style="width:22%;text-align:left;vertical-align:middle;border:none;">' . $logo_cell . '</td>
+                        <td style="width:46%;text-align:center;vertical-align:middle;border:none;">
+                            <span style="font-size:12px;font-weight:bold;">Waybill Number: ' . $waybill_number . '</span>
                         </td>
-                        <td style="width:33%;text-align:right;vertical-align:middle;border:none;">' . $barcode_cell . '<br><span style="font-size:8px;color:#777;">' . date('F j, Y') . '</span></td>
+                        <td style="width:32%;text-align:right;vertical-align:middle;border:none;">' . $barcode_cell . '<br><span style="font-size:10px;font-weight:bold;">' . date('F j, Y') . '</span></td>
                     </tr>
                 </table>
-                <table cellpadding="4" style="width:100%;border-collapse:collapse;margin-top:8px;">
+                <div style="border-bottom:1px solid #000;margin-top:4px;margin-bottom:8px;"></div>
+                <table cellpadding="4" style="width:100%;border-collapse:collapse;">
                     <tr>
                         <th ' . $th . '>' . ($details['sender_type'] === 'individual' ? 'Sender Name' : 'Sender') . '</th>
                         <td ' . $td . '>' . htmlspecialchars($sender_lines['name']) . '</td>
@@ -936,7 +936,7 @@ if (!function_exists('courier_generate_waybill_pdf')) {
                         <td ' . $td . ' colspan="3">' . htmlspecialchars($logistic_company) . '</td>
                     </tr>
                 </table>
-                <div style="margin-top:10px;font-size:11px;font-weight:bold;color:#0d47a1;">Package Details</div>
+                <div style="margin-top:10px;font-size:11px;font-weight:bold;">Package Details</div>
                 <table cellpadding="4" style="width:100%;border-collapse:collapse;margin-top:3px;">
                     ' . $package_header . '
                     ' . $packages_rows . '
@@ -949,8 +949,15 @@ if (!function_exists('courier_generate_waybill_pdf')) {
                     ' . ($agent_html !== '' ? '<tr><th ' . $th . '>Shipped By (Agent)</th><td ' . $td . ' colspan="3">' . $agent_html . '</td></tr>' : '') . '
                 </table>
                 ' . _courier_pdf_terms_html() . '
-                <div style="text-align:center;font-size:8px;color:#888;margin-top:10px;border-top:1px solid #ddd;padding-top:4px;">&copy; ' . date('Y') . ' ' . htmlspecialchars($logistic_company) . '. All rights reserved.</div>
+                <div style="text-align:center;font-size:9px;margin-top:10px;">&copy; ' . date('Y') . ' ' . htmlspecialchars($logistic_company) . '. All rights reserved.</div>
             ';
+
+            // Blue/red bordered card — the one deliberate color accent, matching
+            // the inline override waybill.php applies over the plain default
+            // .waybill-container border (see waybill.css's own comment on it).
+            $html = '<table cellpadding="10" style="width:100%;border-collapse:collapse;">
+                <tr><td style="border:2px solid #0d47a1;border-top:4px solid #c62828;">' . $inner_html . '</td></tr>
+            </table>';
 
             return _courier_render_pdf($html, 'Waybill-' . ($shipment->waybill_number ?: $shipment->tracking_id), $logo_path);
         } catch (\Throwable $e) {
