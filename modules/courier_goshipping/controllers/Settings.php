@@ -968,6 +968,19 @@ class Settings extends AdminController
             echo json_encode(['success' => false, 'message' => 'Origin tariff table not found.']);
             return;
         }
+        // Self-heal: container_type wasn't part of the table's original
+        // schema (see run_db_upgrades_v53() in courier_goshipping.php).
+        if (!$this->db->field_exists('container_type', $origin_tbl)) {
+            $this->db->query("ALTER TABLE `{$origin_tbl}` ADD COLUMN `container_type` VARCHAR(20) NULL DEFAULT NULL AFTER `service_type`");
+        }
+
+        $is_fcl = ($service_type === 'fcl');
+        // Same normalized form Shipments.php derives from the fcl_options[]
+        // dropdown ("20'DV" -> "20dv") — a rate-sheet row label is only
+        // treated as a container row if it matches one of these exactly
+        // after normalizing, so a genuinely unparseable label is skipped
+        // instead of silently miscategorized.
+        $valid_container_types = ['20dv','40dv','20hc','40hc','20rf','40rf','20fr','40fr','roro'];
 
         $rows = courier_parse_xlsx_rows($_FILES['matrix_excel']['tmp_name']);
         if ($rows === false || empty($rows)) {
