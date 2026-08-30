@@ -1037,19 +1037,31 @@ class Settings extends AdminController
                 continue; // e.g. "Over 70 Kgs" marker row — no rate of its own
             }
 
-            $is_per_kg_row = (stripos($label, 'price per kg') !== false || stripos($label, 'per kg') !== false);
-
-            if ($is_per_kg_row) {
-                $weight_min = $last_weight_max;
-                $weight_max = 999999;
-                $rate_type  = 'per_kg';
-            } else {
-                $wmax = (float) preg_replace('/[^0-9.]/', '', $label);
-                if ($wmax <= 0) continue; // unparseable weight label — skip row
+            $container_type = null;
+            if ($is_fcl) {
+                $normalized = strtolower(str_replace(["'", ' ', '-', '_'], '', $label));
+                if (!in_array($normalized, $valid_container_types, true)) {
+                    continue; // not a recognized container code — skip row
+                }
+                $container_type = $normalized;
                 $weight_min = 0;
-                $weight_max = $wmax;
+                $weight_max = 0;
                 $rate_type  = 'flat';
-                $last_weight_max = max($last_weight_max, $wmax);
+            } else {
+                $is_per_kg_row = (stripos($label, 'price per kg') !== false || stripos($label, 'per kg') !== false);
+
+                if ($is_per_kg_row) {
+                    $weight_min = $last_weight_max;
+                    $weight_max = 999999;
+                    $rate_type  = 'per_kg';
+                } else {
+                    $wmax = (float) preg_replace('/[^0-9.]/', '', $label);
+                    if ($wmax <= 0) continue; // unparseable weight label — skip row
+                    $weight_min = 0;
+                    $weight_max = $wmax;
+                    $rate_type  = 'flat';
+                    $last_weight_max = max($last_weight_max, $wmax);
+                }
             }
 
             foreach ($col_dest as $col => $dest) {
@@ -1061,18 +1073,24 @@ class Settings extends AdminController
                     'origin_country'      => $origin_country,
                     'destination_country' => $dest,
                     'service_type'        => $service_type,
+                    'container_type'      => $container_type,
                     'weight_min'          => $weight_min,
                     'weight_max'          => $weight_max,
                     'rate_type'           => $rate_type,
                     'rate'                => $rate,
                 ];
 
-                $existing = $this->db->where([
+                $match = [
                     'origin_country'      => $origin_country,
                     'destination_country' => $dest,
                     'service_type'        => $service_type,
-                    'weight_max'          => $weight_max,
-                ])->get($origin_tbl)->row();
+                ];
+                if ($is_fcl) {
+                    $match['container_type'] = $container_type;
+                } else {
+                    $match['weight_max'] = $weight_max;
+                }
+                $existing = $this->db->where($match)->get($origin_tbl)->row();
 
                 if ($existing) {
                     $this->db->where('id', $existing->id)->update($origin_tbl, $row_data);
