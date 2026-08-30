@@ -1140,13 +1140,18 @@ class Settings extends AdminController
                                 ->get($origin_tbl)
                                 ->result_array();
                                 
+            $is_fcl_service = ($service === 'fcl');
             $destinations = [];
             $weights = [];
             $matrix_data = [];
-            
+
             foreach ($records as $r) {
                 $dest = $r['destination_country'];
-                $w = $r['weight_max'];
+                // FCL rows all share weight_max=0 (container-based, not
+                // weight-based — see run_db_upgrades_v53()), so the row key
+                // has to be container_type there instead, or every container
+                // size at a destination would collapse onto one grid row.
+                $w = ($is_fcl_service && !empty($r['container_type'])) ? $r['container_type'] : $r['weight_max'];
 
                 if (!in_array($dest, $destinations)) {
                     $destinations[] = $dest;
@@ -1164,11 +1169,16 @@ class Settings extends AdminController
             }
 
             sort($destinations); // Alphabetical columns
-            // Weights are already sorted by ASC from DB query if we just use them, but let's re-sort to be safe.
-            usort($weights, function($a, $b) { return (float)$a <=> (float)$b; });
+            if ($is_fcl_service) {
+                sort($weights); // container codes — plain alphabetical (20dv, 20fr, ... roro)
+            } else {
+                // Weights are already sorted by ASC from DB query if we just use them, but let's re-sort to be safe.
+                usort($weights, function($a, $b) { return (float)$a <=> (float)$b; });
+            }
 
             $data['matrices'][] = [
                 'service' => $service,
+                'is_fcl' => $is_fcl_service,
                 'destinations' => $destinations,
                 'weights' => $weights,
                 'data' => $matrix_data
