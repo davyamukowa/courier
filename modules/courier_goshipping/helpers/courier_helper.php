@@ -1052,11 +1052,11 @@ if (!function_exists('courier_generate_commercial_invoice_pdf')) {
                     <tr>
                         <td style="width:20%;text-align:left;vertical-align:middle;border:none;">' . $logo_cell . '</td>
                         <td style="width:60%;text-align:center;vertical-align:middle;border:none;">
-                            <span style="font-size:16px;font-weight:bold;color:#0d47a1;">COMMERCIAL INVOICE</span><br>
-                            <span style="font-size:9px;color:#555;">' . htmlspecialchars($logistic_company) . '</span><br>
-                            <span style="font-size:9px;color:#555;">Waybill Number: ' . $waybill_number . '</span>
+                            <span style="font-size:16px;font-weight:bold;">COMMERCIAL INVOICE</span><br>
+                            <span style="font-size:9px;">' . htmlspecialchars($logistic_company) . '</span><br>
+                            <span style="font-size:9px;">Waybill Number: ' . $waybill_number . '</span>
                         </td>
-                        <td style="width:20%;text-align:right;vertical-align:middle;border:none;font-size:8px;color:#777;">' . date('F j, Y') . '</td>
+                        <td style="width:20%;text-align:right;vertical-align:middle;border:none;font-size:9px;font-weight:bold;">' . date('F j, Y') . '</td>
                     </tr>
                 </table>
                 <table cellpadding="4" style="width:100%;border-collapse:collapse;margin-top:10px;">
