@@ -801,7 +801,7 @@ if (!function_exists('_courier_pdf_terms_html')) {
                     </td>
                 </tr>
             </table>
-            <div style="font-size:8px;margin-top:4px;color:#c62828;">Thank you for using our services. We strive to provide reliable delivery solutions.</div>
+            <div style="font-size:8px;margin-top:4px;">Thank you for using our services. We strive to provide reliable delivery solutions.</div>
         ';
     }
 }
