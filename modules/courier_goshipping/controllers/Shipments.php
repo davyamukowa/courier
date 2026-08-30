@@ -1859,6 +1859,38 @@ class Shipments extends AdminController
         return true;
     }
 
+    // ── Helper: 3-tier visibility (own/branch/global) for the Commercial
+    // Invoices permission group — mirrors _assert_ownership()'s pattern for
+    // 'courier-shipments' but against 'courier-commercial-invoices' capabilities,
+    // since a staffer's shipment access and their commercial-invoice access are
+    // granted independently (see modules/courier_goshipping/CLAUDE.md).
+    private function _can_view_commercial_invoice($shipment_row)
+    {
+        if (is_admin()) {
+            return true;
+        }
+
+        $has_any = staff_can('view_all_commercial_invoices', 'courier-commercial-invoices')
+            || staff_can('view_branch_commercial_invoices', 'courier-commercial-invoices')
+            || staff_can('view_own_commercial_invoices', 'courier-commercial-invoices');
+        if (!$has_any) {
+            return false;
+        }
+
+        $scope = courier_resolve_visibility_scope('courier-commercial-invoices', 'view_branch_commercial_invoices', 'view_all_commercial_invoices');
+
+        if ($scope === 'global') {
+            return true;
+        }
+
+        if ($scope === 'branch') {
+            $branch_ids = courier_get_staff_branch_ids() ?: [0];
+            return in_array((int) $shipment_row->branch_id, $branch_ids);
+        }
+
+        return (int) $shipment_row->staff_id === (int) get_staff_user_id();
+    }
+
     // ── Helper: shared redirect guard ────────────────────────────────────────
     private function load_shipment_or_redirect($id, $ignore_ownership = false)
     {
@@ -2294,6 +2326,8 @@ class Shipments extends AdminController
         }
 
         $shipment_row = $data['shipment_details']['shipment'];
+
+        $data['can_view_commercial_invoice'] = $this->_can_view_commercial_invoice($shipment_row);
 
         $tracking_id = $data['shipment_details']['shipment']->tracking_id ?? '';
         $data['barcode'] = $tracking_id ? $this->generate_barcode($tracking_id) : '';
