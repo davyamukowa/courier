@@ -1135,7 +1135,7 @@ if (!function_exists('courier_generate_commercial_invoice_pdf')) {
                 <div style="text-align:center;font-size:9px;margin-top:16px;">&copy; ' . date('Y') . ' ' . htmlspecialchars($logistic_company) . '. All rights reserved.</div>
             ';
 
-            return _courier_render_pdf($html, 'Commercial-Invoice-' . ($shipment->waybill_number ?: $shipment->tracking_id), $logo_path);
+            return _courier_render_pdf($html, 'Commercial-Invoice-' . ($shipment->waybill_number ?: $shipment->tracking_id));
         } catch (\Throwable $e) {
             log_message('error', 'Commercial invoice PDF generation crashed: ' . $e->getMessage());
             return null;
