@@ -646,6 +646,15 @@ if (!function_exists('_courier_pdf_party_lines')) {
  * lighter, print-safe layout that mirrors the same fields/branding/terms
  * instead, with the logo watermarked behind the content via TCPDF's own
  * alpha-image API (writeHTML's <img> can't do CSS opacity).
+ *
+ * The on-screen watermark (waybill.css's .watermark) is centered with
+ * `position:absolute;top:50%` inside a `position:relative` container, so it
+ * automatically lands in the middle of however tall the card actually is.
+ * TCPDF has no equivalent — an image drawn before writeHTML() sits at a
+ * fixed, content-height-independent spot — so when $watermark_path is given,
+ * this renders the HTML once into a throwaway PDF purely to measure where
+ * the content actually ends ($pdf->GetY()), then re-renders for real with
+ * the watermark centered against that real height instead of a guess.
  */
 if (!function_exists('_courier_render_pdf')) {
     function _courier_render_pdf($html, $title, $watermark_path = null)
@@ -654,19 +663,37 @@ if (!function_exists('_courier_render_pdf')) {
             require_once(APPPATH . 'vendor/tecnickcom/tcpdf/tcpdf.php');
         }
 
-        $pdf = new TCPDF('P', 'mm', 'A4', true, 'UTF-8', false);
-        $pdf->SetCreator('Go Shipping Cargo');
-        $pdf->SetAuthor(get_option('companyname') ?: 'Go Shipping Cargo');
-        $pdf->SetTitle($title);
-        $pdf->setPrintHeader(false);
-        $pdf->setPrintFooter(false);
-        $pdf->SetMargins(12, 12, 12);
-        $pdf->SetAutoPageBreak(true, 12);
+        $build = function () use ($title) {
+            $pdf = new TCPDF('P', 'mm', 'A4', true, 'UTF-8', false);
+            $pdf->SetCreator('Go Shipping Cargo');
+            $pdf->SetAuthor(get_option('companyname') ?: 'Go Shipping Cargo');
+            $pdf->SetTitle($title);
+            $pdf->setPrintHeader(false);
+            $pdf->setPrintFooter(false);
+            $pdf->SetMargins(12, 12, 12);
+            $pdf->SetAutoPageBreak(true, 12);
+            return $pdf;
+        };
+
+        $top_margin    = 12;
+        $content_end_y = 297 - $top_margin; // fallback: treat as a full page
+
+        if ($watermark_path && file_exists($watermark_path)) {
+            $measure = $build();
+            $measure->AddPage();
+            $measure->writeHTML($html, true, false, true, false, '');
+            $content_end_y = $measure->GetY();
+        }
+
+        $pdf = $build();
         $pdf->AddPage();
 
         if ($watermark_path && file_exists($watermark_path)) {
+            $wm_size = 90;
+            $wm_x = (210 - $wm_size) / 2;
+            $wm_y = max($top_margin, ($top_margin + $content_end_y) / 2 - ($wm_size / 2));
             $pdf->SetAlpha(0.07);
-            $pdf->Image($watermark_path, 55, 100, 100, 100, '', '', '', false, 300, '', false, false, 0);
+            $pdf->Image($watermark_path, $wm_x, $wm_y, $wm_size, $wm_size, '', '', '', false, 300, '', false, false, 0);
             $pdf->SetAlpha(1);
         }
 
