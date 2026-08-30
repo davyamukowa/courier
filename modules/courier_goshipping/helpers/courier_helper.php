@@ -755,17 +755,17 @@ if (!function_exists('_courier_pdf_terms_html')) {
     function _courier_pdf_terms_html()
     {
         return '
-            <div style="margin-top:14px;font-size:10px;font-weight:bold;color:#0d47a1;border-bottom:1px solid #b9c9e0;padding-bottom:2px;">Terms and Conditions</div>
-            <table cellpadding="2" style="width:100%;margin-top:4px;">
+            <div style="margin-top:12px;font-size:10px;font-weight:bold;border-top:2px solid #333;padding-top:4px;">Terms and Conditions</div>
+            <table cellpadding="2" style="width:100%;margin-top:2px;">
                 <tr>
-                    <td style="width:50%;font-size:7.5px;vertical-align:top;border:none;">
+                    <td style="width:50%;font-size:7.5px;vertical-align:top;border:none;line-height:1.4;">
                         <p><b>1. General Conditions:</b> Use of our services implies acceptance of these terms and applicable laws.</p>
                         <p><b>2. Delivery Times:</b> We estimate delivery times but do not guarantee specific dates. Delays may occur.</p>
                         <p><b>3. Package Restrictions:</b> Ensure package contents comply with laws. Some items may be restricted or prohibited.</p>
                         <p><b>4. Shipping Charges:</b> Charges are based on weight, dimensions, and destination. Additional fees may apply.</p>
                         <p><b>5. Claims and Liability:</b> We are not liable for issues after delivery. Claims must be reported within a specified period.</p>
                     </td>
-                    <td style="width:50%;font-size:7.5px;vertical-align:top;border:none;">
+                    <td style="width:50%;font-size:7.5px;vertical-align:top;border:none;line-height:1.4;">
                         <p><b>6. Customs and Duties:</b> You are responsible for customs fees and taxes for international shipments.</p>
                         <p><b>7. Insurance:</b> Optional insurance covers package value up to a limit. Refer to our policy for details.</p>
                         <p><b>8. Address Accuracy:</b> Ensure correct address details to avoid delays or issues.</p>
@@ -774,7 +774,7 @@ if (!function_exists('_courier_pdf_terms_html')) {
                     </td>
                 </tr>
             </table>
-            <div style="font-size:8px;color:#333;margin-top:4px;">Thank you for using our services. We strive to provide reliable delivery solutions.</div>
+            <div style="font-size:8px;margin-top:4px;">Thank you for using our services. We strive to provide reliable delivery solutions.</div>
         ';
     }
 }
