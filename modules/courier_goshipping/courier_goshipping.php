@@ -2214,6 +2214,36 @@ class Courier_Logistic_System {
     }
 
     /**
+     * v54: purges FCL origin-tariff rows uploaded before v53 — every one is
+     * corrupted data, not just stale data. The pre-v53 CSV/Excel upload
+     * handlers stored FCL rows keyed by weight_max derived from casting the
+     * container code to a number ((float)"20DV" === 20.0), so every
+     * container size sharing a leading digit (20DV/20HC/20RF/20FR all -> 20,
+     * 40DV/40HC/40RF/40FR all -> 40) silently overwrote each other on
+     * upload — whatever survived is an arbitrary last-write-wins mix of
+     * different container sizes' rates, and none of it has container_type
+     * set (that column didn't exist yet), so the new container_type-based
+     * lookup (courier_lookup_origin_fcl_rate()) never matches it anyway and
+     * correctly falls back to the flat rate. Left in place it's silent
+     * clutter at best; a staffer opening "View Rates" would see phantom
+     * "20"/"40"-labeled rows alongside the real "20dv"/"40dv" ones once
+     * re-uploaded. Anyone who uploaded an FCL sheet before this fix needs to
+     * re-upload it afterward regardless — this only clears the wreckage so
+     * that re-upload lands cleanly instead of next to orphaned garbage.
+     */
+    public function run_db_upgrades_v54() {
+        if (get_option('courier_schema_v54_done')) return;
+        $CI = &get_instance();
+
+        $origin_tbl = db_prefix() . '_courier_origin_tariffs';
+        if ($CI->db->table_exists($origin_tbl) && $CI->db->field_exists('container_type', $origin_tbl)) {
+            $CI->db->where('service_type', 'fcl')->where('container_type', null)->delete($origin_tbl);
+        }
+
+        update_option('courier_schema_v54_done', '1');
+    }
+
+    /**
      * Prunes old, purely-diagnostic rows that grow unbounded with order
      * volume and are never needed once they age out — NOT the same as
      * shipment_status_history/courier_sourcing_events, which are real
