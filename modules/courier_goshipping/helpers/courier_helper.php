@@ -1098,12 +1098,12 @@ if (!function_exists('courier_generate_commercial_invoice_pdf')) {
                         <td ' . $tdTotal . ' align="right">' . number_format($total, 2) . '</td>
                     </tr>
                 </table>
-                <div style="margin-top:14px;font-size:10px;font-weight:bold;text-decoration:underline;color:#0d47a1;">DECLARATION</div>
-                <div style="font-size:9px;color:#333;margin-top:4px;">
+                <div style="margin-top:14px;font-size:10px;font-weight:bold;text-decoration:underline;">DECLARATION</div>
+                <div style="font-size:9px;margin-top:4px;line-height:1.4;">
                     I declare that this invoice shows the actual value/price of the goods described and that all particulars are true and
                     correct, and that the goods are of no commercial value &mdash; the value used is only for customs purposes.
                 </div>
-                <div style="text-align:center;font-size:8px;color:#888;margin-top:16px;border-top:1px solid #ddd;padding-top:4px;">&copy; ' . date('Y') . ' ' . htmlspecialchars($logistic_company) . '. All rights reserved.</div>
+                <div style="text-align:center;font-size:9px;margin-top:16px;">&copy; ' . date('Y') . ' ' . htmlspecialchars($logistic_company) . '. All rights reserved.</div>
             ';
 
             return _courier_render_pdf($html, 'Commercial-Invoice-' . ($shipment->waybill_number ?: $shipment->tracking_id), $logo_path);
