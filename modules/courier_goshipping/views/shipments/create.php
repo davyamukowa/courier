@@ -2799,6 +2799,32 @@ function saveLogisticCompany() {
 
     function getPackageLines() {
         var lines = [];
+        if (modeType === 'fcl') {
+            var fclRows = document.querySelectorAll('#fclPackageTable tbody tr');
+            var origin = getOriginCountryName();
+            var dest   = getDestinationCountryName();
+            loadTariffRows(origin); // no-op once cached; triggers a re-render on first load
+
+            fclRows.forEach(function (row) {
+                var qtyInp = row.querySelector('.amount, input[name^="amount"]');
+                var contSel = row.querySelector('select[name^="fcl_options"]');
+                var qty = qtyInp ? (parseFloat(qtyInp.value) || 0) : 0;
+                var contLabel = contSel ? contSel.value : '';
+                var containerType = contLabel.toLowerCase().replace(/['\s\-_]/g, '');
+                if (qty <= 0 || !containerType) return;
+
+                var matrixRate = lookupFclRate(origin, dest, containerType);
+                var flatRate   = FCL_FLAT_RATES.hasOwnProperty(containerType) ? FCL_FLAT_RATES[containerType] : 1;
+                var rate       = (matrixRate !== null) ? matrixRate : flatRate;
+
+                lines.push({
+                    desc:   'Shipping (' + contLabel + ')',
+                    detail: qty + ' × ' + contLabel + (dest ? (' — ' + dest) : '') + (matrixRate === null ? ' (no rate sheet — using default)' : ' rate sheet'),
+                    amount: qty * rate
+                });
+            });
+            return lines;
+        }
         var rows = document.querySelectorAll('#packageTable tbody tr');
         if (isLocalCourier) {
             rows.forEach(function (row) {
