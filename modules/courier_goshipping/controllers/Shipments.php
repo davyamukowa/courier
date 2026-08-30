@@ -2966,6 +2966,18 @@ class Shipments extends AdminController
         }
 
         $data['shipment_details'] = $this->Shipment_model->get_shipment_details($id);
+
+        if (empty($data['shipment_details'])) {
+            set_alert('danger', 'Shipment not found.');
+            redirect(admin_url('courier_goshipping/shipments/main'));
+            return;
+        }
+
+        if (!$this->_can_view_commercial_invoice($data['shipment_details']['shipment'])) {
+            access_denied('Courier - Commercial Invoices');
+            return;
+        }
+
         $data['statuses'] = $this->ShipmentStatus_model->get();
         $data['current_date'] = date('F j, Y'); // Format: August 8, 2024
 
