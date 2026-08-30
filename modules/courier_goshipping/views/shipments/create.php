@@ -167,7 +167,23 @@ echo '<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/selec
     // Set this based on your PHP code or context
     const modeType = '<?php echo $mode_type; ?>'; // Adjust according to how you get the value
     const isLocalCourier = <?php echo ((($courier_type ?? 'international') === 'local') || ($type ?? '') === 'domestic') ? 'true' : 'false'; ?>;
-    const SHIPMENT_MODE = '<?php echo $mode ?? ''; ?>'; // origin_tariffs.service_type key: courier/road/lcl/consolidation/air_freight/air_consolidation
+    // origin_tariffs.service_type key: courier/road/lcl/consolidation/air_freight/air_consolidation/fcl.
+    // Mirrors Shipments.php::process_invoice_and_packages()'s $tariff_service_type_map — the posted
+    // 'mode' only actually equals the tariff service_type for Courier/Road ('mode_type' is 'none'
+    // there); the "By Air"/"By Sea" menu links post the *parent* category as mode ('air'/'sea') and
+    // the real sub-type as mode_type, so using $mode alone here (as this used to) matched nothing
+    // for Air Freight/Air Consolidation/LCL/Consolidation/FCL and silently fell back to the flat
+    // legacy default instead of the uploaded rate sheet.
+    const SHIPMENT_MODE = '<?php
+        $_tariff_mode_map = [
+            'air_freight'       => 'air_freight',
+            'air_consolidation' => 'air_consolidation',
+            'lcl'               => 'lcl',
+            'sea_consolidation' => 'consolidation',
+            'fcl'               => 'fcl',
+        ];
+        echo $_tariff_mode_map[$mode_type ?? ''] ?? ($mode ?? '');
+    ?>';
 
     document.addEventListener('DOMContentLoaded', function () {
 
