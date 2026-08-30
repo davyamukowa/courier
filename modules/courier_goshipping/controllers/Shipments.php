@@ -1762,29 +1762,45 @@ class Shipments extends AdminController
      */
     public function list_commercial_invoices()
     {
-        $sql = 'SELECT DISTINCT
-                    s.id, s.waybill_number, s.tracking_id, s.shipping_mode,
+        if (!is_admin()
+            && !staff_can('view_all_commercial_invoices', 'courier-commercial-invoices')
+            && !staff_can('view_branch_commercial_invoices', 'courier-commercial-invoices')
+            && !staff_can('view_own_commercial_invoices', 'courier-commercial-invoices')) {
+            access_denied('Courier - Commercial Invoices');
+            return;
+        }
+
+        $scope = is_admin() ? 'global' : courier_resolve_visibility_scope('courier-commercial-invoices', 'view_branch_commercial_invoices', 'view_all_commercial_invoices');
+
+        $this->db->select('DISTINCT s.id, s.waybill_number, s.tracking_id, s.shipping_mode,
                     s.shipping_category, s.commercial_invoice_url, s.created_at,
                     ss.description AS status_description,
                     sr.first_name AS recip_first, sr.last_name AS recip_last,
                     rc.recipient_company_name AS recip_company,
                     sn.first_name AS sender_first, sn.last_name AS sender_last,
                     sc.company_name AS sender_company,
-                    s.sender_id, s.recipient_id
-                FROM ' . db_prefix() . '_shipments s
-                LEFT JOIN ' . db_prefix() . '_shipment_statuses ss  ON ss.id  = s.status_id
-                LEFT JOIN ' . db_prefix() . '_shipment_recipients sr ON sr.id  = s.recipient_id
-                LEFT JOIN ' . db_prefix() . '_recipient_companies rc ON rc.id  = s.recipient_company_id
-                LEFT JOIN ' . db_prefix() . '_shipment_senders sn   ON sn.id  = s.sender_id
-                LEFT JOIN ' . db_prefix() . '_shipment_companies sc  ON sc.id  = s.company_id
-                WHERE EXISTS (
-                    SELECT 1 FROM ' . db_prefix() . '_commercial_values_items ci
-                    WHERE ci.shipment_id = s.id
-                )
-                OR s.commercial_invoice_url IS NOT NULL
-                ORDER BY s.created_at DESC';
+                    s.sender_id, s.recipient_id', false);
+        $this->db->from(db_prefix() . '_shipments s');
+        $this->db->join(db_prefix() . '_shipment_statuses ss', 'ss.id = s.status_id', 'left');
+        $this->db->join(db_prefix() . '_shipment_recipients sr', 'sr.id = s.recipient_id', 'left');
+        $this->db->join(db_prefix() . '_recipient_companies rc', 'rc.id = s.recipient_company_id', 'left');
+        $this->db->join(db_prefix() . '_shipment_senders sn', 'sn.id = s.sender_id', 'left');
+        $this->db->join(db_prefix() . '_shipment_companies sc', 'sc.id = s.company_id', 'left');
+        $this->db->where(
+            '(EXISTS (SELECT 1 FROM ' . db_prefix() . '_commercial_values_items ci WHERE ci.shipment_id = s.id) '
+            . 'OR s.commercial_invoice_url IS NOT NULL)'
+        );
 
-        $data['commercial_invoices'] = $this->db->query($sql)->result();
+        if ($scope === 'branch') {
+            $branch_ids = courier_get_staff_branch_ids() ?: [0];
+            $this->db->where_in('s.branch_id', $branch_ids);
+        } elseif ($scope === 'own') {
+            $this->db->where('s.staff_id', get_staff_user_id());
+        }
+
+        $this->db->order_by('s.created_at', 'DESC');
+
+        $data['commercial_invoices'] = $this->db->get()->result();
         $this->load->view('shipments/list_commercial_invoices', $data);
     }
 
