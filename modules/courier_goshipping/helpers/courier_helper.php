@@ -1014,10 +1014,13 @@ if (!function_exists('courier_generate_commercial_invoice_pdf')) {
                 $currency_symbol = $base_currency->name;
             }
 
-            $th      = 'style="background:#eef3fb;border:1px solid #b9c9e0;padding:5px 7px;font-size:9px;font-weight:bold;text-align:left;color:#0d47a1;"';
-            $td      = 'style="border:1px solid #b9c9e0;padding:5px 7px;font-size:9px;"';
-            $tdBold  = 'style="border:1px solid #b9c9e0;padding:5px 7px;font-size:10px;font-weight:bold;"';
-            $tdTotal = 'style="border:1px solid #b9c9e0;padding:5px 7px;font-size:9px;font-weight:bold;background:#eef3fb;"';
+            // Matches waybill.css exactly (#f0f0f0 header bg, #333 borders,
+            // plain black text) — commercial_invoice.php keeps the plain
+            // default border (no blue/red accent — that's waybill-only).
+            $th      = 'style="background-color:#f0f0f0;border:1px solid #333;padding:6px 8px;font-size:9px;font-weight:bold;text-align:left;"';
+            $td      = 'style="border:1px solid #333;padding:6px 8px;font-size:9px;"';
+            $tdBold  = 'style="border:1px solid #333;padding:6px 8px;font-size:10px;font-weight:bold;"';
+            $tdTotal = 'style="border:1px solid #333;padding:6px 8px;font-size:9px;font-weight:bold;background-color:#f0f0f0;"';
 
             $items = !empty($details['commercial_details']) ? $details['commercial_details'] : ($details['packages'] ?? []);
             $rows  = '';
