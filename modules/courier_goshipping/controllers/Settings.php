@@ -853,17 +853,18 @@ class Settings extends AdminController
             echo json_encode(['success' => false, 'message' => 'Origin tariff table not found.']);
             return;
         }
+        // Self-heal: container_type wasn't part of the table's original
+        // schema (see run_db_upgrades_v53() in courier_goshipping.php).
+        if (!$this->db->field_exists('container_type', $origin_tbl)) {
+            $this->db->query("ALTER TABLE `{$origin_tbl}` ADD COLUMN `container_type` VARCHAR(20) NULL DEFAULT NULL AFTER `service_type`");
+        }
 
         $inserted = 0; $updated = 0; $errors = 0; $destinations = [];
         $is_fcl = ($service_type === 'fcl');
-        
-        // We assume rate_type is 'flat' for FCL, 'per_kg' for others, unless handled otherwise in code.
-        $rate_type = $is_fcl ? 'flat' : 'flat'; // Wait, in Courier, matrices are usually flat rates for that specific weight band!
-        // Actually, matrices are typically flat for the weight band (e.g. up to 0.5kg = $20, up to 1.0kg = $30).
-        
+
         while (($row = fgetcsv($handle)) !== false) {
             if (isset($row[0]) && strpos(trim($row[0]), '#') === 0) continue;
-            
+
             // First non-comment row is the header (Destinations)
             if (empty($destinations)) {
                 // Column 0 is 'Weight_or_Container'
@@ -872,48 +873,52 @@ class Settings extends AdminController
                 }
                 continue;
             }
-            
+
             // Data rows
             if (empty($row[0])) continue;
-            
+
             $weight_or_container = trim($row[0]);
-            
-            // Parse weight min and max from the row label.
-            // Matrix usually means: row '1.0' means up to 1.0kg. 
-            // Previous row was 0.5kg. So it's 0.501 to 1.0kg.
-            // We'll store weight_max = row label. weight_min = 0 (or we can calculate it, but storing max is usually enough if we query by MIN(weight_max)).
-            $wmax = (float)$weight_or_container;
-            $wmin = 0; // Simplified
-            
+
+            // FCL rows are keyed by container_type (e.g. "20dv","40hc","roro" —
+            // same normalized form Shipments.php derives from the fcl_options[]
+            // dropdown, strtolower + strip quotes/spaces), NOT by weight.
+            // Casting a container code like "20DV" to a weight (float) would
+            // yield 20.0 — identical to "20HC"/"20RF"/"20FR" — so every
+            // container size at a given destination would collide onto the
+            // same weight_max row and silently overwrite each other. A
+            // dedicated column and match key avoids that entirely.
+            $container_type = $is_fcl ? strtolower(str_replace(["'", ' '], '', $weight_or_container)) : null;
+            $wmax = $is_fcl ? 0 : (float)$weight_or_container;
+            $wmin = 0;
+
             for ($i = 1; $i < count($row); $i++) {
                 if (!isset($destinations[$i])) continue;
                 $dest = $destinations[$i];
                 $rate = (float)trim($row[$i]);
                 if ($dest === '' || $rate < 0) continue;
-                
+
                 $row_data = [
                     'origin_country'      => $origin_country,
                     'destination_country' => $dest,
                     'service_type'        => $service_type,
+                    'container_type'      => $container_type,
                     'weight_min'          => $wmin,
                     'weight_max'          => $wmax,
-                    'rate_type'           => 'flat', // Matrix cells are typically flat price for that weight bracket
+                    'rate_type'           => 'flat', // Matrix cells are typically flat price for that weight bracket/container
                     'rate'                => $rate
                 ];
 
-                // For FCL, rate_type is flat, weight is 0. 
-                // We'll store container type in service_type or cargo_type? 
-                // Currently origin_tariffs has service_type. If FCL, maybe we just use $weight_or_container as a custom weight mapping, 
-                // but actually Origin-Based tariff table only has weight_min and weight_max. FCL isn't natively supported in origin_tariffs currently!
-                // Wait, if it's FCL, we can just store the container name in 'rate_type' temporarily or it's not supported. 
-                // Let's just stick to courier/air for weight bands since they excluded Domestic.
-
-                $existing = $this->db->where([
+                $match = [
                     'origin_country'      => $origin_country,
                     'destination_country' => $dest,
                     'service_type'        => $service_type,
-                    'weight_max'          => $wmax
-                ])->get($origin_tbl)->row();
+                ];
+                if ($is_fcl) {
+                    $match['container_type'] = $container_type;
+                } else {
+                    $match['weight_max'] = $wmax;
+                }
+                $existing = $this->db->where($match)->get($origin_tbl)->row();
 
                 if ($existing) {
                     $this->db->where('id', $existing->id)->update($origin_tbl, $row_data);
