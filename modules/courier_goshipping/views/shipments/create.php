@@ -2782,6 +2782,21 @@ function saveLogisticCompany() {
         return { amount: amount, rate: rate, rate_type: match.rate_type };
     }
 
+    // FCL counterpart of lookupTariffAmount() — matched by container_type
+    // instead of a weight band (FCL is priced per container, not per kg).
+    function lookupFclRate(originName, destName, containerType) {
+        var rows = tariffRowsByOrigin[originName];
+        if (!rows || !destName || !containerType) return null;
+        var match = null;
+        rows.forEach(function (r) {
+            if (r.destination_country !== destName || r.service_type !== 'fcl' || r.container_type !== containerType) return;
+            match = r;
+        });
+        if (!match) return null;
+        var rate = parseFloat(match.rate) || 0;
+        return rate > 0 ? rate : null;
+    }
+
     function getPackageLines() {
         var lines = [];
         var rows = document.querySelectorAll('#packageTable tbody tr');
