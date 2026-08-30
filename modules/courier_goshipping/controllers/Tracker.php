@@ -563,7 +563,12 @@ class Tracker extends App_Controller
                 echo json_encode(['status' => 'error', 'message' => 'Please select a valid container type.']);
                 return;
             }
-            $rate = (float)(get_option('courier_rate_sea_fcl_' . $container) ?: 0);
+            // Prefer the uploaded origin-tariff matrix (destination-aware
+            // container rate) — falls back to the flat Settings ->
+            // Customization option only if no matrix row covers this
+            // route/container. Mirrors Shipments.php::process_invoice_and_packages().
+            $rate = courier_lookup_origin_fcl_rate($origin_country, $dest_country, $container)
+                ?? (float)(get_option('courier_rate_sea_fcl_' . $container) ?: 0);
             if ($rate <= 0) {
                 echo json_encode(['status' => 'error', 'message' => 'FCL rate for this container type is not configured. Please contact us for a quote.']);
                 return;
