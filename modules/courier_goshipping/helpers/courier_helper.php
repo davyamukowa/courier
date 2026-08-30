@@ -813,9 +813,11 @@ if (!function_exists('courier_generate_waybill_pdf')) {
             $logo_path        = _courier_pdf_logo_path();
             $barcode_path     = _courier_pdf_barcode_path($shipment->tracking_id ?: $shipment->waybill_number);
 
-            $th  = 'style="background:#eef3fb;border:1px solid #b9c9e0;padding:5px 7px;font-size:9px;font-weight:bold;text-align:left;width:20%;color:#0d47a1;"';
-            $td  = 'style="border:1px solid #b9c9e0;padding:5px 7px;font-size:9px;width:30%;"';
-            $ptd = 'style="border:1px solid #b9c9e0;padding:4px 5px;font-size:8px;text-align:center;"';
+            // Matches waybill.css's .info-table exactly (#f0f0f0 header bg,
+            // #333 borders, plain black text) — not an invented color scheme.
+            $th  = 'style="background-color:#f0f0f0;border:1px solid #333;padding:6px 8px;font-size:9px;font-weight:bold;text-align:left;width:20%;"';
+            $td  = 'style="border:1px solid #333;padding:6px 8px;font-size:9px;width:30%;"';
+            $ptd = 'style="border:1px solid #333;padding:5px 6px;font-size:8px;text-align:center;"';
 
             $is_fcl = (int) ($shipment->fcl_shipment ?? 0) === 1;
             $packages_rows = '';
