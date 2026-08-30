@@ -8,7 +8,20 @@ class Settings extends AdminController
     public function __construct()
     {
         parent::__construct();
-        if (!is_admin() && !has_permission('courier-settings', '', 'view_settings')) {
+        // Read-only tariff-rate lookups consumed by the shipment creation
+        // form's live price estimator (see create.php's loadTariffRows()) —
+        // any staff who can create a shipment needs these to price it, not
+        // just staff with Courier Settings access. Without this exemption,
+        // a staffer lacking 'view_settings' gets access_denied()'s HTML back
+        // instead of JSON, which fails silently (JS .catch() swallows it)
+        // and makes the estimator permanently fall back to the flat legacy
+        // per-kg rate instead of the uploaded tariff sheet, with no
+        // indication to the user that it's a permissions issue rather than
+        // a missing rate sheet.
+        $method = $this->router->fetch_method();
+        $public_rate_lookup_methods = ['origin_tariff_rates_json'];
+        if (!in_array($method, $public_rate_lookup_methods, true)
+            && !is_admin() && !has_permission('courier-settings', '', 'view_settings')) {
             access_denied('Courier - Settings');
         }
         $this->load->helper('courier_goshipping/courier'); // Load the helper specific to the courier module
