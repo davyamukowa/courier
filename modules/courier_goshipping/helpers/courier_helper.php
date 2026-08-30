@@ -874,9 +874,8 @@ if (!function_exists('courier_generate_waybill_pdf')) {
 
             // Agent line — same lookup as waybill.php's "Shipped By (Agent)" block
             $agent_html = '';
-            $CI2 = &get_instance();
             if (!empty($shipment->staff_id)) {
-                $agent_row = $CI2->db
+                $agent_row = $CI->db
                     ->select('CONCAT(st.firstname," ",st.lastname) AS agent_name, a.phone_number AS agent_phone')
                     ->from(db_prefix() . '_agents a')
                     ->join(db_prefix() . 'staff st', 'st.staffid = a.staff_id', 'left')
