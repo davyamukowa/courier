@@ -1257,7 +1257,8 @@ class Shipments extends AdminController
             foreach ($data['quantities'] as $i => $fcl_qty) {
                 $fcl_opt        = $data['fcl_options'][$i] ?? '';
                 $fcl_opt_key    = strtolower(str_replace(["'", " "], "", $fcl_opt));
-                $container_rate = (float)(get_option('courier_rate_sea_fcl_' . $fcl_opt_key) ?: 1);
+                $container_rate = courier_lookup_origin_fcl_rate($sender_country, $receiver_country, $fcl_opt_key)
+                    ?? (float)(get_option('courier_rate_sea_fcl_' . $fcl_opt_key) ?: 1);
                 $pkg_desc       = isset($data['descriptions'][$i]) ? $data['descriptions'][$i] : '';
                 $this->Shipment_model->add_invoice_item([
                     'description'      => 'WAYBILL - ' . strtoupper($waybill_number) . ' | ' . $fcl_opt . ($pkg_desc ? ' — ' . $pkg_desc : ''),
