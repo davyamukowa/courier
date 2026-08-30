@@ -964,23 +964,27 @@ if (!function_exists('courier_generate_waybill_pdf')) {
                         <th ' . $th . '>Shipping Mode</th>
                         <td ' . $td . '>' . htmlspecialchars((string) ($shipment->shipping_mode ?? '-')) . '</td>
                     </tr>
+                </table>
+                <table cellpadding="4" style="width:100%;border-collapse:collapse;margin-top:20px;">
                     <tr>
                         <th ' . $th . '>' . $company_label . '</th>
                         <td ' . $td . ' colspan="3">' . htmlspecialchars($logistic_company) . '</td>
                     </tr>
-                </table>
-                <div style="margin-top:10px;font-size:11px;font-weight:bold;">Package Details</div>
-                <table cellpadding="4" style="width:100%;border-collapse:collapse;margin-top:3px;">
-                    ' . $package_header . '
-                    ' . $packages_rows . '
-                </table>
-                <table cellpadding="4" style="width:100%;border-collapse:collapse;margin-top:8px;">
+                    <tr>
+                        <td colspan="4" style="border:none;padding:8px 0 0 0;">
+                            <div style="font-size:11px;font-weight:bold;margin-bottom:3px;">Package Details</div>
+                            <table cellpadding="4" style="width:100%;border-collapse:collapse;">
+                                ' . $package_header . '
+                                ' . $packages_rows . '
+                            </table>
+                        </td>
+                    </tr>
                     <tr>
                         <th ' . $th . '>Shipping Notes</th>
                         <td ' . $td . ' colspan="3">' . $notes_html . '</td>
                     </tr>
-                    ' . ($agent_html !== '' ? '<tr><th ' . $th . '>Shipped By (Agent)</th><td ' . $td . ' colspan="3">' . $agent_html . '</td></tr>' : '') . '
                 </table>
+                ' . ($agent_html !== '' ? '<table cellpadding="4" style="width:100%;border-collapse:collapse;margin-top:6px;"><tr><th ' . $th . '>Shipped By (Agent)</th><td ' . $td . ' colspan="3">' . $agent_html . '</td></tr></table>' : '') . '
                 ' . _courier_pdf_terms_html() . '
                 <div style="text-align:center;font-size:9px;margin-top:10px;">&copy; ' . date('Y') . ' ' . htmlspecialchars($logistic_company) . '. All rights reserved.</div>
             ';
