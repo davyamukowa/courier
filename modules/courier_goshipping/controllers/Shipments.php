@@ -1121,13 +1121,25 @@ class Shipments extends AdminController
         $rate_option = $rate_map[$mode_type] ?? 'courier_rate_road';
         $mode_rate   = (float)(get_option($rate_option) ?: 1);
 
-        // $mode (e.g. 'courier','road','lcl','consolidation','air_freight',
-        // 'air_consolidation') is the origin_tariffs.service_type value —
-        // matches what the Upload Wizard on the International Tariffs
-        // settings page and the client-portal quote calculator both key rates
-        // by. $mode_type ('none'/'fcl'/etc) is a different, narrower field
-        // and is NOT the same axis, so it must not be used for this lookup.
-        $tariff_service_type = $this->input->post('mode');
+        // origin_tariffs.service_type (what the Upload Wizard on the
+        // International Tariffs settings page keys rates by) is one of:
+        // 'courier','road','lcl','consolidation','air_freight','air_consolidation'.
+        // The posted 'mode' field only actually holds that value for
+        // Courier/Road ('courier'/'road', posted with mode_type='none') — the
+        // "International By Air"/"By Sea" menu links (_topnav.php) post the
+        // *parent* category as 'mode' ('air'/'sea') and the real sub-type as
+        // 'mode_type' ('air_freight'/'air_consolidation'/'lcl'/'sea_consolidation'),
+        // so using $mode alone here matched nothing for those 4 modes and
+        // silently fell back to the flat legacy per-kg option instead of the
+        // uploaded rate sheet. 'sea_consolidation' is renamed to 'consolidation'
+        // to match the Upload Wizard's shorter value for that axis.
+        $tariff_service_type_map = [
+            'air_freight'       => 'air_freight',
+            'air_consolidation' => 'air_consolidation',
+            'lcl'               => 'lcl',
+            'sea_consolidation' => 'consolidation',
+        ];
+        $tariff_service_type = $tariff_service_type_map[$mode_type] ?? $this->input->post('mode');
         $tariff_rate_type    = null; // set once a matrix row is matched, for the invoice line's unit label
 
         $total_amount     = 0;  // monetary total for invoice
