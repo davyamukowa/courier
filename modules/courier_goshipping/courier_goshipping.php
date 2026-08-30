@@ -3036,6 +3036,16 @@ class Courier_Logistic_System {
         ];
         register_staff_capabilities('courier-waybills', $config, 'Courier - Waybills');
 
+        // Commercial Invoices
+        $config['capabilities'] = [
+            'view_own_commercial_invoices'    => 'View (Own)',
+            'view_branch_commercial_invoices' => 'View (Branch)',
+            'view_all_commercial_invoices'    => 'View (Global)',
+            'edit_commercial_invoices'        => 'Edit',
+            'delete_commercial_invoices'      => 'Delete',
+        ];
+        register_staff_capabilities('courier-commercial-invoices', $config, 'Courier - Commercial Invoices');
+
         // Manifests
         $config['capabilities'] = [
             'view_own_manifests'    => 'View (Own)',
