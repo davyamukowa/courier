@@ -184,6 +184,14 @@ echo '<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/selec
         ];
         echo $_tariff_mode_map[$mode_type ?? ''] ?? ($mode ?? '');
     ?>';
+    // Flat per-container fallback (Settings -> Customization), same values
+    // and same 1.00 default Shipments.php falls back to when no uploaded
+    // origin-tariff row covers this route/container.
+    const FCL_FLAT_RATES = {
+        <?php foreach (['20dv','40dv','20hc','40hc','20rf','40rf','20fr','40fr','roro'] as $_fcl_key): ?>
+        '<?php echo $_fcl_key; ?>': <?php echo (float)(get_option('courier_rate_sea_fcl_' . $_fcl_key) ?: 1); ?>,
+        <?php endforeach; ?>
+    };
 
     document.addEventListener('DOMContentLoaded', function () {
 
