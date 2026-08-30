@@ -981,12 +981,18 @@ if (!function_exists('courier_generate_commercial_invoice_pdf')) {
             }
 
             $shipment = $details['shipment'];
-            $sender_lines    = _courier_pdf_party_lines($details['sender'] ?? null, $details['sender_type'] ?? 'individual', $details['sender_country'] ?? null);
-            $recipient_lines = _courier_pdf_party_lines($details['recipient'] ?? null, $details['recipient_type'] ?? 'individual', $details['recipient_country'] ?? null);
+            // No country baked into the address here (unlike the waybill) —
+            // origin/destination are shown as their own labeled row below,
+            // matching commercial_invoice.php.
+            $sender_lines    = _courier_pdf_party_lines($details['sender'] ?? null, $details['sender_type'] ?? 'individual', null);
+            $recipient_lines = _courier_pdf_party_lines($details['recipient'] ?? null, $details['recipient_type'] ?? 'individual', null);
 
             $invoice_info     = courier_get_invoice_info($shipment->branch_id ?? null);
             $logistic_company = $invoice_info['name'] ?: (get_option('companyname') ?: 'Go Shipping Cargo');
             $waybill_number   = htmlspecialchars($shipment->waybill_number ?: $shipment->tracking_id);
+            $logo_path        = _courier_pdf_logo_path();
+            $origin_country      = strtoupper($details['sender_country']->short_name ?? '');
+            $destination_country = strtoupper($details['recipient_country']->short_name ?? '');
 
             $currency_symbol = 'USD';
             if (!empty($shipment->invoice_id)) {
@@ -1000,8 +1006,10 @@ if (!function_exists('courier_generate_commercial_invoice_pdf')) {
                 $currency_symbol = $base_currency->name;
             }
 
-            $th = 'style="background:#f5f5f5;border:1px solid #ccc;padding:5px 6px;font-size:9px;font-weight:bold;text-align:left;"';
-            $td = 'style="border:1px solid #ccc;padding:5px 6px;font-size:9px;"';
+            $th      = 'style="background:#eef3fb;border:1px solid #b9c9e0;padding:5px 7px;font-size:9px;font-weight:bold;text-align:left;color:#0d47a1;"';
+            $td      = 'style="border:1px solid #b9c9e0;padding:5px 7px;font-size:9px;"';
+            $tdBold  = 'style="border:1px solid #b9c9e0;padding:5px 7px;font-size:10px;font-weight:bold;"';
+            $tdTotal = 'style="border:1px solid #b9c9e0;padding:5px 7px;font-size:9px;font-weight:bold;background:#eef3fb;"';
 
             $items = !empty($details['commercial_details']) ? $details['commercial_details'] : ($details['packages'] ?? []);
             $rows  = '';
@@ -1026,53 +1034,68 @@ if (!function_exists('courier_generate_commercial_invoice_pdf')) {
                 $rows = '<tr><td ' . $td . ' colspan="4">No commercial value items recorded.</td></tr>';
             }
 
+            $logo_cell = $logo_path ? '<img src="' . $logo_path . '" width="42" height="42">' : '';
+
             $html = '
-                <div style="text-align:center;margin-bottom:8px;">
-                    <span style="font-size:13px;font-weight:bold;">COMMERCIAL INVOICE</span><br>
-                    <span style="font-size:10px;color:#555;">' . htmlspecialchars($logistic_company) . '</span><br>
-                    <span style="font-size:10px;color:#555;">Waybill Number: ' . $waybill_number . '</span>
-                </div>
-                <table cellpadding="4" style="width:100%;border-collapse:collapse;margin-top:6px;">
+                <table cellpadding="0" style="width:100%;border-collapse:collapse;">
+                    <tr>
+                        <td style="width:20%;text-align:left;vertical-align:middle;border:none;">' . $logo_cell . '</td>
+                        <td style="width:60%;text-align:center;vertical-align:middle;border:none;">
+                            <span style="font-size:16px;font-weight:bold;color:#0d47a1;">COMMERCIAL INVOICE</span><br>
+                            <span style="font-size:9px;color:#555;">' . htmlspecialchars($logistic_company) . '</span><br>
+                            <span style="font-size:9px;color:#555;">Waybill Number: ' . $waybill_number . '</span>
+                        </td>
+                        <td style="width:20%;text-align:right;vertical-align:middle;border:none;font-size:8px;color:#777;">' . date('F j, Y') . '</td>
+                    </tr>
+                </table>
+                <table cellpadding="4" style="width:100%;border-collapse:collapse;margin-top:10px;">
                     <tr>
                         <th ' . $th . ' width="50%">SENDER</th>
                         <th ' . $th . ' width="50%">RECEIVER</th>
                     </tr>
                     <tr>
-                        <td ' . $td . '>' . htmlspecialchars($sender_lines['name']) . '</td>
-                        <td ' . $td . '>' . htmlspecialchars($recipient_lines['name']) . '</td>
+                        <td ' . $tdBold . '>' . htmlspecialchars(strtoupper($sender_lines['name'])) . '</td>
+                        <td ' . $tdBold . '>' . htmlspecialchars(strtoupper($recipient_lines['name'])) . '</td>
                     </tr>
                     <tr>
                         <td ' . $td . '>' . htmlspecialchars($sender_lines['address']) . '</td>
                         <td ' . $td . '>' . htmlspecialchars($recipient_lines['address']) . '</td>
                     </tr>
                     <tr>
-                        <td ' . $td . '>Tel: ' . htmlspecialchars($sender_lines['phone']) . '</td>
-                        <td ' . $td . '>Tel: ' . htmlspecialchars($recipient_lines['phone']) . '</td>
+                        <td ' . $td . '>TEL: ' . htmlspecialchars($sender_lines['phone']) . '</td>
+                        <td ' . $td . '>TEL: ' . htmlspecialchars($recipient_lines['phone']) . '</td>
                     </tr>
+                    ' . (($origin_country !== '' || $destination_country !== '')
+                        ? '<tr>'
+                            . '<td ' . $tdBold . '>' . ($origin_country !== '' ? 'ORIGIN COUNTRY: ' . htmlspecialchars($origin_country) : '') . '</td>'
+                            . '<td ' . $tdBold . '>' . ($destination_country !== '' ? 'DESTINATION COUNTRY: ' . htmlspecialchars($destination_country) : '') . '</td>'
+                            . '</tr>'
+                        : '') . '
                 </table>
                 <table cellpadding="4" style="width:100%;border-collapse:collapse;margin-top:10px;">
                     <tr>
                         <th ' . $th . ' width="8%">#</th>
-                        <th ' . $th . ' width="15%">Qty</th>
-                        <th ' . $th . '>Description</th>
-                        <th ' . $th . ' width="20%">Amount (' . htmlspecialchars($currency_symbol) . ')</th>
+                        <th ' . $th . ' width="15%">QTY</th>
+                        <th ' . $th . '>DESCRIPTION</th>
+                        <th ' . $th . ' width="22%">AMOUNT (' . htmlspecialchars($currency_symbol) . ')</th>
                     </tr>
                     ' . $rows . '
                     <tr>
-                        <td ' . $td . '></td>
-                        <td ' . $td . ' style="font-weight:bold;">TOTAL</td>
-                        <td ' . $td . '></td>
-                        <td ' . $td . ' align="right" style="font-weight:bold;">' . number_format($total, 2) . '</td>
+                        <td ' . $tdTotal . '></td>
+                        <td ' . $tdTotal . '>TOTAL</td>
+                        <td ' . $tdTotal . '></td>
+                        <td ' . $tdTotal . ' align="right">' . number_format($total, 2) . '</td>
                     </tr>
                 </table>
-                <div style="margin-top:14px;font-size:9px;color:#333;">
-                    <strong>DECLARATION:</strong> I declare that this invoice shows the actual value/price of the
-                    goods described and that all particulars are true and correct, and that the goods are of no
-                    commercial value — the value used is only for customs purposes.
+                <div style="margin-top:14px;font-size:10px;font-weight:bold;text-decoration:underline;color:#0d47a1;">DECLARATION</div>
+                <div style="font-size:9px;color:#333;margin-top:4px;">
+                    I declare that this invoice shows the actual value/price of the goods described and that all particulars are true and
+                    correct, and that the goods are of no commercial value &mdash; the value used is only for customs purposes.
                 </div>
+                <div style="text-align:center;font-size:8px;color:#888;margin-top:16px;border-top:1px solid #ddd;padding-top:4px;">&copy; ' . date('Y') . ' ' . htmlspecialchars($logistic_company) . '. All rights reserved.</div>
             ';
 
-            return _courier_render_pdf($html, 'Commercial-Invoice-' . ($shipment->waybill_number ?: $shipment->tracking_id));
+            return _courier_render_pdf($html, 'Commercial-Invoice-' . ($shipment->waybill_number ?: $shipment->tracking_id), $logo_path);
         } catch (\Throwable $e) {
             log_message('error', 'Commercial invoice PDF generation crashed: ' . $e->getMessage());
             return null;
