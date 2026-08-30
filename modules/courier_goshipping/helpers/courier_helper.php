@@ -1071,12 +1071,15 @@ if (!function_exists('courier_generate_commercial_invoice_pdf')) {
                 $rows = '<tr><td ' . $td . ' colspan="4">No commercial value items recorded.</td></tr>';
             }
 
-            $logo_cell = $logo_path ? '<img src="' . $logo_path . '" width="42" height="42">' : '';
-
+            // No logo, no watermark — commercial_invoice.php never renders
+            // either (confirmed: its $ci_logo_url is computed but unused,
+            // and it has no <img class="watermark"> in its markup at all,
+            // unlike waybill.php). Keeping this document plain text/tables
+            // only, matching the real page exactly.
             $html = '
                 <table cellpadding="0" style="width:100%;border-collapse:collapse;">
                     <tr>
-                        <td style="width:20%;text-align:left;vertical-align:middle;border:none;">' . $logo_cell . '</td>
+                        <td style="width:20%;border:none;"></td>
                         <td style="width:60%;text-align:center;vertical-align:middle;border:none;">
                             <span style="font-size:16px;font-weight:bold;">COMMERCIAL INVOICE</span><br>
                             <span style="font-size:9px;">' . htmlspecialchars($logistic_company) . '</span><br>
