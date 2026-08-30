@@ -1025,7 +1025,6 @@ if (!function_exists('courier_generate_commercial_invoice_pdf')) {
             $invoice_info     = courier_get_invoice_info($shipment->branch_id ?? null);
             $logistic_company = $invoice_info['name'] ?: (get_option('companyname') ?: 'Go Shipping Cargo');
             $waybill_number   = htmlspecialchars($shipment->waybill_number ?: $shipment->tracking_id);
-            $logo_path        = _courier_pdf_logo_path();
             $origin_country      = strtoupper($details['sender_country']->short_name ?? '');
             $destination_country = strtoupper($details['recipient_country']->short_name ?? '');
 
