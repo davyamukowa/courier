@@ -2190,6 +2190,29 @@ class Courier_Logistic_System {
     }
 
     /**
+     * v53: adds container_type to tbl_courier_origin_tariffs, for FCL rate
+     * sheets (International Tariffs Upload Wizard). FCL is priced per
+     * container, not per weight band — every other service_type keys a rate
+     * row by weight_min/weight_max, but reusing that for FCL by parsing the
+     * container code as a number (e.g. (float)"20DV" === 20.0) collapses
+     * 20DV/20HC/20RF/20FR onto the same weight_max=20 row, silently
+     * overwriting each other. A dedicated column avoids that collision
+     * entirely instead of trying to encode it into the numeric weight
+     * columns.
+     */
+    public function run_db_upgrades_v53() {
+        if (get_option('courier_schema_v53_done')) return;
+        $CI = &get_instance();
+
+        $origin_tbl = db_prefix() . '_courier_origin_tariffs';
+        if ($CI->db->table_exists($origin_tbl) && !$CI->db->field_exists('container_type', $origin_tbl)) {
+            $CI->db->query('ALTER TABLE `' . $origin_tbl . '` ADD COLUMN `container_type` VARCHAR(20) NULL DEFAULT NULL AFTER `service_type`');
+        }
+
+        update_option('courier_schema_v53_done', '1');
+    }
+
+    /**
      * Prunes old, purely-diagnostic rows that grow unbounded with order
      * volume and are never needed once they age out — NOT the same as
      * shipment_status_history/courier_sourcing_events, which are real
