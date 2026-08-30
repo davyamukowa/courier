@@ -1756,6 +1756,50 @@ if (!function_exists('courier_lookup_origin_tariff')) {
     }
 }
 
+/**
+ * FCL counterpart of courier_lookup_origin_tariff() — FCL is priced per
+ * container, not per weight, so it's matched by container_type (e.g.
+ * "20dv") instead of a weight band (see run_db_upgrades_v53()). Used by
+ * Shipments::process_invoice_and_packages() so an uploaded China -> World
+ * FCL rate sheet actually prices an FCL shipment instead of the flat
+ * per-container option under Settings -> Customization (courier_rate_sea_fcl_*)
+ * always winning regardless of destination.
+ *
+ * $container_type must already be normalized the same way Shipments.php
+ * derives it from the fcl_options[] dropdown ("20'DV" -> "20dv").
+ *
+ * Returns the flat container rate (float) or null if no matrix row covers
+ * this route/container (caller should fall back to the flat option).
+ */
+if (!function_exists('courier_lookup_origin_fcl_rate')) {
+    function courier_lookup_origin_fcl_rate($origin_country, $destination_country, $container_type)
+    {
+        if ($origin_country === '' || $destination_country === '' || $container_type === '') {
+            return null;
+        }
+
+        $CI = &get_instance();
+        $origin_tbl = db_prefix() . '_courier_origin_tariffs';
+        if (!$CI->db->table_exists($origin_tbl) || !$CI->db->field_exists('container_type', $origin_tbl)) {
+            return null;
+        }
+
+        $row = $CI->db
+            ->where('origin_country', $origin_country)
+            ->where('destination_country', $destination_country)
+            ->where('service_type', 'fcl')
+            ->where('container_type', $container_type)
+            ->get($origin_tbl)
+            ->row_array();
+
+        if (!$row) {
+            return null;
+        }
+
+        $rate = (float) $row['rate'];
+        return $rate > 0 ? $rate : null;
+    }
+}
 
 
 
