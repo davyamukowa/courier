@@ -801,40 +801,111 @@ if (!function_exists('courier_generate_waybill_pdf')) {
             $shipment = $details['shipment'];
             $sender_lines    = _courier_pdf_party_lines($details['sender'] ?? null, $details['sender_type'] ?? 'individual', $details['sender_country'] ?? null);
             $recipient_lines = _courier_pdf_party_lines($details['recipient'] ?? null, $details['recipient_type'] ?? 'individual', $details['recipient_country'] ?? null);
+            // Same Kenya-local phone formatting as waybill.php — only the
+            // +254 country code is swapped for a leading 0, other countries
+            // keep their full international-format number as-is.
+            $sender_lines['phone']    = str_replace('+254', '0', $sender_lines['phone']);
+            $recipient_lines['phone'] = str_replace('+254', '0', $recipient_lines['phone']);
 
             $invoice_info     = courier_get_invoice_info($shipment->branch_id ?? null);
             $logistic_company = $invoice_info['name'] ?: (get_option('companyname') ?: 'Go Shipping Cargo');
             $waybill_number   = htmlspecialchars($shipment->waybill_number ?: $shipment->tracking_id);
+            $logo_path        = _courier_pdf_logo_path();
+            $barcode_path     = _courier_pdf_barcode_path($shipment->tracking_id ?: $shipment->waybill_number);
 
-            $th = 'style="background:#f5f5f5;border:1px solid #ccc;padding:5px 6px;font-size:9px;font-weight:bold;text-align:left;width:22%;"';
-            $td = 'style="border:1px solid #ccc;padding:5px 6px;font-size:9px;width:28%;"';
+            $th  = 'style="background:#eef3fb;border:1px solid #b9c9e0;padding:5px 7px;font-size:9px;font-weight:bold;text-align:left;width:20%;color:#0d47a1;"';
+            $td  = 'style="border:1px solid #b9c9e0;padding:5px 7px;font-size:9px;width:30%;"';
+            $ptd = 'style="border:1px solid #b9c9e0;padding:4px 5px;font-size:8px;text-align:center;"';
 
+            $is_fcl = (int) ($shipment->fcl_shipment ?? 0) === 1;
             $packages_rows = '';
             $counter = 1;
             foreach (($details['packages'] ?? []) as $package) {
-                $packages_rows .= '<tr>'
-                    . '<td ' . $td . '>' . $counter . '</td>'
-                    . '<td ' . $td . '>' . htmlspecialchars((string) ($package->quantity ?? '')) . '</td>'
-                    . '<td ' . $td . '>' . htmlspecialchars((string) ($package->description ?? '-')) . '</td>'
-                    . '<td ' . $td . '>' . (isset($package->weight) ? number_format((float) $package->weight, 2) . ' kg' : '-') . '</td>'
-                    . '</tr>';
+                if ($is_fcl) {
+                    $packages_rows .= '<tr>'
+                        . '<td ' . $ptd . ' width="8%">' . $counter . '</td>'
+                        . '<td ' . $ptd . ' width="15%">' . htmlspecialchars((string) ($package->quantity ?? '')) . '</td>'
+                        . '<td ' . $ptd . ' width="52%">' . htmlspecialchars((string) ($package->description ?? '-')) . '</td>'
+                        . '<td ' . $ptd . ' width="25%">' . htmlspecialchars((string) ($package->fcl_option ?? '-')) . '</td>'
+                        . '</tr>';
+                } else {
+                    $packages_rows .= '<tr>'
+                        . '<td ' . $ptd . ' width="6%">' . $counter . '</td>'
+                        . '<td ' . $ptd . ' width="9%">' . htmlspecialchars((string) ($package->quantity ?? '')) . '</td>'
+                        . '<td ' . $ptd . ' width="11%">' . htmlspecialchars((string) ($package->length ?? '-')) . '</td>'
+                        . '<td ' . $ptd . ' width="11%">' . htmlspecialchars((string) ($package->width ?? '-')) . '</td>'
+                        . '<td ' . $ptd . ' width="11%">' . htmlspecialchars((string) ($package->height ?? '-')) . '</td>'
+                        . '<td ' . $ptd . ' width="17%">' . htmlspecialchars((string) ($package->weight_volume ?? '-')) . '</td>'
+                        . '<td ' . $ptd . ' width="17%">' . (isset($package->weight) ? number_format((float) $package->weight, 2) : '-') . '</td>'
+                        . '<td ' . $ptd . ' width="18%">' . htmlspecialchars((string) ($package->chargeable_weight ?? '-')) . '</td>'
+                        . '</tr>';
+                }
                 $counter++;
             }
             if ($packages_rows === '') {
-                $packages_rows = '<tr><td ' . $td . ' colspan="4">No package details recorded.</td></tr>';
+                $packages_rows = '<tr><td ' . $ptd . ' colspan="' . ($is_fcl ? 4 : 8) . '">No package details recorded.</td></tr>';
             }
 
+            $package_header = $is_fcl
+                ? '<tr>'
+                    . '<th ' . $th . ' width="8%">#</th>'
+                    . '<th ' . $th . ' width="15%">Quantity</th>'
+                    . '<th ' . $th . ' width="52%">Description</th>'
+                    . '<th ' . $th . ' width="25%">FCL Option</th>'
+                    . '</tr>'
+                : '<tr>'
+                    . '<th ' . $th . ' width="6%">#</th>'
+                    . '<th ' . $th . ' width="9%">Qty</th>'
+                    . '<th ' . $th . ' width="11%">Len (cm)</th>'
+                    . '<th ' . $th . ' width="11%">Wid (cm)</th>'
+                    . '<th ' . $th . ' width="11%">Hgt (cm)</th>'
+                    . '<th ' . $th . ' width="17%">Vol Wt (kg)</th>'
+                    . '<th ' . $th . ' width="17%">Gross Wt (kg)</th>'
+                    . '<th ' . $th . ' width="18%">Chg Wt (kg)</th>'
+                    . '</tr>';
+
+            $logo_cell = $logo_path
+                ? '<img src="' . $logo_path . '" width="46" height="46">'
+                : '<span style="font-size:14px;font-weight:bold;">' . htmlspecialchars($logistic_company) . '</span>';
+            $barcode_cell = $barcode_path ? '<img src="' . $barcode_path . '" width="130">' : '';
+
+            $notes = trim((string) ($shipment->special_instructions ?? ''));
+            $notes_html = $notes !== '' ? nl2br(htmlspecialchars($notes)) : '&mdash;';
+
+            // Agent line — same lookup as waybill.php's "Shipped By (Agent)" block
+            $agent_html = '';
+            $CI2 = &get_instance();
+            if (!empty($shipment->staff_id)) {
+                $agent_row = $CI2->db
+                    ->select('CONCAT(st.firstname," ",st.lastname) AS agent_name, a.phone_number AS agent_phone')
+                    ->from(db_prefix() . '_agents a')
+                    ->join(db_prefix() . 'staff st', 'st.staffid = a.staff_id', 'left')
+                    ->where('a.staff_id', $shipment->staff_id)
+                    ->get()->row();
+                if ($agent_row) {
+                    $agent_html = htmlspecialchars($agent_row->agent_name)
+                        . (!empty($agent_row->agent_phone) ? ' &mdash; ' . htmlspecialchars($agent_row->agent_phone) : '');
+                }
+            }
+
+            $company_label = !empty($shipment->company_type) ? htmlspecialchars($shipment->company_type) : 'Courier Company';
+
             $html = '
-                <div style="text-align:center;margin-bottom:8px;">
-                    <span style="font-size:16px;font-weight:bold;">' . htmlspecialchars($logistic_company) . '</span><br>
-                    <span style="font-size:13px;font-weight:bold;">WAYBILL</span><br>
-                    <span style="font-size:10px;color:#555;">Waybill Number: ' . $waybill_number . '</span>
-                </div>
-                <table cellpadding="4" style="width:100%;border-collapse:collapse;margin-top:6px;">
+                <table cellpadding="0" style="width:100%;border-collapse:collapse;">
                     <tr>
-                        <th ' . $th . '>Sender</th>
+                        <td style="width:33%;text-align:left;vertical-align:middle;border:none;">' . $logo_cell . '</td>
+                        <td style="width:34%;text-align:center;vertical-align:middle;border:none;">
+                            <span style="font-size:15px;font-weight:bold;color:#0d47a1;">WAYBILL</span><br>
+                            <span style="font-size:10px;color:#555;">Waybill Number: ' . $waybill_number . '</span>
+                        </td>
+                        <td style="width:33%;text-align:right;vertical-align:middle;border:none;">' . $barcode_cell . '<br><span style="font-size:8px;color:#777;">' . date('F j, Y') . '</span></td>
+                    </tr>
+                </table>
+                <table cellpadding="4" style="width:100%;border-collapse:collapse;margin-top:8px;">
+                    <tr>
+                        <th ' . $th . '>' . ($details['sender_type'] === 'individual' ? 'Sender Name' : 'Sender') . '</th>
                         <td ' . $td . '>' . htmlspecialchars($sender_lines['name']) . '</td>
-                        <th ' . $th . '>Receiver</th>
+                        <th ' . $th . '>' . ($details['recipient_type'] === 'individual' ? 'Receiver Name' : 'Receiver') . '</th>
                         <td ' . $td . '>' . htmlspecialchars($recipient_lines['name']) . '</td>
                     </tr>
                     <tr>
@@ -844,9 +915,9 @@ if (!function_exists('courier_generate_waybill_pdf')) {
                         <td ' . $td . '>' . htmlspecialchars($recipient_lines['address']) . '</td>
                     </tr>
                     <tr>
-                        <th ' . $th . '>Sender Phone</th>
+                        <th ' . $th . '>Sender Number</th>
                         <td ' . $td . '>' . htmlspecialchars($sender_lines['phone']) . '</td>
-                        <th ' . $th . '>Receiver Phone</th>
+                        <th ' . $th . '>Receiver Number</th>
                         <td ' . $td . '>' . htmlspecialchars($recipient_lines['phone']) . '</td>
                     </tr>
                     <tr>
@@ -860,23 +931,27 @@ if (!function_exists('courier_generate_waybill_pdf')) {
                         <td ' . $td . '>' . htmlspecialchars((string) ($shipment->shipping_mode ?? '-')) . '</td>
                     </tr>
                     <tr>
-                        <th ' . $th . '>Status</th>
-                        <td ' . $td . ' colspan="3">' . htmlspecialchars($shipment->status_description ?? $shipment->status_name ?? '-') . '</td>
+                        <th ' . $th . '>' . $company_label . '</th>
+                        <td ' . $td . ' colspan="3">' . htmlspecialchars($logistic_company) . '</td>
                     </tr>
                 </table>
-                <div style="margin-top:12px;font-size:11px;font-weight:bold;">Package Details</div>
-                <table cellpadding="4" style="width:100%;border-collapse:collapse;margin-top:4px;">
-                    <tr>
-                        <th ' . $th . ' width="8%">#</th>
-                        <th ' . $th . '>Quantity</th>
-                        <th ' . $th . '>Description</th>
-                        <th ' . $th . '>Weight</th>
-                    </tr>
+                <div style="margin-top:10px;font-size:11px;font-weight:bold;color:#0d47a1;">Package Details</div>
+                <table cellpadding="4" style="width:100%;border-collapse:collapse;margin-top:3px;">
+                    ' . $package_header . '
                     ' . $packages_rows . '
                 </table>
+                <table cellpadding="4" style="width:100%;border-collapse:collapse;margin-top:8px;">
+                    <tr>
+                        <th ' . $th . '>Shipping Notes</th>
+                        <td ' . $td . ' colspan="3">' . $notes_html . '</td>
+                    </tr>
+                    ' . ($agent_html !== '' ? '<tr><th ' . $th . '>Shipped By (Agent)</th><td ' . $td . ' colspan="3">' . $agent_html . '</td></tr>' : '') . '
+                </table>
+                ' . _courier_pdf_terms_html() . '
+                <div style="text-align:center;font-size:8px;color:#888;margin-top:10px;border-top:1px solid #ddd;padding-top:4px;">&copy; ' . date('Y') . ' ' . htmlspecialchars($logistic_company) . '. All rights reserved.</div>
             ';
 
-            return _courier_render_pdf($html, 'Waybill-' . ($shipment->waybill_number ?: $shipment->tracking_id));
+            return _courier_render_pdf($html, 'Waybill-' . ($shipment->waybill_number ?: $shipment->tracking_id), $logo_path);
         } catch (\Throwable $e) {
             log_message('error', 'Waybill PDF generation crashed: ' . $e->getMessage());
             return null;
