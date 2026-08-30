@@ -1204,12 +1204,24 @@ class Settings extends AdminController
         $origin_country      = trim($this->input->post('origin_country'));
         $destination_country = trim($this->input->post('destination_country'));
         $service_type        = trim($this->input->post('service_type'));
-        $weight_min          = (float) $this->input->post('weight_min');
-        $weight_max          = (float) $this->input->post('weight_max');
         $rate_type           = $this->input->post('rate_type') === 'per_kg' ? 'per_kg' : 'flat';
         $rate                = (float) $this->input->post('rate');
 
-        if ($origin_country === '' || $destination_country === '' || $service_type === '' || $weight_max <= 0 || $rate < 0) {
+        // view_origin_rates.php's grid keys FCL rows by container_type
+        // (e.g. "20dv"), not a weight — the row's data-weight-max carries
+        // that string for FCL instead of a number. (float)"20dv" would cast
+        // to 20.0, colliding with every other container size in the same
+        // weight_max column (see run_db_upgrades_v53()), so an FCL cell is
+        // detected by weight_max not being purely numeric and routed via
+        // container_type instead.
+        $weight_max_raw = trim((string) $this->input->post('weight_max'));
+        $is_fcl_cell     = ($service_type === 'fcl') && !is_numeric($weight_max_raw);
+        $weight_min      = $is_fcl_cell ? 0 : (float) $this->input->post('weight_min');
+        $weight_max      = $is_fcl_cell ? 0 : (float) $weight_max_raw;
+        $container_type  = $is_fcl_cell ? strtolower(str_replace(["'", ' ', '-', '_'], '', $weight_max_raw)) : null;
+
+        if ($origin_country === '' || $destination_country === '' || $service_type === '' || $rate < 0
+            || (!$is_fcl_cell && $weight_max <= 0) || ($is_fcl_cell && $container_type === '')) {
             echo json_encode(['success' => false, 'message' => 'Missing or invalid cell data.']);
             return;
         }
@@ -1219,14 +1231,18 @@ class Settings extends AdminController
             echo json_encode(['success' => false, 'message' => 'Origin tariff table not found.']);
             return;
         }
+        if (!$this->db->field_exists('container_type', $origin_tbl)) {
+            $this->db->query("ALTER TABLE `{$origin_tbl}` ADD COLUMN `container_type` VARCHAR(20) NULL DEFAULT NULL AFTER `service_type`");
+        }
 
         $row_data = [
             'origin_country'      => $origin_country,
             'destination_country' => $destination_country,
             'service_type'        => $service_type,
+            'container_type'      => $container_type,
             'weight_min'          => $weight_min,
             'weight_max'          => $weight_max,
-            'rate_type'           => $rate_type,
+            'rate_type'           => $is_fcl_cell ? 'flat' : $rate_type,
             'rate'                => $rate,
         ];
 
@@ -1240,12 +1256,17 @@ class Settings extends AdminController
         // upload_matrix_csv()/upload_matrix_excel() use so re-typing a value
         // into a cell that already has a row (e.g. loaded before this page's
         // own insert lands) updates it instead of creating a duplicate.
-        $existing = $this->db->where([
+        $match = [
             'origin_country'      => $origin_country,
             'destination_country' => $destination_country,
             'service_type'        => $service_type,
-            'weight_max'          => $weight_max,
-        ])->get($origin_tbl)->row();
+        ];
+        if ($is_fcl_cell) {
+            $match['container_type'] = $container_type;
+        } else {
+            $match['weight_max'] = $weight_max;
+        }
+        $existing = $this->db->where($match)->get($origin_tbl)->row();
 
         if ($existing) {
             $this->db->where('id', $existing->id)->update($origin_tbl, $row_data);
