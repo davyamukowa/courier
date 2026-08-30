@@ -858,15 +858,15 @@ if (!function_exists('courier_generate_waybill_pdf')) {
             foreach (($details['packages'] ?? []) as $package) {
                 if ($is_fcl) {
                     $packages_rows .= '<tr>'
-                        . '<td ' . $ptd . ' width="8%">' . $counter . '</td>'
-                        . '<td ' . $ptd . ' width="15%">' . htmlspecialchars((string) ($package->quantity ?? '')) . '</td>'
+                        . '<td ' . $ptdAccent . ' width="8%">' . $counter . '</td>'
+                        . '<td ' . $ptdAccent . ' width="15%">' . htmlspecialchars((string) ($package->quantity ?? '')) . '</td>'
                         . '<td ' . $ptd . ' width="52%">' . htmlspecialchars((string) ($package->description ?? '-')) . '</td>'
                         . '<td ' . $ptd . ' width="25%">' . htmlspecialchars((string) ($package->fcl_option ?? '-')) . '</td>'
                         . '</tr>';
                 } else {
                     $packages_rows .= '<tr>'
-                        . '<td ' . $ptd . ' width="6%">' . $counter . '</td>'
-                        . '<td ' . $ptd . ' width="9%">' . htmlspecialchars((string) ($package->quantity ?? '')) . '</td>'
+                        . '<td ' . $ptdAccent . ' width="6%">' . $counter . '</td>'
+                        . '<td ' . $ptdAccent . ' width="9%">' . htmlspecialchars((string) ($package->quantity ?? '')) . '</td>'
                         . '<td ' . $ptd . ' width="11%">' . htmlspecialchars((string) ($package->length ?? '-')) . '</td>'
                         . '<td ' . $ptd . ' width="11%">' . htmlspecialchars((string) ($package->width ?? '-')) . '</td>'
                         . '<td ' . $ptd . ' width="11%">' . htmlspecialchars((string) ($package->height ?? '-')) . '</td>'
