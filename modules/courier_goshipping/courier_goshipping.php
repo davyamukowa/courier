@@ -2246,6 +2246,43 @@ class Courier_Logistic_System {
     }
 
     /**
+     * v55: creates tblcourier_client_quotes — referenced by
+     * Tracker::_save_quote_and_respond() (public quote calculator, inserts a
+     * lead row whenever a customer fills in any contact field) and
+     * Client_quotes.php (admin "Client Quotes" list) but never actually
+     * created anywhere before this. Every public quote request that included
+     * a contact field 500'd with a fatal "table doesn't exist" error — the
+     * client portal's generic fetch `.catch()` then showed "Network error.
+     * Please try again." for what looked like every action on the page.
+     * Tracker.php now also self-heals this table directly (it extends
+     * App_Controller, not AdminController, so this admin_init-hooked
+     * migration never runs for that public request in the first place) —
+     * this migration exists so the schema is documented here too, and so
+     * the admin-side Client Quotes list also has the table the moment an
+     * admin page loads, without needing the public form hit first.
+     */
+    public function run_db_upgrades_v55() {
+        if (get_option('courier_schema_v55_done')) return;
+        $CI = &get_instance();
+
+        $quotes_tbl = db_prefix() . 'courier_client_quotes';
+        if (!$CI->db->table_exists($quotes_tbl)) {
+            $CI->db->query('CREATE TABLE `' . $quotes_tbl . '` (
+                `id` INT NOT NULL AUTO_INCREMENT,
+                `name` VARCHAR(191) NOT NULL DEFAULT \'\',
+                `email` VARCHAR(191) NOT NULL DEFAULT \'\',
+                `phone` VARCHAR(50) NOT NULL DEFAULT \'\',
+                `company` VARCHAR(191) NOT NULL DEFAULT \'\',
+                `quote_details` TEXT NULL,
+                `created_at` DATETIME NOT NULL,
+                PRIMARY KEY (`id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;');
+        }
+
+        update_option('courier_schema_v55_done', '1');
+    }
+
+    /**
      * Prunes old, purely-diagnostic rows that grow unbounded with order
      * volume and are never needed once they age out — NOT the same as
      * shipment_status_history/courier_sourcing_events, which are real
