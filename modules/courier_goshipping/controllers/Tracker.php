@@ -524,16 +524,49 @@ class Tracker extends App_Controller
             $company = trim($this->input->post('contact_company') ?: '');
             $email   = trim($this->input->post('contact_email') ?: '');
             $phone   = trim($this->input->post('contact_phone') ?: '');
-            
+
             if ($name !== '' || $company !== '' || $email !== '' || $phone !== '') {
-                $this->db->insert('tblcourier_client_quotes', [
-                    'name'          => $name,
-                    'email'         => $email,
-                    'phone'         => $phone,
-                    'company'       => $company,
-                    'quote_details' => json_encode($response_array['data']),
-                    'created_at'    => date('Y-m-d H:i:s')
-                ]);
+                // Saving a lead is a side effect of getting a quote, never a
+                // requirement for it — any failure here (including the
+                // self-heal query itself) must not stop the customer from
+                // getting their quote back. Wrapped in try/catch so this
+                // can never again turn into the 500/"Network error" the
+                // whole public portal showed while this table was missing.
+                try {
+                    // Self-heal: Tracker extends App_Controller, not
+                    // AdminController, so this public endpoint never fires
+                    // admin_init — the module's migration runner (and thus
+                    // its own CREATE TABLE for this table) never runs here.
+                    // Without this, every quote request with any contact
+                    // field filled in threw a fatal "table doesn't exist"
+                    // error, which is why calculate_quote() 500'd and the
+                    // client portal's generic "Network error" fetch .catch()
+                    // fired for what looked like every action on the page.
+                    $quotes_tbl = db_prefix() . 'courier_client_quotes';
+                    if (!$this->db->table_exists($quotes_tbl)) {
+                        $this->db->query('CREATE TABLE `' . $quotes_tbl . '` (
+                            `id` INT NOT NULL AUTO_INCREMENT,
+                            `name` VARCHAR(191) NOT NULL DEFAULT \'\',
+                            `email` VARCHAR(191) NOT NULL DEFAULT \'\',
+                            `phone` VARCHAR(50) NOT NULL DEFAULT \'\',
+                            `company` VARCHAR(191) NOT NULL DEFAULT \'\',
+                            `quote_details` TEXT NULL,
+                            `created_at` DATETIME NOT NULL,
+                            PRIMARY KEY (`id`)
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;');
+                    }
+
+                    $this->db->insert($quotes_tbl, [
+                        'name'          => $name,
+                        'email'         => $email,
+                        'phone'         => $phone,
+                        'company'       => $company,
+                        'quote_details' => json_encode($response_array['data']),
+                        'created_at'    => date('Y-m-d H:i:s')
+                    ]);
+                } catch (\Throwable $e) {
+                    log_message('error', 'Saving client quote lead crashed: ' . $e->getMessage());
+                }
             }
         }
         echo json_encode($response_array);
