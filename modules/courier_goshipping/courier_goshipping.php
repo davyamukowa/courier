@@ -103,6 +103,7 @@ class Courier_Logistic_System {
         hooks()->add_action('after_staff_login',              [$this, 'validate_staff_branch_on_login']);
         hooks()->add_action('admin_init',                     [$this, 'enforce_active_branch_session']);
         hooks()->add_action('before_admin_login_form_close',  [$this, 'inject_login_email_persistence_script']);
+        hooks()->add_action('before_admin_login_form_close',  [$this, 'inject_login_show_password_toggle']);
         hooks()->add_filter('before_create_staff_member',     [$this, 'strip_courier_branch_from_data']);
         hooks()->add_filter('before_update_staff_member',     [$this, 'strip_courier_branch_from_data']);
         hooks()->add_action('staff_member_created',           [$this, 'save_staff_branches']);
@@ -2466,6 +2467,65 @@ class Courier_Logistic_System {
                     } catch (e) {}
                 });
             }
+        })();
+        </script>
+        <?php
+    }
+
+    /**
+     * Adds a show/hide toggle to the login page's password field. This is a
+     * core Perfex view (application/views/authentication/login_admin.php),
+     * which the cPanel deploy cron never touches (it only copies modules/*
+     * folders) — see root CLAUDE.md's "Deployment Pipeline" section. Same
+     * fix pattern as inject_login_email_persistence_script() above: inject
+     * via the before_admin_login_form_close hook instead of editing the
+     * core view, so it ships through this module and actually reaches
+     * production.
+     */
+    public function inject_login_show_password_toggle() {
+        ?>
+        <style>
+        .courier-password-wrap { position: relative; }
+        .courier-password-wrap input[type="password"],
+        .courier-password-wrap input[type="text"] { padding-right: 38px; }
+        .courier-password-toggle {
+            position: absolute;
+            top: 50%;
+            right: 6px;
+            transform: translateY(-50%);
+            border: 0;
+            background: transparent;
+            padding: 4px 8px;
+            cursor: pointer;
+            color: #94a3b8;
+        }
+        .courier-password-toggle:hover { color: #475569; }
+        </style>
+        <script>
+        (function () {
+            var input = document.getElementById('password');
+            if (!input || input.parentNode.classList.contains('courier-password-wrap')) { return; }
+
+            var wrap = document.createElement('div');
+            wrap.className = 'courier-password-wrap';
+            input.parentNode.insertBefore(wrap, input);
+            wrap.appendChild(input);
+
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'courier-password-toggle';
+            btn.setAttribute('aria-label', 'Show password');
+            btn.innerHTML = '<i class="fa fa-eye" aria-hidden="true"></i>';
+            wrap.appendChild(btn);
+
+            btn.addEventListener('click', function () {
+                var isHidden = input.type === 'password';
+                input.type = isHidden ? 'text' : 'password';
+                btn.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
+                var icon = btn.querySelector('i');
+                icon.classList.toggle('fa-eye', !isHidden);
+                icon.classList.toggle('fa-eye-slash', isHidden);
+            });
         })();
         </script>
         <?php
