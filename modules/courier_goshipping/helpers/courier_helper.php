@@ -840,15 +840,14 @@ if (!function_exists('courier_generate_waybill_pdf')) {
             $logo_path        = _courier_pdf_logo_path();
             $barcode_path     = _courier_pdf_barcode_path($shipment->tracking_id ?: $shipment->waybill_number);
 
-            // Matches waybill.css's .info-table exactly — #f0f0f0 header bg,
-            // #333 borders, plain black text on both labels AND values. No
-            // color anywhere in this table; the only color in the whole
-            // document is the card's blue/red border, which is the one
-            // thing actually confirmed in waybill.php's own inline style.
-            $th  = 'style="background-color:#f0f0f0;border:1px solid #333;padding:6px 8px;font-size:9px;font-weight:bold;text-align:left;width:20%;"';
-            $td  = 'style="border:1px solid #333;padding:6px 8px;font-size:9px;width:30%;"';
-            $ptd = 'style="border:1px solid #333;padding:5px 6px;font-size:8px;text-align:center;"';
+            // Inline-style definitions matching waybill.css's .info-table exactly —
+            // #f0f0f0 header bg, #333 borders, 9-9.5px font, plain black text.
+            $th  = 'style="background-color:#f0f0f0;border:1px solid #333;padding:3px 4px;font-size:9.5px;font-weight:bold;text-align:left;"';
+            $td  = 'style="border:1px solid #333;padding:3px 4px;font-size:9.5px;"';
+            $ptd = 'style="border:1px solid #333;padding:3px 4px;font-size:8px;text-align:center;"';
+            $pth = 'style="background-color:#f0f0f0;border:1px solid #333;padding:3px 4px;font-size:8px;font-weight:bold;text-align:center;"';
             $ptdAccent = $ptd;
+
 
             $is_fcl = (int) ($shipment->fcl_shipment ?? 0) === 1;
             $packages_rows = '';
@@ -881,29 +880,30 @@ if (!function_exists('courier_generate_waybill_pdf')) {
 
             $package_header = $is_fcl
                 ? '<tr>'
-                    . '<th ' . $th . ' width="8%">#</th>'
-                    . '<th ' . $th . ' width="15%">Quantity</th>'
-                    . '<th ' . $th . ' width="52%">Description</th>'
-                    . '<th ' . $th . ' width="25%">FCL Option</th>'
+                    . '<th ' . $pth . ' width="8%">#</th>'
+                    . '<th ' . $pth . ' width="15%">Quantity</th>'
+                    . '<th ' . $pth . ' width="52%">Description</th>'
+                    . '<th ' . $pth . ' width="25%">FCL Option</th>'
                     . '</tr>'
                 : '<tr>'
-                    . '<th ' . $th . ' width="6%">#</th>'
-                    . '<th ' . $th . ' width="9%">Qty</th>'
-                    . '<th ' . $th . ' width="11%">Len (cm)</th>'
-                    . '<th ' . $th . ' width="11%">Wid (cm)</th>'
-                    . '<th ' . $th . ' width="11%">Hgt (cm)</th>'
-                    . '<th ' . $th . ' width="17%">Vol Wt (kg)</th>'
-                    . '<th ' . $th . ' width="17%">Gross Wt (kg)</th>'
-                    . '<th ' . $th . ' width="18%">Chg Wt (kg)</th>'
+                    . '<th ' . $pth . ' width="6%">#</th>'
+                    . '<th ' . $pth . ' width="9%">Qty</th>'
+                    . '<th ' . $pth . ' width="11%">Length (cm)</th>'
+                    . '<th ' . $pth . ' width="11%">Width (cm)</th>'
+                    . '<th ' . $pth . ' width="11%">Height (cm)</th>'
+                    . '<th ' . $pth . ' width="17%">Volumetric Weight (kg)</th>'
+                    . '<th ' . $pth . ' width="17%">Gross Weight (kg)</th>'
+                    . '<th ' . $pth . ' width="18%">Chargeable Weight (kg)</th>'
                     . '</tr>';
 
             $logo_cell = $logo_path
-                ? '<img src="' . $logo_path . '" width="46" height="46">'
+                ? '<img src="' . $logo_path . '" width="60" height="60">'
                 : '<span style="font-size:14px;font-weight:bold;">' . htmlspecialchars($logistic_company) . '</span>';
-            $barcode_cell = $barcode_path ? '<img src="' . $barcode_path . '" width="130">' : '';
+            $barcode_cell = $barcode_path ? '<img src="' . $barcode_path . '" width="130" height="30">' : '';
 
             $notes = trim((string) ($shipment->special_instructions ?? ''));
-            $notes_html = $notes !== '' ? nl2br(htmlspecialchars($notes)) : '&mdash;';
+            $notes_html = $notes !== '' ? nl2br(htmlspecialchars($notes)) : '<span style="color:#aaa;">—</span>';
+
 
             // Agent line — same lookup as waybill.php's "Shipped By (Agent)" block
             $agent_html = '';
@@ -922,34 +922,71 @@ if (!function_exists('courier_generate_waybill_pdf')) {
 
             $company_label = !empty($shipment->company_type) ? htmlspecialchars($shipment->company_type) : 'Courier Company';
 
+            // Resolve sender/recipient labels exactly as waybill.php does (lines 834-843)
+            $is_sender_individual    = ($details['sender_type'] ?? 'individual') === 'individual';
+            $is_recipient_individual = ($details['recipient_type'] ?? 'individual') === 'individual';
+            $sender_label            = $is_sender_individual ? 'Sender Name' : 'Sender';
+            $recipient_label         = $is_recipient_individual ? 'Receiver Name' : 'Receiver';
+            $sender_addr_label       = $is_sender_individual ? 'Sender Address' : 'Contact person Address';
+            $recipient_addr_label    = $is_recipient_individual ? 'Recipient Address' : 'Contact person Address';
+            $sender_phone_label      = $is_sender_individual ? 'Sender Number' : 'Contact Person Number';
+            $recipient_phone_label   = $is_recipient_individual ? 'Receiver Number' : 'Contact Person Number';
+
+            // Round-trip badge row (mirrors waybill.php lines 999-1008)
+            $round_trip_row = '';
+            if (!empty($shipment->is_round_trip)) {
+                $round_trip_row = '
+                <table cellpadding="4" style="width:100%;border-collapse:collapse;margin-top:10px;">
+                    <tr>
+                        <th colspan="4" style="background:#f5f5f5;border:1px solid #333;font-size:9.5px;text-transform:uppercase;letter-spacing:.5px;padding:4px;">
+                            Shipment Type &nbsp;<span style="background:#28a745;color:#fff;padding:1px 6px;font-size:8px;">Round Trip</span>
+                        </th>
+                    </tr>
+                </table>';
+            }
+
+            // Build inner HTML — exactly mirrors waybill.php's #waybill-section layout:
+            // barcode at top-right → header (logo | waybill number | date) + HR →
+            // WAYBILL title → 4-col info table (sender/receiver name+address+phone,
+            // tracking number, shipping level+mode) → company row → Package Details
+            // section with title + package table → notes+agent table → round-trip badge
+            // → T&C → footer copyright.
             $inner_html = '
-                <table cellpadding="0" style="width:100%;border-collapse:collapse;">
+                <table cellpadding="0" style="width:100%;border-collapse:collapse;margin-bottom:5px;">
+                    <tr>
+                        <td style="width:70%;border:none;"></td>
+                        <td style="width:30%;text-align:right;vertical-align:middle;border:none;">' . $barcode_cell . '</td>
+                    </tr>
+                </table>
+                <table cellpadding="0" style="width:100%;border-collapse:collapse;border-bottom:1px solid #000;padding-bottom:5px;">
                     <tr>
                         <td style="width:22%;text-align:left;vertical-align:middle;border:none;">' . $logo_cell . '</td>
                         <td style="width:46%;text-align:center;vertical-align:middle;border:none;">
-                            <span style="font-size:12px;font-weight:bold;">Waybill Number: ' . $waybill_number . '</span>
+                            <span style="font-size:13px;font-weight:bold;">Waybill Number: ' . $waybill_number . '</span>
                         </td>
-                        <td style="width:32%;text-align:right;vertical-align:middle;border:none;">' . $barcode_cell . '<br><span style="font-size:10px;font-weight:bold;">' . date('F j, Y') . '</span></td>
+                        <td style="width:32%;text-align:right;vertical-align:middle;border:none;">
+                            <span style="font-size:13px;font-weight:bold;">' . date('d M Y') . '</span>
+                        </td>
                     </tr>
                 </table>
-                <div style="border-bottom:1px solid #000;margin-top:4px;margin-bottom:8px;"></div>
+                <div style="text-align:center;margin-top:8px;margin-bottom:8px;font-size:16px;font-weight:bold;text-transform:uppercase;">WAYBILL</div>
                 <table cellpadding="4" style="width:100%;border-collapse:collapse;">
                     <tr>
-                        <th ' . $th . '>' . ($details['sender_type'] === 'individual' ? 'Sender Name' : 'Sender') . '</th>
+                        <th ' . $th . '>' . $sender_label . '</th>
                         <td ' . $td . '>' . htmlspecialchars($sender_lines['name']) . '</td>
-                        <th ' . $th . '>' . ($details['recipient_type'] === 'individual' ? 'Receiver Name' : 'Receiver') . '</th>
+                        <th ' . $th . '>' . $recipient_label . '</th>
                         <td ' . $td . '>' . htmlspecialchars($recipient_lines['name']) . '</td>
                     </tr>
                     <tr>
-                        <th ' . $th . '>Sender Address</th>
+                        <th ' . $th . '>' . $sender_addr_label . '</th>
                         <td ' . $td . '>' . htmlspecialchars($sender_lines['address']) . '</td>
-                        <th ' . $th . '>Receiver Address</th>
+                        <th ' . $th . '>' . $recipient_addr_label . '</th>
                         <td ' . $td . '>' . htmlspecialchars($recipient_lines['address']) . '</td>
                     </tr>
                     <tr>
-                        <th ' . $th . '>Sender Number</th>
+                        <th ' . $th . '>' . $sender_phone_label . '</th>
                         <td ' . $td . '>' . htmlspecialchars($sender_lines['phone']) . '</td>
-                        <th ' . $th . '>Receiver Number</th>
+                        <th ' . $th . '>' . $recipient_phone_label . '</th>
                         <td ' . $td . '>' . htmlspecialchars($recipient_lines['phone']) . '</td>
                     </tr>
                     <tr>
@@ -982,6 +1019,7 @@ if (!function_exists('courier_generate_waybill_pdf')) {
                     </tr>
                     ' . ($agent_html !== '' ? '<tr><th ' . $th . '>Shipped By (Agent)</th><td ' . $td . ' colspan="3">' . $agent_html . '</td></tr>' : '') . '
                 </table>
+                ' . $round_trip_row . '
                 ' . _courier_pdf_terms_html() . '
                 <div style="text-align:center;font-size:9px;margin-top:10px;">&copy; ' . date('Y') . ' ' . htmlspecialchars($logistic_company) . '. All rights reserved.</div>
             ';
@@ -1083,16 +1121,35 @@ if (!function_exists('courier_generate_commercial_invoice_pdf')) {
             // and it has no <img class="watermark"> in its markup at all,
             // unlike waybill.php). Keeping this document plain text/tables
             // only, matching the real page exactly.
+
+            // Build company info header lines exactly as commercial_invoice.php
+            // does (lines 307-318): address → Tel/Email → PIN.
+            $ci_company_header = '<span style="font-size:16px;font-weight:bold;">COMMERCIAL INVOICE</span>';
+            if (!empty($invoice_info['address'])) {
+                $ci_company_header .= '<br><span style="font-size:11px;color:#555;">' . htmlspecialchars(str_replace("\n", ' | ', trim($invoice_info['address']))) . '</span>';
+            }
+            if (!empty($invoice_info['phone']) || !empty($invoice_info['email'])) {
+                $ci_phone_email = '';
+                if (!empty($invoice_info['phone'])) {
+                    $ci_phone_email .= 'Tel: ' . htmlspecialchars($invoice_info['phone']);
+                }
+                if (!empty($invoice_info['email'])) {
+                    $ci_phone_email .= (!empty($invoice_info['phone']) ? ' &nbsp;|&nbsp; ' : '') . htmlspecialchars($invoice_info['email']);
+                }
+                $ci_company_header .= '<br><span style="font-size:11px;color:#555;">' . $ci_phone_email . '</span>';
+            }
+            if (!empty($invoice_info['pin'])) {
+                $ci_company_header .= '<br><span style="font-size:11px;color:#555;">PIN: ' . htmlspecialchars($invoice_info['pin']) . '</span>';
+            }
+
             $html = '
                 <table cellpadding="0" style="width:100%;border-collapse:collapse;">
                     <tr>
                         <td style="width:20%;border:none;"></td>
                         <td style="width:60%;text-align:center;vertical-align:middle;border:none;">
-                            <span style="font-size:16px;font-weight:bold;">COMMERCIAL INVOICE</span><br>
-                            <span style="font-size:9px;">' . htmlspecialchars($logistic_company) . '</span><br>
-                            <span style="font-size:9px;">Waybill Number: ' . $waybill_number . '</span>
+                            ' . $ci_company_header . '
                         </td>
-                        <td style="width:20%;text-align:right;vertical-align:middle;border:none;font-size:9px;font-weight:bold;">' . date('F j, Y') . '</td>
+                        <td style="width:20%;text-align:right;vertical-align:middle;border:none;font-size:9px;font-weight:bold;">' . date('d M Y') . '</td>
                     </tr>
                 </table>
                 <table cellpadding="4" style="width:100%;border-collapse:collapse;margin-top:10px;">
