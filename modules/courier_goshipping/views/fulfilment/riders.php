@@ -1,4 +1,5 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed'); ?>
+<?php $this->load->view('courier_goshipping/layout/_people_tabs', ['cgs_people_active' => 'riders']); ?>
 <div class="panel_s">
     <div class="panel-body">
         <div class="alert alert-info">

@@ -37,6 +37,10 @@ class Courier_Logistic_System {
         hooks()->add_action('app_admin_head', [$this, 'load_theme_assets']);
         hooks()->add_action('app_admin_footer', [$this, 'load_theme_scripts']);
 
+        // Setup > Staff: Users / Riders / Agents switcher, and keep agents out of the Users list
+        hooks()->add_action('app_admin_footer', [$this, 'inject_staff_people_tabs']);
+        hooks()->add_filter('staff_table_sql_where', [$this, 'exclude_agents_from_staff_table']);
+
         // Migrate old seeded defaults to empty (so Perfex company name is used as fallback)
         hooks()->add_action('admin_init', [$this, 'migrate_legacy_defaults']);
 
@@ -3163,6 +3167,27 @@ class Courier_Logistic_System {
     /**
      * Injects the mega-menu toggle script. Scoped to this module's own pages only.
      */
+    /** Renders the Users/Riders/Agents buttons above the core staff list (core view can't be edited — modules/* only deploys). */
+    public function inject_staff_people_tabs()
+    {
+        $CI = &get_instance();
+        if ($CI->uri->segment(2) !== 'staff' || $CI->uri->segment(3) !== null && $CI->uri->segment(3) !== '') {
+            return;
+        }
+        $html = $CI->load->view('courier_goshipping/layout/_people_tabs', ['cgs_people_active' => 'users'], true);
+        echo '<script>$(function(){var c=$("#wrapper .content .row .col-md-12").first();if(c.length){c.prepend(' . json_encode($html) . ');}});</script>';
+    }
+
+    /** Agents (rows in tbl_agents) live under the Agents tab, not in the default Users list. */
+    public function exclude_agents_from_staff_table($where)
+    {
+        $CI = &get_instance();
+        if ($CI->db->table_exists(db_prefix() . '_agents')) {
+            $where[] = 'AND ' . db_prefix() . 'staff.staffid NOT IN (SELECT staff_id FROM ' . db_prefix() . '_agents)';
+        }
+        return $where;
+    }
+
     public function load_theme_scripts() {
         $CI = &get_instance();
         if ($CI->uri->segment(2) !== COURIER_MODULE_NAME) {

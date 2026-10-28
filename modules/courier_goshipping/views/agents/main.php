@@ -20,6 +20,7 @@
 </style>
 
 
+        <?php $this->load->view('courier_goshipping/layout/_people_tabs', ['cgs_people_active' => 'agents']); ?>
         <?php $show_company_section = $this->session->userdata('show_company_section') ?? false; ?>
 
         <!-- Top navigation bar -->
