@@ -419,7 +419,7 @@ class Fulfilment extends AdminController
         $trip_count = 0;
         if ($staff_id) {
             $has_orders = $this->db->table_exists($prefix . 'shopify_orders');
-            $this->db->select('s.id, s.waybill_number, s.tracking_id, s.status_id, s.created_at, ss.description AS status_text, '
+            $this->db->select('s.id, s.waybill_number, s.tracking_id, s.status_id, s.created_at, ss.' . ($this->db->field_exists('status_description', $prefix . '_shipment_statuses') ? 'status_description' : 'description') . ' AS status_text, '
                 . 'r.id AS recipient_id, r.first_name, r.last_name, r.phone_number, r.address, '
                 . '(SELECT MIN(h.changed_at) FROM ' . $prefix . '_shipment_status_history h WHERE h.shipment_id = s.id AND h.status_id IN (5,6,7)) AS started_at, '
                 . '(SELECT MAX(h.changed_at) FROM ' . $prefix . '_shipment_status_history h WHERE h.shipment_id = s.id AND h.status_id = 8) AS delivered_at'
