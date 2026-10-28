@@ -41,8 +41,8 @@ class Rider_app extends App_Controller
             'background_color' => '#f4f6f9',
             'theme_color'      => '#f4f6f9',
             'icons'            => [
-                ['src' => site_url('courier_goshipping/rider/icon/192'), 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any maskable'],
-                ['src' => site_url('courier_goshipping/rider/icon/512'), 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any maskable'],
+                ['src' => site_url('courier_goshipping/rider/icon/192') . '?v=2', 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any maskable'],
+                ['src' => site_url('courier_goshipping/rider/icon/512') . '?v=2', 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any maskable'],
             ],
         ]);
     }
@@ -59,7 +59,7 @@ class Rider_app extends App_Controller
         // home-screen shortcut's icon, which the OS snapshots once at
         // install time and never re-fetches; that needs an uninstall +
         // reinstall on the device itself.
-        $cache_name = 'gs-rider-v3';
+        $cache_name = 'gs-rider-v4';
         echo <<<JS
 const CACHE_NAME = '{$cache_name}';
 

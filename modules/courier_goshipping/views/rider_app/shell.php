@@ -8,7 +8,8 @@
     <script src="https://cdn.jsdelivr.net/npm/signature_pad"></script>
     <link rel="manifest" href="<?php echo site_url('courier_goshipping/rider/manifest'); ?>">
     <meta name="theme-color" content="#f4f6f9">
-    <link rel="apple-touch-icon" href="<?php echo site_url('courier_goshipping/rider/icon/192'); ?>">
+    <link rel="icon" type="image/png" href="<?php echo site_url('courier_goshipping/rider/icon/192'); ?>?v=2">
+    <link rel="apple-touch-icon" href="<?php echo site_url('courier_goshipping/rider/icon/192'); ?>?v=2">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Salibay Rider">
@@ -225,7 +226,7 @@
     <!-- ── Login ────────────────────────────────────────────────────────────── -->
     <div class="screen active auth-screen" id="screen_login">
         <div class="brand">
-            <div class="brand-badge"><img src="<?php echo site_url('courier_goshipping/rider/icon/192'); ?>" alt="Salibay"></div>
+            <div class="brand-badge"><img src="<?php echo site_url('courier_goshipping/rider/icon/192'); ?>?v=2" alt="Salibay"></div>
             <h1>Salibay Rider</h1>
             <p>Manage your deliveries, pickups, and status updates on the go.</p>
         </div>
@@ -242,7 +243,7 @@
     <!-- ── Register ─────────────────────────────────────────────────────────── -->
     <div class="screen auth-screen" id="screen_register">
         <div class="brand">
-            <div class="brand-badge"><img src="<?php echo site_url('courier_goshipping/rider/icon/192'); ?>" alt="Salibay"></div>
+            <div class="brand-badge"><img src="<?php echo site_url('courier_goshipping/rider/icon/192'); ?>?v=2" alt="Salibay"></div>
             <h1>Create Rider Account</h1>
             <p>Use the same phone number your dispatcher has on file so your deliveries show up automatically.</p>
         </div>
@@ -264,7 +265,7 @@
     <!-- ── Forgot password ──────────────────────────────────────────────────── -->
     <div class="screen auth-screen" id="screen_forgot">
         <div class="brand">
-            <div class="brand-badge"><img src="<?php echo site_url('courier_goshipping/rider/icon/192'); ?>" alt="Salibay"></div>
+            <div class="brand-badge"><img src="<?php echo site_url('courier_goshipping/rider/icon/192'); ?>?v=2" alt="Salibay"></div>
             <h1>Reset Your Password</h1>
             <p>Enter the email address on your rider account and we'll send you a reset link.</p>
         </div>
