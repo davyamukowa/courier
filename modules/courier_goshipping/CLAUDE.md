@@ -304,3 +304,126 @@ matching was too strict for how the external sourcing system actually tags order
 - If a schema-dependent feature breaks with no error, don't assume a migration ran just
   because it's old — add a defensive, idempotent self-heal in the constructor of whatever
   controller needs the column/table, same pattern as the rest of this module.
+
+
+## Salibay Rider app — current state, update mechanism, and roadmap (written 2026-10-28)
+
+The rider app (`Rider_app.php`, `Rider_api.php`, `views/rider_app/shell.php`) is branded **Salibay Rider**
+(renamed from "Go Shipping Rider"). It is still a PWA served from `courier_goshipping/rider`. Read this
+section before touching it — several items below were learned the hard way.
+
+### Where things live
+
+- Brand icon: `assets/salibay_rider_icon_192.png` / `_512.png` (cropped from the Salibay "S" mark).
+  `Rider_app::icon()` serves these first and only falls back to the CRM company logo if they are missing.
+  Icon/manifest URLs carry `?v=2` — bump the number if the icon file ever changes.
+- Manifest: `Rider_app::manifest()` (name/short_name "Salibay Rider").
+- Service worker: `Rider_app::sw()`. Pages (navigations) are **network-first**; other GETs are
+  stale-while-revalidate. Bump `$cache_name` (`gs-rider-vN`) whenever app-shell assets change.
+- Update check: `GET courier_goshipping/rider/version` returns `{"version": "<12-char hash>"}`.
+  The hash is `md5_file()` of `views/rider_app/shell.php` + `Rider_app.php` — content based on purpose,
+  **never filemtime**, because the cPanel cron re-copies every file each minute and bumps mtimes (that would
+  show the "update available" banner permanently). `shell.php` embeds the hash it was loaded with
+  (`APP_VERSION`) and polls the endpoint 4s after load, every 5 minutes, and whenever the app returns to the
+  foreground. A mismatch shows the green "Update now" banner; `applyAppUpdate()` deletes all Cache Storage
+  entries, calls `registration.update()`, then reloads. The login token (localStorage) is untouched.
+- PIN login: password fields use `inputmode="numeric"` (numeric keypad). The server still accepts any
+  password of 4+ characters (`Rider_model` checks `strlen >= 4`) so riders created earlier with letters can
+  still log in via Reset Password from the Riders page. Hard-enforcing digits-only is a possible later change.
+
+### What an update does and does not reach
+
+- **Reaches every phone automatically, no reinstall:** any HTML/JS/CSS/PHP change (screens, maps, bug fixes).
+  Open apps see the banner within ~5 minutes or on next foreground; closed apps get it on next open.
+- **Does NOT reach an already-installed home-screen shortcut:** icon image and app name. The OS snapshots
+  them at install time. Android Chrome sometimes refreshes within ~a day; iOS never does. A change to
+  these requires uninstall + reinstall (or a new APK once the wrapper exists, see roadmap).
+
+### Gotchas (all bit us once)
+
+1. **Never put JSON or addresses inside an inline `onclick="..."` attribute.** `JSON.stringify` output
+   contains double quotes and silently kills the button. Pass the numeric id and look the data up from
+   `activeDeliveriesCache` (this is why the Map button was dead; fixed in `openMapModal(id)`).
+2. **`sync-watch.ps1` pushes mid-edit.** Any broken intermediate save is committed and deployed within
+   seconds. Make multi-file or bulk edits (especially `sed -i` over a whole file) carefully, and run
+   `php -l` plus a `node --check` of the extracted `<script>` block of `shell.php` before moving on.
+   A bulk `sed` once rewrote every view reference in `Fulfilment.php` and was live for ~20 seconds.
+3. **`shell.php` JS cannot be linted by `php -l`.** Extract the first `<script>` block, replace
+   `<?php ... ?>` with `"x"`, and run `node --check` on it.
+4. **Chrome tool + phpMyAdmin:** clicking "Go" in phpMyAdmin through the browser automation froze the
+   tab twice. Prefer reading data from the admin UI, or an SSH key (see roadmap) over phpMyAdmin.
+5. Automated agents are not allowed to type the cPanel/SSH password. Either sign in yourself in the
+   controlled browser tab, or add an SSH key under cPanel > Security > SSH Access so commands run
+   without a password.
+
+### Rider/Users/Agents separation (done)
+
+- Riders list and rider dashboard use their own page shell (`fulfilment/riders_page.php`,
+  `fulfilment/rider_profile.php`), **not** `fulfilment/main.php` (that shell adds Salibay-only header +
+  KPIs and turns every `.btn` red). Only `riders()` points at `riders_page`; every other Fulfilment
+  action still renders `main`.
+- Rider dashboard: `Fulfilment::rider($id)` (analytics, deliveries, clients, pickups) and
+  `Fulfilment::update_rider($id)` (edit). `Fulfilment::delete_rider($id)` removes the rider login + tokens
+  only; the hidden linked staff row and all shipments are kept on purpose.
+- Auto-provisioned rider staff rows (email `rider-<id>-<phone>@riders.invalid`, login-blocked) are hidden
+  from Setup > Staff by `exclude_agents_from_staff_table()` in `courier_goshipping.php`. Real staff linked
+  to a rider (normal email) still show.
+- Riders' deliveries are attributed via `tbl_shipments.staff_id = rider.staff_id`; delivered = status 8,
+  cancelled = 9; delivery start time = first history row with status 5/6/7.
+
+### Live tracking (done, partially verified)
+
+- Rider app: **Start Delivery** immediately opens the map modal (route via the free OSRM service,
+  distance/ETA, "Open turn-by-turn navigation" button -> Google Maps directions); the **Map** button
+  reopens it. Pings go to `rider-api/deliveries/<id>/location` -> `tbl_shipment_locations` every >=15 s.
+- Waybill (`views/shipments/waybill.php`): the "Live Rider Tracking" box shows for **any** shipment
+  with status 5-7 (previously Salibay-only), and the page auto-reloads when the status changes for any
+  shipment below status 8. Salibay-only behavior (delivery link, emails) is unchanged.
+- Known limit: a PWA **stops sending GPS when the screen is off or the app is backgrounded**. Fixing
+  that needs the native route (Phase 3).
+
+### Roadmap (not started unless marked)
+
+**Phase 0 — verify what is already shipped (do first, ~30 min)**
+- [ ] On a rider's phone: close/reopen the app twice, confirm Map button, route, and the new icon (after
+      reinstall). Confirm the waybill map for one Salibay and one normal Go Shipping order.
+- [ ] Confirm `0701020320` can log in (it was rider 7; investigate or Reset Password to a 4-digit PIN).
+- [ ] Confirm the cPanel cron is still scheduled (every minute) and the deployed commit matches
+      `origin/main` (File Manager `.git` HEAD or SSH `git log -1`).
+- [ ] Decide whether Delete rider should also remove the hidden `@riders.invalid` staff row (history shows a
+      blank driver if so).
+
+**Phase 1 — in-app update push (DONE 2026-10-28, untested on a device)**
+- [x] `rider/version` endpoint + banner + `applyAppUpdate()`.
+- [ ] Optional: auto-apply when the app is idle (no modal open, offline queue empty) instead of waiting for
+      the tap; optional "version X" label on the Profile screen for support calls.
+
+**Phase 2 — downloadable APK, wrapping the PWA (half a day)**
+- Tooling: PWABuilder (pwabuilder.com) or Bubblewrap CLI; needs JDK + Android SDK locally, or use the
+  PWABuilder website. Produces a Trusted Web Activity APK/AAB. App content keeps updating from the server
+  (Phase 1 applies); only wrapper changes need a new APK.
+- Create a signing keystore. **Back it up (and the passwords) somewhere safe — losing it means no further
+  updates under the same app identity.** Never commit it to the repo.
+- Package id e.g. `com.salibay.rider`; start URL `https://goshippingtracking.com/courier_goshipping/rider`.
+- Digital Asset Links: publish `https://goshippingtracking.com/.well-known/assetlinks.json` with the signing
+  key's SHA-256 fingerprint. **This file lives at the web root, outside `modules/`, so the cPanel cron will
+  NOT deploy it — upload it by hand via File Manager** (and confirm it returns 200 JSON). Without it the
+  APK opens with a browser address bar.
+- Distribute: host the signed APK for direct download (riders must allow "install unknown apps"), or
+  Google Play (one-time US$25, internal/closed testing track first).
+- Icon/name changes from here on ship as a new APK version — bump `versionCode`.
+
+**Phase 3 — background GPS via a native wrapper (2-3 days)**
+- Why: the PWA/TWA cannot keep sending location when the phone is locked or the app is backgrounded.
+- Capacitor project loading the same server URL (or bundled shell), plus a background-geolocation plugin
+  (foreground service + persistent notification). Requires the Android location permissions
+  (`ACCESS_FINE_LOCATION`, `ACCESS_BACKGROUND_LOCATION`, foreground-service location) and a Play Store
+  declaration/justification if published there.
+- Keep posting to the existing `rider-api/deliveries/<id>/location` endpoint — no backend change needed.
+- Start/stop tracking from the same Start Delivery / Delivered / Cancel actions.
+
+**Phase 4 — polish and operations**
+- [ ] Optional: enforce 4-digit numeric PINs server-side (after existing riders have been reset).
+- [ ] Optional: push notifications for new assignments (FCM) once the native wrapper exists.
+- [ ] Optional: rider dashboard extras — date-range filter, export to CSV, per-rider earnings if a rate exists.
+- [ ] Set up an SSH key on cPanel (Security > SSH Access) so deploys can be inspected without passwords.
