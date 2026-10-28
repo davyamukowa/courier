@@ -434,6 +434,34 @@ class Fulfilment extends AdminController
         redirect(admin_url('courier_goshipping/fulfilment/riders'));
     }
 
+    /**
+     * Permanently removes a rider's PWA login (tbl_courier_riders + tokens).
+     * Deliberately leaves the linked staff row and existing shipments alone:
+     * shipments keep their driver_id/staff_id so history stays intact.
+     */
+    public function delete_rider($rider_id)
+    {
+        if (!$this->can_manage_salibay_riders()) {
+            access_denied('Salibay Fulfilment');
+        }
+        if ($this->input->method() !== 'post') {
+            redirect(admin_url('courier_goshipping/fulfilment/riders'));
+        }
+
+        $prefix = db_prefix();
+        $rider  = $this->db->where('id', (int) $rider_id)->get($prefix . '_courier_riders')->row();
+        if ($rider) {
+            if ($this->db->table_exists($prefix . '_courier_rider_tokens')) {
+                $this->db->where('rider_id', (int) $rider_id)->delete($prefix . '_courier_rider_tokens');
+            }
+            $this->db->where('id', (int) $rider_id)->delete($prefix . '_courier_riders');
+            set_alert('success', 'Rider deleted.');
+        } else {
+            set_alert('warning', 'Rider not found.');
+        }
+        redirect(admin_url('courier_goshipping/fulfilment/riders'));
+    }
+
     public function settings()
     {
         if (!$this->can_manage_salibay_settings()) {

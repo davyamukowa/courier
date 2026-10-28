@@ -58,6 +58,9 @@
                                             onclick="document.getElementById('reset_rider_password_form').action='<?php echo admin_url('courier_goshipping/fulfilment/reset_rider_password/' . $rider->id); ?>'; document.getElementById('reset_rider_password_name').textContent='<?php echo htmlspecialchars(addslashes($rider->name)); ?>';">
                                         Reset Password
                                     </button>
+                                    <?php echo form_open(admin_url('courier_goshipping/fulfilment/delete_rider/' . $rider->id), ['style' => 'display:inline-block;']); ?>
+                                        <button type="submit" class="btn btn-danger btn-xs" onclick="return confirm('Permanently delete this rider account? Their past shipments are kept.');">Delete</button>
+                                    <?php echo form_close(); ?>
                                     <?php else: ?>
                                     <span class="text-muted">&mdash;</span>
                                     <?php endif; ?>
