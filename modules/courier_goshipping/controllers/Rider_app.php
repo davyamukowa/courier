@@ -26,8 +26,8 @@ class Rider_app extends App_Controller
     {
         header('Content-Type: application/manifest+json');
         echo json_encode([
-            'name'             => 'Go Shipping Rider',
-            'short_name'       => 'GS Rider',
+            'name'             => 'Salibay Rider',
+            'short_name'       => 'Salibay Rider',
             'start_url'        => site_url('courier_goshipping/rider'),
             'scope'            => site_url('courier_goshipping/rider'),
             'display'          => 'standalone',
@@ -59,7 +59,7 @@ class Rider_app extends App_Controller
         // home-screen shortcut's icon, which the OS snapshots once at
         // install time and never re-fetches; that needs an uninstall +
         // reinstall on the device itself.
-        $cache_name = 'gs-rider-v2';
+        $cache_name = 'gs-rider-v3';
         echo <<<JS
 const CACHE_NAME = '{$cache_name}';
 
@@ -113,6 +113,15 @@ JS;
         if (!function_exists('imagecreatetruecolor')) {
             header('Content-Type: image/gif');
             echo base64_decode('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBTAA7');
+            return;
+        }
+
+        // Salibay Rider brand icon (static file) takes priority over the CRM company logo.
+        $brand_icon = FCPATH . 'modules/courier_goshipping/assets/salibay_rider_icon_' . $size . '.png';
+        if (is_file($brand_icon)) {
+            header('Content-Type: image/png');
+            header('Cache-Control: public, max-age=3600');
+            readfile($brand_icon);
             return;
         }
 
