@@ -11,7 +11,30 @@ class Rider_app extends App_Controller
 {
     public function index()
     {
-        $this->load->view('rider_app/shell');
+        $this->load->view('rider_app/shell', ['app_version' => $this->app_version()]);
+    }
+
+    /**
+     * Content hash of the app shell + this controller (which holds the service
+     * worker). Changes exactly when a deploy changes the app — NOT on every
+     * file copy, because the cPanel cron re-copies files and bumps mtimes.
+     */
+    private function app_version()
+    {
+        $files = [APPPATH . '../modules/courier_goshipping/views/rider_app/shell.php', __FILE__];
+        $hash  = '';
+        foreach ($files as $f) {
+            $hash .= is_file($f) ? md5_file($f) : '';
+        }
+        return substr(md5($hash), 0, 12);
+    }
+
+    // Polled by the app: lets an open/installed app notice a new deploy without reinstalling.
+    public function version()
+    {
+        header('Content-Type: application/json');
+        header('Cache-Control: no-store');
+        echo json_encode(['version' => $this->app_version()]);
     }
 
     // Reached from the emailed "Reset Password" link — a standalone page

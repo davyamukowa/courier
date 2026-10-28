@@ -76,6 +76,7 @@ $route['admin/courier_goshipping/salibay_delivery/cancel'] = 'courier_goshipping
 $route['courier_goshipping/rider'] = 'rider_app/index';
 $route['courier_goshipping/rider/manifest'] = 'rider_app/manifest';
 $route['courier_goshipping/rider/sw'] = 'rider_app/sw';
+$route['courier_goshipping/rider/version'] = 'rider_app/version';
 $route['courier_goshipping/rider/icon/(:num)'] = 'rider_app/icon/$1';
 $route['courier_goshipping/rider/reset-password/(:any)'] = 'rider_app/reset_password/$1';
 

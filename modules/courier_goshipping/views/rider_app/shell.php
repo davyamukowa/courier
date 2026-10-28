@@ -189,6 +189,12 @@
             background: var(--navy); color: #fff; padding: 10px 16px; font-size: 12.5px;
             display: none; align-items: center; justify-content: space-between; gap: 10px;
         }
+        #update_banner {
+            position: fixed; left: 0; right: 0; top: 0; z-index: 45;
+            background: #1b7a3d; color: #fff; padding: 10px 16px; font-size: 12.5px;
+            display: none; align-items: center; justify-content: space-between; gap: 10px;
+        }
+        #update_banner button { width: auto; margin: 0; padding: 8px 14px; font-size: 12px; background: #fff; color: #1b7a3d; }
         #install_banner button { width: auto; margin: 0; padding: 8px 14px; font-size: 12px; background: #fff; color: var(--navy); }
 
         .bottom-nav {
@@ -213,6 +219,10 @@
 </head>
 <body>
 
+    <div id="update_banner">
+        <span>A new version of Salibay Rider is available.</span>
+        <button onclick="applyAppUpdate()">Update now</button>
+    </div>
     <div id="install_banner">
         <span style="display:flex;align-items:center;gap:8px;"><svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="M8 11l4 4 4-4"/><path d="M5 19h14"/></svg> Install this app for faster access to your deliveries.</span>
         <button onclick="installApp()">Install</button>
@@ -1435,6 +1445,32 @@
             document.getElementById('profile_install_btn').style.display = 'none';
         });
     }
+    // ── In-app update check ──────────────────────────────────────────────────
+    // The server reports a content hash of the app; if it differs from the one
+    // this page was loaded with, a deploy happened — offer a one-tap refresh
+    // (clears the offline file cache first). Login token is untouched.
+    var APP_VERSION = <?php echo json_encode($app_version ?? ''); ?>;
+    var VERSION_URL = <?php echo json_encode(site_url('courier_goshipping/rider/version')); ?>;
+    function checkForUpdate() {
+        if (!APP_VERSION || !navigator.onLine) { return; }
+        fetch(VERSION_URL, { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (res) {
+            if (res && res.version && res.version !== APP_VERSION) {
+                document.getElementById('update_banner').style.display = 'flex';
+            }
+        }).catch(function () {});
+    }
+    function applyAppUpdate() {
+        var done = function () { window.location.reload(); };
+        var clearCaches = window.caches ? caches.keys().then(function (keys) { return Promise.all(keys.map(function (k) { return caches.delete(k); })); }) : Promise.resolve();
+        var updateSw = ('serviceWorker' in navigator)
+            ? navigator.serviceWorker.getRegistrations().then(function (regs) { return Promise.all(regs.map(function (r) { return r.update(); })); })
+            : Promise.resolve();
+        Promise.all([clearCaches, updateSw]).then(done, done);
+    }
+    setTimeout(checkForUpdate, 4000);
+    setInterval(checkForUpdate, 5 * 60 * 1000);
+    document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') { checkForUpdate(); } });
+
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register(SW_URL, { scope: <?php echo json_encode(site_url('courier_goshipping/rider')); ?> }).catch(function () {});
     }
