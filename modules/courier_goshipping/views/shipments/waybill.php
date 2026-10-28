@@ -1200,7 +1200,7 @@
                         </script>
                         <?php endif; ?>
 
-                        <?php if (!empty($salibay_delivery_link)): ?>
+                        <?php if (!empty($salibay_delivery_link) || (int) $shipment_details['shipment']->status_id < 8): ?>
                         <script>
                         // Auto-refresh: a rider tapping Start/Delivered/Cancel on their
                         // phone changes this shipment's status server-side, but this page
