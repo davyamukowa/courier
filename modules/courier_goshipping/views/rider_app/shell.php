@@ -424,7 +424,9 @@
     <div class="modal-backdrop" id="map_modal">
         <div class="modal-sheet">
             <h3>Delivery Map</h3>
+            <div id="rider_map_info" style="margin-top:8px;font-size:13px;font-weight:600;color:#102a43;"></div>
             <div id="rider_map" style="width:100%;height:280px;border-radius:8px;background:#eee;margin-top:10px;"></div>
+            <a id="rider_map_nav" class="btn-primary" target="_blank" rel="noopener" style="display:none;margin-top:12px;text-align:center;text-decoration:none;">Open turn-by-turn navigation</a>
             <button class="btn-ghost" onclick="closeModal('map_modal')" style="margin-top:14px;">Close</button>
         </div>
     </div>
@@ -1071,6 +1073,9 @@
             beginLocationSharing(id);
             toast('Delivery started.', 'success');
             loadDeliveries();
+            // Show the route to the customer straight away.
+            var started = activeDeliveriesCache.filter(function (x) { return x.id === id; })[0];
+            openMapModal(id, started ? (started.recipient_address || '') : '');
         }).catch(function () {
             btn.disabled = false; btn.textContent = 'Start Delivery';
             toast('Network error — please check your connection and try again.', 'error');
@@ -1127,9 +1132,29 @@
     }
 
     // ── Rider's own map view: last known shared position + geocoded drop-off ──
-    var riderMap = null, riderMarker = null, riderDestMarker = null;
+    var riderMap = null, riderMarker = null, riderDestMarker = null, riderRouteLine = null;
+
+    // Driving route + distance/ETA from the free OSRM service; if it is
+    // unreachable the straight-line view above still works.
+    function drawRoute(lat, lng, dLat, dLng) {
+        fetch('https://router.project-osrm.org/route/v1/driving/' + lng + ',' + lat + ';' + dLng + ',' + dLat + '?overview=full&geometries=geojson')
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                if (!res || !res.routes || !res.routes[0]) { return; }
+                var route = res.routes[0];
+                if (riderRouteLine) { riderMap.removeLayer(riderRouteLine); }
+                riderRouteLine = L.geoJSON(route.geometry, { style: { color: '#1565c0', weight: 5 } }).addTo(riderMap);
+                riderMap.fitBounds(riderRouteLine.getBounds(), { padding: [30, 30] });
+                var km = (route.distance / 1000).toFixed(1), mins = Math.round(route.duration / 60);
+                document.getElementById('rider_map_info').textContent = km + ' km · about ' + (mins >= 60 ? Math.floor(mins / 60) + ' h ' + (mins % 60) + ' min' : mins + ' min') + ' to the customer';
+            }).catch(function () {});
+    }
+
     function openMapModal(id, destAddress) {
         openModal('map_modal');
+        document.getElementById('rider_map_info').textContent = '';
+        var navBtn = document.getElementById('rider_map_nav');
+        if (destAddress) { navBtn.href = navigateHref(destAddress); navBtn.style.display = 'block'; } else { navBtn.style.display = 'none'; }
 
         function ensureLeaflet(cb) {
             if (window.L) { cb(); return; }
@@ -1153,6 +1178,7 @@
                     }).addTo(riderMap);
                     riderMarker = L.marker([lat, lng]).addTo(riderMap).bindPopup('You');
                 } else {
+                    riderMap.invalidateSize();
                     riderMap.setView([lat, lng], 13);
                     riderMarker.setLatLng([lat, lng]);
                 }
@@ -1166,6 +1192,7 @@
                                 if (riderDestMarker) { riderMap.removeLayer(riderDestMarker); }
                                 riderDestMarker = L.marker([dLat, dLng]).addTo(riderMap).bindPopup('Delivery address').openPopup();
                                 riderMap.fitBounds([[lat, lng], [dLat, dLng]], { padding: [30, 30] });
+                                drawRoute(lat, lng, dLat, dLng);
                             }
                         }).catch(function () {});
                 }
