@@ -164,7 +164,7 @@ class Fulfilment extends AdminController
             ->result();
 
         $data['group_content'] = $this->load->view('courier_goshipping/fulfilment/dashboard', $data, true);
-        $this->load->view('courier_goshipping/fulfilment/main', $data);
+        $this->load->view('courier_goshipping/fulfilment/riders_page', $data);
     }
 
     public function orders()
@@ -172,7 +172,7 @@ class Fulfilment extends AdminController
         $data = $this->build_base_data('orders', 'Salibay Orders');
         $data['prefilter_status'] = $this->input->get('status', true) ?: '';
         $data['group_content'] = $this->load->view('courier_goshipping/fulfilment/orders', $data, true);
-        $this->load->view('courier_goshipping/fulfilment/main', $data);
+        $this->load->view('courier_goshipping/fulfilment/riders_page', $data);
     }
 
     public function salibay_order_list()
@@ -180,7 +180,7 @@ class Fulfilment extends AdminController
         $data = $this->build_base_data('orders', 'Salibay Order List');
         $data['salibay_orders'] = $this->get_salibay_orders_for_list();
         $data['group_content'] = $this->load->view('courier_goshipping/fulfilment/salibay_order_list', $data, true);
-        $this->load->view('courier_goshipping/fulfilment/main', $data);
+        $this->load->view('courier_goshipping/fulfilment/riders_page', $data);
     }
 
     public function get_salibay_order_list_datatable()
@@ -310,7 +310,7 @@ class Fulfilment extends AdminController
     {
         $data = $this->build_base_data('inventory', 'Virtual Warehouse Inventory');
         $data['group_content'] = $this->load->view('courier_goshipping/fulfilment/inventory', $data, true);
-        $this->load->view('courier_goshipping/fulfilment/main', $data);
+        $this->load->view('courier_goshipping/fulfilment/riders_page', $data);
     }
 
     public function health()
@@ -321,7 +321,7 @@ class Fulfilment extends AdminController
 
         $data = $this->build_base_data('health', 'Integration Health');
         $data['group_content'] = $this->load->view('courier_goshipping/fulfilment/health', $data, true);
-        $this->load->view('courier_goshipping/fulfilment/main', $data);
+        $this->load->view('courier_goshipping/fulfilment/riders_page', $data);
     }
 
     public function riders()
@@ -333,7 +333,7 @@ class Fulfilment extends AdminController
             $data['riders'] = [];
             $data['unlinked_drivers'] = [];
             $data['group_content'] = $this->load->view('courier_goshipping/fulfilment/riders', $data, true);
-            $this->load->view('courier_goshipping/fulfilment/main', $data);
+            $this->load->view('courier_goshipping/fulfilment/riders_page', $data);
             return;
         }
 
@@ -380,7 +380,7 @@ class Fulfilment extends AdminController
         $data['unlinked_drivers'] = $this->db->get()->result();
 
         $data['group_content'] = $this->load->view('courier_goshipping/fulfilment/riders', $data, true);
-        $this->load->view('courier_goshipping/fulfilment/main', $data);
+        $this->load->view('courier_goshipping/fulfilment/riders_page', $data);
     }
 
     public function link_rider($rider_id)
@@ -477,7 +477,7 @@ class Fulfilment extends AdminController
         }
 
         $data['group_content'] = $this->load->view('courier_goshipping/fulfilment/settings', $data, true);
-        $this->load->view('courier_goshipping/fulfilment/main', $data);
+        $this->load->view('courier_goshipping/fulfilment/riders_page', $data);
     }
 
     // ── Maps a sourcing-app "Route GSC-AE-DXB" style order tag to the Go
