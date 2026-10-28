@@ -21,8 +21,8 @@
                 <tbody>
                     <?php if (!empty($riders)): ?>
                         <?php foreach ($riders as $rider): ?>
-                            <tr>
-                                <td><?php echo htmlspecialchars($rider->name); ?></td>
+                            <tr class="cgs-rider-row" data-href="<?php echo admin_url('courier_goshipping/fulfilment/rider/' . $rider->id); ?>" style="cursor:pointer;" title="Open rider dashboard">
+                                <td><a href="<?php echo admin_url('courier_goshipping/fulfilment/rider/' . $rider->id); ?>"><strong><?php echo htmlspecialchars($rider->name); ?></strong></a></td>
                                 <td><?php echo htmlspecialchars($rider->phone); ?></td>
                                 <td>
                                     <span class="label label-<?php echo $rider->status === 'active' ? 'success' : 'danger'; ?>">
@@ -102,3 +102,16 @@
         </div>
     </div>
 </div>
+<script>
+(function waitForJQueryRiderRows() {
+    if (!window.jQuery) { setTimeout(waitForJQueryRiderRows, 50); return; }
+    $(function () {
+        // Whole row opens the rider dashboard; real controls inside the row keep working.
+        $(document).on('click', '.cgs-rider-row', function (e) {
+            if ($(e.target).closest('a, button, select, input, form, label').length) { return; }
+            window.location = $(this).data('href');
+        });
+        $('.cgs-rider-row').hover(function () { $(this).css('background', '#eef5ff'); }, function () { $(this).css('background', ''); });
+    });
+})();
+</script>
