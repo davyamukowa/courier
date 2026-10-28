@@ -3181,6 +3181,8 @@ class Courier_Logistic_System {
     /** Agents (rows in tbl_agents) live under the Agents tab, not in the default Users list. */
     public function exclude_agents_from_staff_table($where)
     {
+        // Auto-provisioned rider staff rows (placeholder @riders.invalid email, login-blocked) live under the Riders tab only.
+        $where[] = "AND " . db_prefix() . "staff.email NOT LIKE '%@riders.invalid'";
         $CI = &get_instance();
         if ($CI->db->table_exists(db_prefix() . '_agents')) {
             $where[] = 'AND ' . db_prefix() . 'staff.staffid NOT IN (SELECT staff_id FROM ' . db_prefix() . '_agents)';
