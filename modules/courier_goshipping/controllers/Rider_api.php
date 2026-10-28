@@ -147,6 +147,11 @@ class Rider_api extends App_Controller
     // ── Auth ────────────────────────────────────────────────────────────────
     public function register()
     {
+        // Staff auto-provisioning runs Perfex hooks that can emit stray
+        // output/warnings; buffer it so the JSON response is never corrupted
+        // (a corrupted response made the app look like a failed signup even
+        // though the account row had already been created).
+        ob_start();
         $result = $this->Rider_model->register(
             $this->input->post('name'),
             $this->input->post('phone'),
@@ -154,6 +159,7 @@ class Rider_api extends App_Controller
             $this->input->post('email'),
             $this->input->post('national_id')
         );
+        ob_end_clean();
         if (!$result['success']) {
             $this->fail($result['message']);
             return;

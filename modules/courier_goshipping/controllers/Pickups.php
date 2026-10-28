@@ -173,7 +173,9 @@ class Pickups extends AdminController
 
             if ($contact_id === false) {
                 set_alert('danger', 'Failed to add contact person.');
-                redirect('admin/courier_goshipping/pickups/create');
+                $data['errors'] = 'Failed to add contact person.';
+                $this->load->view('pickups/create', $data);
+                return;
             }
 
             //store pickup data
@@ -200,7 +202,9 @@ class Pickups extends AdminController
 
             if ($pickup_id === false) {
                 set_alert('danger', 'Failed to add pickup.');
-                redirect('admin/courier_goshipping/pickups/create');
+                $data['errors'] = 'Failed to add pickup.';
+                $this->load->view('pickups/create', $data);
+                return;
             }
 
             set_alert('success', 'Pickup added successfully.');

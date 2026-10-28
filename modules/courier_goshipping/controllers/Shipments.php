@@ -747,8 +747,7 @@ class Shipments extends AdminController
         $recipient_id = $this->add_recipient();
 
         if ($recipient_id === false) {
-            set_alert('danger', 'Failed to add recipient.');
-            redirect(admin_url('courier_goshipping/pickups/create'));
+            throw new Exception('Failed to add recipient details to database.');
         }
 
         return $recipient_id;
@@ -784,8 +783,7 @@ class Shipments extends AdminController
         $sender_id = $this->add_sender();
 
         if ($sender_id === false) {
-            set_alert('danger', 'Failed to add sender.');
-            redirect(admin_url('courier_goshipping/pickups/create'));
+            throw new Exception('Failed to add sender details to database.');
         }
 
         return $sender_id;
@@ -822,8 +820,7 @@ class Shipments extends AdminController
         $client_id = $this->add_client();
 
         if ($client_id === false) {
-            set_alert('danger', 'Failed to add client.');
-            redirect(admin_url('courier_goshipping/pickups/create'));
+            throw new Exception('Failed to create client details in database.');
         }
 
         return $client_id;
@@ -910,8 +907,7 @@ class Shipments extends AdminController
         $shipment_id = $this->add_shipment($client_id, $sender_id, $recipient_id, $waybill_number, $recipient_company_id);
 
         if ($shipment_id === false) {
-            set_alert('danger', 'Failed to add shipment.');
-            redirect(admin_url('courier_goshipping/pickups/create'));
+            throw new Exception('Failed to create shipment record in database.');
         }
 
         return $shipment_id;
@@ -1018,8 +1014,7 @@ class Shipments extends AdminController
             $contact_id = $this->PickupContact_model->add($contact_person_data);
 
             if ($contact_id === false) {
-                set_alert('danger', 'Failed to add pickup contact person.');
-                redirect(admin_url('courier_goshipping/pickups/create'));
+                throw new Exception('Failed to add pickup contact person.');
             }
 
             // Store pickup data
@@ -1045,8 +1040,7 @@ class Shipments extends AdminController
             $pickup_id = $this->Pickup_model->add($pickup_data);
 
             if ($pickup_id === false) {
-                set_alert('danger', 'Failed to add pickup.');
-                redirect(admin_url('courier_goshipping/pickups/create'));
+                throw new Exception('Failed to add pickup record.');
             }
         }
     }
@@ -1690,31 +1684,57 @@ class Shipments extends AdminController
 
 
             } catch (Exception $e) {
-
-
-                $data = [
-                    'currencies' => $this->Shipment_model->get_currencies(),
-                    'type' => $this->input->post('type'),
-                    'countries' => $this->Shipment_model->get_countries(),
-                    'mode' => $this->input->post('mode'),
-                    'mode_type' => $this->input->post('mode_type'),
-                    'show_pickup_section' => $this->input->post('hasPickup') !== null,
-                    'show_company_section' => $this->input->post('sender_type') === 'company',
-                    'show_recipient_company_section' => $this->input->post('recipient_type') === 'company',
-                ];
-
                 // Log the error message
                 log_message('error', $e->getMessage());
 
-                $error_code = $this->db->error()['code'];
+                $error_code = $this->db->error()['code'] ?? null;
                 $error_message = ($error_code == 1062)
                     ? 'This email address already exists.'
-                    : 'An error occurred: ' . $e->getMessage();
+                    : 'An error occurred while saving: ' . $e->getMessage();
 
                 set_alert('danger', $error_message);
 
-                redirect(admin_url('courier_goshipping/shipments/create'), $data);
+                $_lc_raw_s = get_option('courier_logistic_company');
+                $_lc_s     = (!empty($_lc_raw_s) && $_lc_raw_s !== 'GO Shipping')
+                    ? $_lc_raw_s
+                    : (get_option('companyname') ?: '');
 
+                $data = [
+                    'currencies'        => $this->Shipment_model->get_currencies(),
+                    'countries'         => $this->filterSenderCountries(),
+                    'type'              => $this->input->post('type'),
+                    'mode'              => $this->input->post('mode'),
+                    'mode_type'         => $this->input->post('mode_type'),
+                    'show_pickup_section'                        => $this->input->post('hasPickup') !== null,
+                    'show_company_section'                       => $this->input->post('sender_type') === 'company',
+                    'show_recipient_company_section'             => $this->input->post('recipient_type') === 'company',
+                    'dimensional_factor'                         => $this->DimensionalFactor_model->get(),
+                    'show_commercial_value_attachment_section'   => $this->input->post('hasCommercialInvoiceAttachment') !== null,
+                    'courier_logistic_company' => $_lc_s,
+                    'user_country'             => $this->getStaffCountry(),
+                    'courier_companies'        => $this->CourierCompany_model->get(),
+                    'current_staff'            => $this->db
+                        ->select('firstname, lastname, email, phonenumber')
+                        ->from(db_prefix() . 'staff')
+                        ->where('staffid', get_staff_user_id())
+                        ->get()->row(),
+                    'recipient_country_id'         => $this->input->post('recipient_country_id'),
+                    'recipient_contact_country_id' => $this->input->post('recipient_contact_country_id'),
+                    'sender_country_id'            => $this->input->post('sender_country_id'),
+                    'contact_country_id'           => $this->input->post('contact_country_id'),
+                    'pickup_country_id'            => $this->input->post('pickup_country_id'),
+                    'recipient_state_id'         => $this->input->post('recipient_state_id'),
+                    'sender_state_id'            => $this->input->post('sender_state_id'),
+                    'contact_state_id'           => $this->input->post('contact_state_id'),
+                    'recipient_contact_state_id' => $this->input->post('recipient_contact_state_id'),
+                    'pickup_state_id'            => $this->input->post('pickup_state_id'),
+                    'drivers'                       => $this->Driver_model->get(),
+                    'recipient_countries'           => $this->Shipment_model->get_countries(),
+                    'courier_payment_terms_mode'    => get_option('courier_payment_terms_mode') ?: 'manual',
+                ];
+
+                $this->load->view('shipments/create', $data);
+                return;
             }
         }
 
@@ -2791,10 +2811,27 @@ class Shipments extends AdminController
 
         $mode = ucfirst(str_replace('_', ' ', $shipment->shipping_mode ?? 'road'));
 
+        $dest_parts = [];
+        if (!empty($recipient)) {
+            if (!empty($recipient->address)) {
+                $dest_parts[] = $recipient->address;
+            } elseif (!empty($recipient->recipient_contact_address)) {
+                $dest_parts[] = $recipient->recipient_contact_address;
+            }
+            if (!empty($recipient->city)) {
+                $dest_parts[] = $recipient->city;
+            }
+            if (!empty($details['recipient_country']->short_name)) {
+                $dest_parts[] = $details['recipient_country']->short_name;
+            }
+        }
+        $destination = htmlspecialchars(implode(', ', array_filter($dest_parts)) ?: 'Customer Address');
+
         $merge = [
             '{recipient_name}' => $recip_name ?: 'Customer',
             '{sender_name}'    => $sender_name,
             '{waybill_number}' => $waybill,
+            '{destination}'    => $destination,
             '{shipping_mode}'  => $mode,
             '{status}'         => $status_name,
             '{company_name}'   => $company_name,

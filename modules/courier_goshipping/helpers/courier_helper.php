@@ -298,6 +298,108 @@ if (!function_exists('courier_resolve_shipment_recipient_email')) {
 if (!function_exists('courier_ensure_notification_email_templates')) {
     function courier_ensure_notification_email_templates()
     {
+        $recipient_subject = 'Incoming Delivery Notification — Waybill {waybill_number} from {sender_name} | {company_name}';
+        $recipient_message = '<div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:0 auto;color:#333333;line-height:1.6;">
+  <div style="background:#0a2a52;padding:24px;text-align:center;border-radius:8px 8px 0 0;">
+    <h2 style="color:#ffffff;margin:0;font-size:22px;letter-spacing:0.5px;">📦 Incoming Delivery Notification</h2>
+    <p style="color:#cfd8dc;margin:6px 0 0 0;font-size:14px;">A parcel is on its way to you</p>
+  </div>
+  <div style="padding:24px;border:1px solid #e0e0e0;border-top:none;border-radius:0 0 8px 8px;background:#ffffff;">
+    <p style="font-size:16px;margin-top:0;">Dear <strong>{recipient_name}</strong>,</p>
+    <p>Good news! A shipment sent by <strong>{sender_name}</strong> has been registered with <strong>{company_name}</strong> and is currently on its way to your destination.</p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;margin:20px 0;border:1px solid #e0e0e0;">
+      <tr style="background:#f8f9fa;">
+        <td style="padding:10px 14px;border:1px solid #e0e0e0;font-weight:bold;width:38%;">Waybill / Tracking #</td>
+        <td style="padding:10px 14px;border:1px solid #e0e0e0;font-size:16px;font-weight:bold;color:#0a2a52;">
+          <a href="{tracking_link}" style="color:#0a2a52;text-decoration:none;">{waybill_number}</a>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:10px 14px;border:1px solid #e0e0e0;font-weight:bold;">Sender</td>
+        <td style="padding:10px 14px;border:1px solid #e0e0e0;">{sender_name}</td>
+      </tr>
+      <tr style="background:#f8f9fa;">
+        <td style="padding:10px 14px;border:1px solid #e0e0e0;font-weight:bold;">Delivery Destination</td>
+        <td style="padding:10px 14px;border:1px solid #e0e0e0;">{destination}</td>
+      </tr>
+      <tr>
+        <td style="padding:10px 14px;border:1px solid #e0e0e0;font-weight:bold;">Shipping Mode</td>
+        <td style="padding:10px 14px;border:1px solid #e0e0e0;">{shipping_mode}</td>
+      </tr>
+      <tr style="background:#f8f9fa;">
+        <td style="padding:10px 14px;border:1px solid #e0e0e0;font-weight:bold;">Current Status</td>
+        <td style="padding:10px 14px;border:1px solid #e0e0e0;"><span style="display:inline-block;padding:3px 10px;background:#e3f2fd;color:#0d47a1;border-radius:12px;font-weight:bold;font-size:12px;">{status}</span></td>
+      </tr>
+    </table>
+    <div style="background:#e8f4fd;border-left:4px solid #0288d1;padding:14px 18px;margin:22px 0;border-radius:4px;">
+      <strong style="color:#01579b;display:block;margin-bottom:4px;">📌 Delivery Instructions:</strong>
+      <span style="font-size:13.5px;color:#37474f;">Please ensure someone is available at the delivery address to receive the parcel. A valid identification document may be requested upon handover.</span>
+    </div>
+    <div style="text-align:center;margin:28px 0 20px;">
+      <a href="{tracking_link}" style="display:inline-block;padding:15px 36px;background:#0a2a52;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:bold;font-size:16px;box-shadow:0 3px 10px rgba(10,42,82,0.25);">Track Your Delivery</a>
+    </div>
+    <p style="text-align:center;font-size:12.5px;color:#78909c;margin:0 0 20px;">Or copy and paste this tracking link into your browser:<br><a href="{tracking_link}" style="color:#0a2a52;word-break:break-all;">{tracking_link}</a></p>
+    <hr style="border:none;border-top:1px solid #eeeeee;margin:24px 0;">
+    <p style="font-size:13px;color:#616161;margin-bottom:4px;">If you have any questions regarding this incoming delivery, please contact our team.</p>
+    <p style="font-size:13px;color:#616161;margin-top:0;">Best regards,<br><strong>{company_name} Delivery Team</strong></p>
+  </div>
+</div>';
+
+        $sender_subject = 'Shipment Confirmation — Waybill {waybill_number} to {recipient_name} | {company_name}';
+        $sender_message = '<div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:0 auto;color:#333333;line-height:1.6;">
+  <div style="background:#1b5e20;padding:24px;text-align:center;border-radius:8px 8px 0 0;">
+    <h2 style="color:#ffffff;margin:0;font-size:22px;letter-spacing:0.5px;">✅ Shipment Booking Confirmation</h2>
+    <p style="color:#c8e6c9;margin:6px 0 0 0;font-size:14px;">Your package has been booked successfully</p>
+  </div>
+  <div style="padding:24px;border:1px solid #e0e0e0;border-top:none;border-radius:0 0 8px 8px;background:#ffffff;">
+    <p style="font-size:16px;margin-top:0;">Dear <strong>{sender_name}</strong>,</p>
+    <p>Thank you for shipping with <strong>{company_name}</strong>! Your shipment for <strong>{recipient_name}</strong> has been successfully booked and is now being processed.</p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;margin:20px 0;border:1px solid #e0e0e0;">
+      <tr style="background:#f8f9fa;">
+        <td style="padding:10px 14px;border:1px solid #e0e0e0;font-weight:bold;width:38%;">Waybill Number</td>
+        <td style="padding:10px 14px;border:1px solid #e0e0e0;font-size:16px;font-weight:bold;color:#2e7d32;">
+          <a href="{tracking_link}" style="color:#2e7d32;text-decoration:none;">{waybill_number}</a>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:10px 14px;border:1px solid #e0e0e0;font-weight:bold;">Recipient</td>
+        <td style="padding:10px 14px;border:1px solid #e0e0e0;">{recipient_name}</td>
+      </tr>
+      <tr style="background:#f8f9fa;">
+        <td style="padding:10px 14px;border:1px solid #e0e0e0;font-weight:bold;">Destination</td>
+        <td style="padding:10px 14px;border:1px solid #e0e0e0;">{destination}</td>
+      </tr>
+      <tr>
+        <td style="padding:10px 14px;border:1px solid #e0e0e0;font-weight:bold;">Shipping Mode</td>
+        <td style="padding:10px 14px;border:1px solid #e0e0e0;">{shipping_mode}</td>
+      </tr>
+      <tr style="background:#f8f9fa;">
+        <td style="padding:10px 14px;border:1px solid #e0e0e0;font-weight:bold;">Current Status</td>
+        <td style="padding:10px 14px;border:1px solid #e0e0e0;"><span style="display:inline-block;padding:3px 10px;background:#e8f5e9;color:#2e7d32;border-radius:12px;font-weight:bold;font-size:12px;">{status}</span></td>
+      </tr>
+    </table>
+    <div style="background:#f1f8e9;border-left:4px solid #43a047;padding:14px 18px;margin:22px 0;border-radius:4px;">
+      <strong style="color:#2e7d32;display:block;margin-bottom:4px;">📄 Waybill Attached:</strong>
+      <span style="font-size:13.5px;color:#37474f;">Your official Waybill document (PDF) is attached to this email for your records and proof of consignment.</span>
+    </div>
+    <div style="text-align:center;margin:28px 0 20px;">
+      <a href="{tracking_link}" style="display:inline-block;padding:15px 36px;background:#2e7d32;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:bold;font-size:16px;box-shadow:0 3px 10px rgba(46,125,50,0.25);">Track Shipment Live</a>
+    </div>
+    <p style="text-align:center;font-size:12.5px;color:#78909c;margin:0 0 20px;">Or copy and paste this tracking link into your browser:<br><a href="{tracking_link}" style="color:#2e7d32;word-break:break-all;">{tracking_link}</a></p>
+    <hr style="border:none;border-top:1px solid #eeeeee;margin:24px 0;">
+    <p style="font-size:13px;color:#616161;margin-bottom:4px;">We will notify you again once your package has been delivered.</p>
+    <p style="font-size:13px;color:#616161;margin-top:0;">Thank you for your business,<br><strong>{company_name} Customer Care</strong></p>
+  </div>
+</div>';
+
+        create_email_template(
+            $recipient_subject,
+            $recipient_message,
+            'courier',
+            'Courier Waybill Notification to Customer',
+            'courier_waybill_to_customer'
+        );
+
         create_email_template(
             'Your order is on its way — Waybill {waybill_number} - {company_name}',
             '<p>Dear {recipient_name},</p>
@@ -326,15 +428,8 @@ if (!function_exists('courier_ensure_notification_email_templates')) {
         );
 
         create_email_template(
-            'Your Parcel Is On Its Way — Waybill {waybill_number} - {company_name}',
-            '<p>Dear {sender_name},</p>
-<p>Thank you for shipping with {company_name}. Your parcel has been picked up and assigned waybill number <strong>{waybill_number}</strong>, on its way to {recipient_name}.</p>
-<p>You can track its journey at any time using the button below.</p>
-<div style="text-align:center;margin:28px 0;">
-  <a href="{tracking_link}" style="display:inline-block;padding:18px 44px;background:#c62828;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:bold;font-size:20px;letter-spacing:0.5px;text-transform:uppercase;box-shadow:0 4px 14px rgba(198,40,40,0.4);">Track Your Shipment</a>
-</div>
-<p>Or copy and paste this link into your browser:<br>{tracking_link}</p>
-<p>Thank you for choosing <strong>{company_name}</strong>.</p>',
+            $sender_subject,
+            $sender_message,
             'courier',
             'Courier: Sender Tracking Info',
             'courier_sender_tracking_info'
@@ -354,6 +449,31 @@ if (!function_exists('courier_ensure_notification_email_templates')) {
             'Salibay: International Leg Status Update',
             'salibay_international_leg_status_update'
         );
+
+        // Self-heal: ensure existing database rows are upgraded to distinct templates
+        $CI = &get_instance();
+        if (get_option('courier_distinct_email_templates_v2') !== '1') {
+            try {
+                $templates_table = db_prefix() . 'emailtemplates';
+                if ($CI->db->table_exists($templates_table)) {
+                    $CI->db->where('slug', 'courier_waybill_to_customer')
+                        ->update($templates_table, [
+                            'subject' => $recipient_subject,
+                            'message' => $recipient_message,
+                        ]);
+
+                    $CI->db->where('slug', 'courier_sender_tracking_info')
+                        ->update($templates_table, [
+                            'subject' => $sender_subject,
+                            'message' => $sender_message,
+                        ]);
+
+                    update_option('courier_distinct_email_templates_v2', '1');
+                }
+            } catch (\Throwable $e) {
+                log_message('error', 'Failed updating email templates in courier_ensure_notification_email_templates: ' . $e->getMessage());
+            }
+        }
     }
 }
 
@@ -574,6 +694,22 @@ if (!function_exists('courier_send_shipment_waybill_email')) {
                 }
             }
 
+            $dest_parts = [];
+            if (!empty($recipient)) {
+                if (!empty($recipient->address)) {
+                    $dest_parts[] = $recipient->address;
+                } elseif (!empty($recipient->recipient_contact_address)) {
+                    $dest_parts[] = $recipient->recipient_contact_address;
+                }
+                if (!empty($recipient->city)) {
+                    $dest_parts[] = $recipient->city;
+                }
+                if (!empty($details['recipient_country']->short_name)) {
+                    $dest_parts[] = $details['recipient_country']->short_name;
+                }
+            }
+            $destination = htmlspecialchars(implode(', ', array_filter($dest_parts)) ?: 'Customer Address');
+
             $mode = ucfirst(str_replace('_', ' ', $shipment->shipping_mode ?? 'road'));
 
             courier_ensure_notification_email_templates();
@@ -582,6 +718,7 @@ if (!function_exists('courier_send_shipment_waybill_email')) {
                 '{recipient_name}' => $recip_name ?: 'Customer',
                 '{sender_name}'    => $sender_name,
                 '{waybill_number}' => $waybill,
+                '{destination}'    => $destination,
                 '{shipping_mode}'  => $mode,
                 '{status}'         => $status_name,
                 '{company_name}'   => $company_name,
@@ -1309,32 +1446,73 @@ if (!function_exists('courier_send_sender_tracking_email')) {
             }
 
             $CI = &get_instance();
-            $shipment = $resolved['shipment'];
+            $CI->load->model('courier_goshipping/Shipment_model');
+            $details = $CI->Shipment_model->get_shipment_details((int) $shipment_id);
 
-            $recipient_name = 'the recipient';
-            if (!empty($shipment->recipient_id)) {
-                $r = $CI->db->where('id', $shipment->recipient_id)->get(db_prefix() . '_shipment_recipients')->row();
-                if ($r) {
-                    $recipient_name = trim(($r->first_name ?? '') . ' ' . ($r->last_name ?? '')) ?: $recipient_name;
-                }
-            } elseif (!empty($shipment->recipient_company_id)) {
-                $rc = $CI->db->where('id', $shipment->recipient_company_id)->get(db_prefix() . '_recipient_companies')->row();
-                if ($rc) {
-                    $recipient_name = $rc->recipient_company_name ?? $recipient_name;
+            $shipment  = $details['shipment'] ?? $resolved['shipment'];
+            $recipient = $details['recipient'] ?? null;
+            $sender    = $details['sender'] ?? null;
+
+            $sender_name = $resolved['sender_name'] ?: 'Customer';
+            if (!empty($sender)) {
+                if (!empty($sender->first_name)) {
+                    $sender_name = htmlspecialchars(trim($sender->first_name . ' ' . ($sender->last_name ?? '')));
+                } elseif (!empty($sender->company_name)) {
+                    $sender_name = htmlspecialchars($sender->company_name);
                 }
             }
 
-            $waybill = $shipment->waybill_number ?: $shipment->tracking_id;
+            $recip_name = 'Customer';
+            if (!empty($recipient)) {
+                if (!empty($recipient->first_name)) {
+                    $recip_name = htmlspecialchars(trim($recipient->first_name . ' ' . ($recipient->last_name ?? '')));
+                } elseif (!empty($recipient->recipient_contact_person_name)) {
+                    $recip_name = htmlspecialchars($recipient->recipient_contact_person_name);
+                } elseif (!empty($recipient->recipient_company_name)) {
+                    $recip_name = htmlspecialchars($recipient->recipient_company_name);
+                }
+            }
+
+            $dest_parts = [];
+            if (!empty($recipient)) {
+                if (!empty($recipient->address)) {
+                    $dest_parts[] = $recipient->address;
+                } elseif (!empty($recipient->recipient_contact_address)) {
+                    $dest_parts[] = $recipient->recipient_contact_address;
+                }
+                if (!empty($recipient->city)) {
+                    $dest_parts[] = $recipient->city;
+                }
+                if (!empty($details['recipient_country']->short_name)) {
+                    $dest_parts[] = $details['recipient_country']->short_name;
+                }
+            }
+            $destination = htmlspecialchars(implode(', ', array_filter($dest_parts)) ?: 'Recipient Address');
+
+            $invoice_info = courier_get_invoice_info($shipment->branch_id ?? null);
+            $company_name = $invoice_info['name'] ?: (get_option('companyname') ?: 'Courier');
+            $waybill_raw  = $shipment->waybill_number ?: $shipment->tracking_id;
+            $waybill      = htmlspecialchars($waybill_raw);
+            $status_name  = htmlspecialchars($shipment->status_name ?? 'Processing');
+            $tracking_url = courier_customer_tracking_link($waybill_raw);
+            $mode         = ucfirst(str_replace('_', ' ', $shipment->shipping_mode ?? 'road'));
 
             courier_ensure_notification_email_templates();
 
-            $sent = mail_template('Courier_sender_tracking_info', 'courier_goshipping', $resolved['email'], [
-                '{sender_name}'    => $resolved['sender_name'] ?: 'Customer',
-                '{recipient_name}' => $recipient_name,
+            $mail = mail_template('Courier_sender_tracking_info', 'courier_goshipping', $resolved['email'], [
+                '{sender_name}'    => $sender_name,
+                '{recipient_name}' => $recip_name,
                 '{waybill_number}' => $waybill,
-                '{tracking_link}'  => courier_customer_tracking_link($waybill),
-                '{company_name}'   => get_option('companyname'),
-            ])->send();
+                '{destination}'    => $destination,
+                '{shipping_mode}'  => $mode,
+                '{status}'         => $status_name,
+                '{tracking_link}'  => $tracking_url,
+                '{company_name}'   => $company_name,
+            ]);
+
+            courier_attach_waybill_pdfs($mail, (int) $shipment_id);
+
+            $sent = $mail->send();
 
             if (!$sent) {
                 log_message('error', "Sender tracking-info email to {$resolved['email']} for shipment #{$shipment_id} was not sent.");

@@ -44,7 +44,7 @@
 
 <?php if (!empty($agents)): ?>
 <div class="table-responsive">
-<table class="table dt-table cgs-table" id="agents-table">
+<table class="table dt-table cgs-table" id="agents-table" data-order-col="0" data-order-type="desc">
     <thead>
     <tr>
         <th>Agent Number</th>
@@ -53,15 +53,15 @@
         <th>Station</th>
         <th>Commission</th>
         <th>Status</th>
-        <th>Documents</th>
-        <th style="min-width:220px;">Actions</th>
+        <th data-orderable="false">Documents</th>
+        <th data-orderable="false" style="min-width:220px;">Actions</th>
     </tr>
     </thead>
     <tbody>
     <?php foreach ($agents as $agent): ?>
         <?php $is_suspended = (isset($agent->status) && ($agent->status === '0' || $agent->status == 0) && !empty($agent->suspended_at)); ?>
         <tr>
-            <td style="font-weight:600;font-size:13px;"><?php echo htmlspecialchars($agent->unique_number); ?></td>
+            <td data-order="<?php echo (int) $agent->id; ?>" style="font-weight:600;font-size:13px;"><?php echo htmlspecialchars($agent->unique_number); ?></td>
             <td>
                 <?php if ($agent->agent_type === 'company'): ?>
                     <div class="agent-name">COMPANY: <?php echo htmlspecialchars($agent->company_name); ?></div>

@@ -97,16 +97,304 @@ $rgba_border= 'rgba(' . $r . ',' . $g . ',' . $b . ',0.35)';
 .ci-action-btn.disabled-paid{background:#f0faf0;color:#2e7d32;border:2px solid #a5d6a7;cursor:not-allowed;opacity:.85;}
 .ci-balance-info{font-size:12px;color:#555;background:#f5f5f5;border-radius:6px;padding:8px 10px;margin-bottom:8px;}
 @media print {
-    .ci-sticky-panel,.ci-actions-card,.ph-card,.modal,.ci-email-modal { display:none!important; }
-    .doc-card { box-shadow:none; border:none; }
-    body { background:#fff; }
-    .col-md-4{display:none!important;}
-    .col-md-8{width:100%!important;}
-    .invoice-row>.col-md-8{width:100%!important;flex:0 0 100%!important;max-width:100%!important;}
-    .doc-footer { page-break-inside:avoid; break-inside:avoid; margin-top:14px; }
-    .issuance-stamp { width:75px!important; height:75px!important; }
-    .stamp-wrap { margin-bottom:0; }
-    .sig-line { margin-top:10px!important; }
+    @page {
+        size: A4 portrait;
+        margin: 8mm 10mm;
+    }
+    *, *::before, *::after {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+    }
+    #header, #menu, #setup-menu-wrapper, .cgs-topnav, .ci-sticky-panel, .ci-actions-card, 
+    .ph-card, .modal, .ci-email-modal, #receiptModal, .receipt-overlay, .receipt-wrapper, 
+    .cgs-btn, #theme-preview, #side-menu, #side-menu-wrapper, .navbar, .footer, footer, 
+    #btnGeneratePayment, .ci-form-row, #invoiceEmailModal, #receiptEmailModal, #paymentModal {
+        display: none !important;
+    }
+    html, body {
+        background: #fff !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: 0 !important;
+        overflow: visible !important;
+    }
+    #wrapper, .content {
+        margin: 0 !important;
+        padding: 0 !important;
+        min-height: 0 !important;
+        background: transparent !important;
+        border: none !important;
+        width: 100% !important;
+        position: static !important;
+        float: none !important;
+    }
+    #wrapper::before, #wrapper::after {
+        display: none !important;
+    }
+    .invoice-row {
+        display: block !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+    }
+    .col-md-4, .invoice-row > .col-md-4 {
+        display: none !important;
+    }
+    .col-md-8, .invoice-row > .col-md-8 {
+        width: 100% !important;
+        max-width: 100% !important;
+        flex: 0 0 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        float: none !important;
+    }
+    .doc-page {
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+    }
+    .doc-card {
+        box-shadow: none !important;
+        border: 1px solid <?php echo $rgba_border; ?> !important;
+        border-radius: 8px !important;
+        padding: 24px 30px !important;
+        margin: 0 !important;
+        position: relative !important;
+        box-sizing: border-box !important;
+        background: #ffffff !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        page-break-after: avoid !important;
+        break-after: avoid !important;
+        width: 100% !important;
+    }
+    .doc-watermark {
+        position: absolute !important;
+        inset: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        pointer-events: none !important;
+        z-index: 0 !important;
+        overflow: hidden !important;
+        border-radius: 8px !important;
+    }
+    .doc-watermark img {
+        width: 75% !important;
+        height: 75% !important;
+        object-fit: contain !important;
+        opacity: 0.10 !important;
+        filter: grayscale(10%) !important;
+    }
+    .doc-card > *:not(.doc-watermark) {
+        position: relative !important;
+        z-index: 1 !important;
+    }
+    .doc-header {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: flex-start !important;
+        border-bottom: 3px solid var(--ci) !important;
+        padding-bottom: 12px !important;
+        margin-bottom: 14px !important;
+    }
+    .doc-title {
+        font-size: 28px !important;
+        font-weight: 800 !important;
+        color: var(--ci-dark) !important;
+        letter-spacing: 1px !important;
+        margin: 0 !important;
+    }
+    .doc-meta {
+        text-align: right !important;
+        font-size: 12.5px !important;
+        color: #555 !important;
+        line-height: 1.6 !important;
+    }
+    .doc-meta strong {
+        color: #222 !important;
+    }
+    .parties-row {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 16px !important;
+        margin: 12px 0 !important;
+    }
+    .party-box {
+        border: 1px solid <?php echo $rgba_border; ?> !important;
+        border-radius: 6px !important;
+        padding: 10px 14px !important;
+        background: #ffffff !important;
+    }
+    .party-box h5 {
+        margin: 0 0 6px !important;
+        font-size: 11.5px !important;
+        font-weight: 800 !important;
+        text-transform: uppercase !important;
+        color: var(--ci) !important;
+        letter-spacing: 0.5px !important;
+    }
+    .party-box p {
+        margin: 2px 0 !important;
+        font-size: 12.5px !important;
+        color: #333 !important;
+        line-height: 1.45 !important;
+    }
+    .party-box address {
+        margin: 0 !important;
+        font-size: 12.5px !important;
+        color: #333 !important;
+        font-style: normal !important;
+        line-height: 1.45 !important;
+    }
+    .items-table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        margin: 12px 0 !important;
+        font-size: 12.5px !important;
+    }
+    .items-table th {
+        background: linear-gradient(135deg,var(--ci-2),var(--ci-2-dark)) !important;
+        color: #fff !important;
+        padding: 8px 12px !important;
+        text-align: left !important;
+    }
+    .items-table td {
+        padding: 7px 12px !important;
+        border-bottom: 1px solid #eee !important;
+    }
+    .items-table tr:last-child td {
+        border-bottom: none !important;
+    }
+    .totals-table {
+        width: 290px !important;
+        margin-left: auto !important;
+        border-collapse: collapse !important;
+        font-size: 12.5px !important;
+        margin-top: 4px !important;
+    }
+    .totals-table td {
+        padding: 5px 8px !important;
+    }
+    .totals-table .total-row {
+        font-weight: 800 !important;
+        font-size: 15px !important;
+        background: linear-gradient(135deg,var(--ci-2),var(--ci-2-dark)) !important;
+        color: #fff !important;
+    }
+    .amount-due {
+        background: <?php echo $rgba_light; ?> !important;
+        border: 2px solid var(--ci-2) !important;
+        border-radius: 8px !important;
+        padding: 12px 18px !important;
+        margin-top: 10px !important;
+        text-align: right !important;
+    }
+    .vat-badge {
+        display: inline-block !important;
+        background: <?php echo $rgba_light; ?> !important;
+        color: var(--ci) !important;
+        border: 1px solid <?php echo $rgba_border; ?> !important;
+        border-radius: 12px !important;
+        font-size: 11px !important;
+        font-weight: 700 !important;
+        padding: 2px 8px !important;
+        margin-left: 6px !important;
+    }
+    .status-badge {
+        display: inline-block !important;
+        padding: 2px 8px !important;
+        border-radius: 10px !important;
+        font-size: 11px !important;
+        font-weight: 700 !important;
+        background: <?php echo $rgba_light; ?> !important;
+        color: var(--ci) !important;
+    }
+    .inv-paid-badge {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 4px !important;
+        background: #e8f5e9 !important;
+        color: #2e7d32 !important;
+        border: 1.5px solid #a5d6a7 !important;
+        border-radius: 10px !important;
+        font-size: 11px !important;
+        font-weight: 800 !important;
+        padding: 2px 8px !important;
+    }
+    .inv-partial-badge {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 4px !important;
+        background: #fff8e1 !important;
+        color: #e65100 !important;
+        border: 1.5px solid #ffcc02 !important;
+        border-radius: 10px !important;
+        font-size: 11px !important;
+        font-weight: 800 !important;
+        padding: 2px 8px !important;
+    }
+    .inv-paid-stamp {
+        display: inline-block !important;
+        color: #2e7d32 !important;
+        border: 2px solid #2e7d32 !important;
+        border-radius: 6px !important;
+        font-size: 18px !important;
+        font-weight: 900 !important;
+        letter-spacing: 3px !important;
+        padding: 5px 18px !important;
+        background: #f1f8f1 !important;
+        transform: rotate(-3deg) !important;
+    }
+    .inv-partial-stamp {
+        display: inline-block !important;
+        color: #e65100 !important;
+        border: 2px solid #e65100 !important;
+        border-radius: 6px !important;
+        font-size: 13px !important;
+        font-weight: 900 !important;
+        letter-spacing: 1.5px !important;
+        padding: 4px 14px !important;
+        background: #fff8e1 !important;
+        transform: rotate(-2deg) !important;
+    }
+    .doc-footer {
+        display: table !important;
+        width: 100% !important;
+        margin-top: 16px !important;
+        padding-top: 12px !important;
+        border-top: 1px solid <?php echo $rgba_border; ?> !important;
+        font-size: 12px !important;
+        color: #777 !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+    }
+    .sig-block {
+        display: table-cell !important;
+        vertical-align: bottom !important;
+        text-align: center !important;
+        width: 50% !important;
+    }
+    .sig-line {
+        border-top: 1px solid #666 !important;
+        width: 150px !important;
+        margin: 18px auto 4px !important;
+    }
+    .stamp-wrap {
+        text-align: center !important;
+        display: inline-block !important;
+        margin-bottom: 0 !important;
+    }
+    .issuance-stamp {
+        width: 105px !important;
+        height: 105px !important;
+        display: inline-block !important;
+        transform: rotate(-5deg) !important;
+    }
 }
 </style>
 
@@ -328,7 +616,10 @@ $rgba_border= 'rgba(' . $r . ',' . $g . ',' . $b . ',0.35)';
                     <td>
                         <?php echo htmlspecialchars($item->description); ?>
                         <?php
-                        $ld = trim(strip_tags($item->long_description ?? ''));
+                        $raw_ld = str_replace(['&nbsp;', '&NBSP;'], ' ', $item->long_description ?? '');
+                        $decoded_ld = html_entity_decode($raw_ld, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                        $clean_ld = str_replace(["\xc2\xa0", "\u{00A0}", "\u{200B}"], ' ', $decoded_ld);
+                        $ld = trim(strip_tags($clean_ld));
                         if ($ld !== ''):
                         ?>
                             <div style="font-size:11px; color:#777; margin-top:2px;"><?php echo nl2br(htmlspecialchars($ld)); ?></div>
@@ -540,7 +831,7 @@ $pay_amount_js   = $is_partial_paid ? round($balance_remaining, 2) : round($tota
         </div>
     <?php endif; ?>
 
-    <button class="ci-action-btn primary" onclick="window.print();">
+    <button class="ci-action-btn primary" onclick="printCourierInvoice();">
         <i class="fa fa-print"></i> Print Invoice
     </button>
     <button class="ci-action-btn outline" onclick="downloadInvoicePdf();">
@@ -845,26 +1136,6 @@ $pay_amount_js   = $is_partial_paid ? round($balance_remaining, 2) : round($tota
 .rc-paid-stamp{text-align:center;font-size:18px;font-weight:900;letter-spacing:3px;margin:8px 0;color:#1a7f1a;border:2px solid #1a7f1a;padding:4px;border-radius:4px;}
 .rc-terms{font-size:9.5px;color:#555;margin:4px 0;}
 .rc-footer-row{font-size:10px;color:#555;margin:2px 0;}
-@media print{
-    /* Thermal roll paper: auto height = no page breaks */
-    @page{size:80mm auto;margin:0;}
-    body.printing-receipt *{visibility:hidden!important;}
-    body.printing-receipt #thermalReceipt,body.printing-receipt #thermalReceipt *{visibility:visible!important;}
-    body.printing-receipt #thermalReceipt{
-        position:absolute;top:0;left:0;
-        width:80mm;max-width:80mm;
-        padding:4mm 3mm;
-        background:#fff;
-        page-break-inside:avoid;
-        break-inside:avoid;
-    }
-    body.printing-receipt .receipt-overlay{display:block!important;background:none!important;position:static!important;}
-    body.printing-receipt .receipt-wrapper{box-shadow:none!important;border:none!important;padding:0!important;max-width:80mm;overflow:visible!important;}
-    body.printing-receipt .receipt-actions{display:none!important;}
-    body.printing-receipt .action-bar{display:none!important;}
-    /* prevent any child from forcing a new page */
-    body.printing-receipt #thermalReceipt *{page-break-inside:avoid!important;break-inside:avoid!important;}
-}
 </style>
 
 <?php
@@ -1229,6 +1500,32 @@ function showReceipt(res, amount, date, paymode) {
 
     document.getElementById('receiptModal').style.display = 'flex';
 }
+
+function printCourierInvoice() {
+    window.print();
+}
+
+// Auto-scale invoice if content height exceeds single A4 page
+window.addEventListener('beforeprint', function () {
+    var card = document.getElementById('courier-invoice-doc');
+    if (!card) return;
+    var A4_HEIGHT_MM = 297;
+    var MARGIN_MM = 8;
+    var usableHeightPx = (A4_HEIGHT_MM - (MARGIN_MM * 2)) * (96 / 25.4); // ~1062px
+    if (card.scrollHeight > usableHeightPx) {
+        var scale = (usableHeightPx - 8) / card.scrollHeight;
+        card.setAttribute('data-scaled', '1');
+        card.style.transformOrigin = 'top center';
+        card.style.transform = 'scale(' + scale + ')';
+    }
+});
+window.addEventListener('afterprint', function () {
+    var card = document.getElementById('courier-invoice-doc');
+    if (!card || !card.getAttribute('data-scaled')) return;
+    card.removeAttribute('data-scaled');
+    card.style.transformOrigin = '';
+    card.style.transform = '';
+});
 
 function printReceipt() {
     var el = document.getElementById('thermalReceipt');

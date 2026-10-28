@@ -751,35 +751,104 @@ create_email_template(
 );
 
 create_email_template(
-    'Your Shipment Waybill {waybill_number} - {company_name}',
-    '<p>Dear {recipient_name},</p>
-<p>Your shipment waybill is ready. Please find the details below.</p>
-<table style="width:100%;border-collapse:collapse;font-size:14px;margin:16px 0;border:1px solid #e0e0e0;">
-  <tr style="background:#f5f5f5;"><td style="padding:8px 12px;border:1px solid #e0e0e0;font-weight:bold;width:40%;">Waybill Number</td><td style="padding:8px 12px;border:1px solid #e0e0e0;font-size:18px;font-weight:bold;"><a href="{tracking_link}" style="color:#2e7d32;text-decoration:none;">{waybill_number}</a></td></tr>
-  <tr><td style="padding:8px 12px;border:1px solid #e0e0e0;font-weight:bold;">Sender</td><td style="padding:8px 12px;border:1px solid #e0e0e0;">{sender_name}</td></tr>
-  <tr style="background:#f5f5f5;"><td style="padding:8px 12px;border:1px solid #e0e0e0;font-weight:bold;">Recipient</td><td style="padding:8px 12px;border:1px solid #e0e0e0;">{recipient_name}</td></tr>
-  <tr><td style="padding:8px 12px;border:1px solid #e0e0e0;font-weight:bold;">Shipping Mode</td><td style="padding:8px 12px;border:1px solid #e0e0e0;">{shipping_mode}</td></tr>
-  <tr style="background:#f5f5f5;"><td style="padding:8px 12px;border:1px solid #e0e0e0;font-weight:bold;">Status</td><td style="padding:8px 12px;border:1px solid #e0e0e0;">{status}</td></tr>
-</table>
-<div style="text-align:center;margin:28px 0;">
-  <a href="{tracking_link}" style="display:inline-block;padding:18px 44px;background:#c62828;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:bold;font-size:20px;letter-spacing:0.5px;text-transform:uppercase;box-shadow:0 4px 14px rgba(198,40,40,0.4);">Track Your Shipment</a>
-</div>
-<p>Thank you for choosing <strong>{company_name}</strong>.</p>',
+    'Incoming Delivery Notification — Waybill {waybill_number} from {sender_name} | {company_name}',
+    '<div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:0 auto;color:#333333;line-height:1.6;">
+  <div style="background:#0a2a52;padding:24px;text-align:center;border-radius:8px 8px 0 0;">
+    <h2 style="color:#ffffff;margin:0;font-size:22px;letter-spacing:0.5px;">📦 Incoming Delivery Notification</h2>
+    <p style="color:#cfd8dc;margin:6px 0 0 0;font-size:14px;">A parcel is on its way to you</p>
+  </div>
+  <div style="padding:24px;border:1px solid #e0e0e0;border-top:none;border-radius:0 0 8px 8px;background:#ffffff;">
+    <p style="font-size:16px;margin-top:0;">Dear <strong>{recipient_name}</strong>,</p>
+    <p>Good news! A shipment sent by <strong>{sender_name}</strong> has been registered with <strong>{company_name}</strong> and is currently on its way to your destination.</p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;margin:20px 0;border:1px solid #e0e0e0;">
+      <tr style="background:#f8f9fa;">
+        <td style="padding:10px 14px;border:1px solid #e0e0e0;font-weight:bold;width:38%;">Waybill / Tracking #</td>
+        <td style="padding:10px 14px;border:1px solid #e0e0e0;font-size:16px;font-weight:bold;color:#0a2a52;">
+          <a href="{tracking_link}" style="color:#0a2a52;text-decoration:none;">{waybill_number}</a>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:10px 14px;border:1px solid #e0e0e0;font-weight:bold;">Sender</td>
+        <td style="padding:10px 14px;border:1px solid #e0e0e0;">{sender_name}</td>
+      </tr>
+      <tr style="background:#f8f9fa;">
+        <td style="padding:10px 14px;border:1px solid #e0e0e0;font-weight:bold;">Delivery Destination</td>
+        <td style="padding:10px 14px;border:1px solid #e0e0e0;">{destination}</td>
+      </tr>
+      <tr>
+        <td style="padding:10px 14px;border:1px solid #e0e0e0;font-weight:bold;">Shipping Mode</td>
+        <td style="padding:10px 14px;border:1px solid #e0e0e0;">{shipping_mode}</td>
+      </tr>
+      <tr style="background:#f8f9fa;">
+        <td style="padding:10px 14px;border:1px solid #e0e0e0;font-weight:bold;">Current Status</td>
+        <td style="padding:10px 14px;border:1px solid #e0e0e0;"><span style="display:inline-block;padding:3px 10px;background:#e3f2fd;color:#0d47a1;border-radius:12px;font-weight:bold;font-size:12px;">{status}</span></td>
+      </tr>
+    </table>
+    <div style="background:#e8f4fd;border-left:4px solid #0288d1;padding:14px 18px;margin:22px 0;border-radius:4px;">
+      <strong style="color:#01579b;display:block;margin-bottom:4px;">📌 Delivery Instructions:</strong>
+      <span style="font-size:13.5px;color:#37474f;">Please ensure someone is available at the delivery address to receive the parcel. A valid identification document may be requested upon handover.</span>
+    </div>
+    <div style="text-align:center;margin:28px 0 20px;">
+      <a href="{tracking_link}" style="display:inline-block;padding:15px 36px;background:#0a2a52;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:bold;font-size:16px;box-shadow:0 3px 10px rgba(10,42,82,0.25);">Track Your Delivery</a>
+    </div>
+    <p style="text-align:center;font-size:12.5px;color:#78909c;margin:0 0 20px;">Or copy and paste this tracking link into your browser:<br><a href="{tracking_link}" style="color:#0a2a52;word-break:break-all;">{tracking_link}</a></p>
+    <hr style="border:none;border-top:1px solid #eeeeee;margin:24px 0;">
+    <p style="font-size:13px;color:#616161;margin-bottom:4px;">If you have any questions regarding this incoming delivery, please contact our team.</p>
+    <p style="font-size:13px;color:#616161;margin-top:0;">Best regards,<br><strong>{company_name} Delivery Team</strong></p>
+  </div>
+</div>',
     'courier',
     'Courier Waybill Notification to Customer',
     'courier_waybill_to_customer'
 );
 
 create_email_template(
-    'Your Parcel Is On Its Way — Waybill {waybill_number} - {company_name}',
-    '<p>Dear {sender_name},</p>
-<p>Thank you for shipping with {company_name}. Your parcel has been picked up and assigned waybill number <strong>{waybill_number}</strong>, on its way to {recipient_name}.</p>
-<p>You can track its journey at any time using the button below.</p>
-<div style="text-align:center;margin:28px 0;">
-  <a href="{tracking_link}" style="display:inline-block;padding:18px 44px;background:#c62828;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:bold;font-size:20px;letter-spacing:0.5px;text-transform:uppercase;box-shadow:0 4px 14px rgba(198,40,40,0.4);">Track Your Shipment</a>
-</div>
-<p>Or copy and paste this link into your browser:<br>{tracking_link}</p>
-<p>Thank you for choosing <strong>{company_name}</strong>.</p>',
+    'Shipment Confirmation — Waybill {waybill_number} to {recipient_name} | {company_name}',
+    '<div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:0 auto;color:#333333;line-height:1.6;">
+  <div style="background:#1b5e20;padding:24px;text-align:center;border-radius:8px 8px 0 0;">
+    <h2 style="color:#ffffff;margin:0;font-size:22px;letter-spacing:0.5px;">✅ Shipment Booking Confirmation</h2>
+    <p style="color:#c8e6c9;margin:6px 0 0 0;font-size:14px;">Your package has been booked successfully</p>
+  </div>
+  <div style="padding:24px;border:1px solid #e0e0e0;border-top:none;border-radius:0 0 8px 8px;background:#ffffff;">
+    <p style="font-size:16px;margin-top:0;">Dear <strong>{sender_name}</strong>,</p>
+    <p>Thank you for shipping with <strong>{company_name}</strong>! Your shipment for <strong>{recipient_name}</strong> has been successfully booked and is now being processed.</p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;margin:20px 0;border:1px solid #e0e0e0;">
+      <tr style="background:#f8f9fa;">
+        <td style="padding:10px 14px;border:1px solid #e0e0e0;font-weight:bold;width:38%;">Waybill Number</td>
+        <td style="padding:10px 14px;border:1px solid #e0e0e0;font-size:16px;font-weight:bold;color:#2e7d32;">
+          <a href="{tracking_link}" style="color:#2e7d32;text-decoration:none;">{waybill_number}</a>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:10px 14px;border:1px solid #e0e0e0;font-weight:bold;">Recipient</td>
+        <td style="padding:10px 14px;border:1px solid #e0e0e0;">{recipient_name}</td>
+      </tr>
+      <tr style="background:#f8f9fa;">
+        <td style="padding:10px 14px;border:1px solid #e0e0e0;font-weight:bold;">Destination</td>
+        <td style="padding:10px 14px;border:1px solid #e0e0e0;">{destination}</td>
+      </tr>
+      <tr>
+        <td style="padding:10px 14px;border:1px solid #e0e0e0;font-weight:bold;">Shipping Mode</td>
+        <td style="padding:10px 14px;border:1px solid #e0e0e0;">{shipping_mode}</td>
+      </tr>
+      <tr style="background:#f8f9fa;">
+        <td style="padding:10px 14px;border:1px solid #e0e0e0;font-weight:bold;">Current Status</td>
+        <td style="padding:10px 14px;border:1px solid #e0e0e0;"><span style="display:inline-block;padding:3px 10px;background:#e8f5e9;color:#2e7d32;border-radius:12px;font-weight:bold;font-size:12px;">{status}</span></td>
+      </tr>
+    </table>
+    <div style="background:#f1f8e9;border-left:4px solid #43a047;padding:14px 18px;margin:22px 0;border-radius:4px;">
+      <strong style="color:#2e7d32;display:block;margin-bottom:4px;">📄 Waybill Attached:</strong>
+      <span style="font-size:13.5px;color:#37474f;">Your official Waybill document (PDF) is attached to this email for your records and proof of consignment.</span>
+    </div>
+    <div style="text-align:center;margin:28px 0 20px;">
+      <a href="{tracking_link}" style="display:inline-block;padding:15px 36px;background:#2e7d32;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:bold;font-size:16px;box-shadow:0 3px 10px rgba(46,125,50,0.25);">Track Shipment Live</a>
+    </div>
+    <p style="text-align:center;font-size:12.5px;color:#78909c;margin:0 0 20px;">Or copy and paste this tracking link into your browser:<br><a href="{tracking_link}" style="color:#2e7d32;word-break:break-all;">{tracking_link}</a></p>
+    <hr style="border:none;border-top:1px solid #eeeeee;margin:24px 0;">
+    <p style="font-size:13px;color:#616161;margin-bottom:4px;">We will notify you again once your package has been delivered.</p>
+    <p style="font-size:13px;color:#616161;margin-top:0;">Thank you for your business,<br><strong>{company_name} Customer Care</strong></p>
+  </div>
+</div>',
     'courier',
     'Courier: Sender Tracking Info',
     'courier_sender_tracking_info'

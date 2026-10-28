@@ -95,6 +95,7 @@ class Courier_Logistic_System {
         hooks()->add_action('admin_init', [$this, 'run_db_upgrades_v53']);
         hooks()->add_action('admin_init', [$this, 'run_db_upgrades_v54']);
         hooks()->add_action('admin_init', [$this, 'run_db_upgrades_v55']);
+        hooks()->add_action('admin_init', [$this, 'run_db_upgrades_v56']);
         hooks()->add_action('admin_init', [$this, 'run_scheduled_log_pruning']);
         // Register email templates (idempotent — skips if slug already exists)
         hooks()->add_action('admin_init', [$this, 'register_email_templates']);
@@ -2281,6 +2282,22 @@ class Courier_Logistic_System {
         }
 
         update_option('courier_schema_v55_done', '1');
+    }
+
+    /**
+     * v56: Ensure recipient (courier_waybill_to_customer) and sender (courier_sender_tracking_info)
+     * email templates have distinct subjects and bodies tailored to their roles.
+     */
+    public function run_db_upgrades_v56() {
+        if (get_option('courier_schema_v56_done')) return;
+        try {
+            $CI = &get_instance();
+            $CI->load->helper('courier_goshipping/courier');
+            courier_ensure_notification_email_templates();
+        } catch (\Throwable $e) {
+            log_message('error', 'courier_goshipping v56 migration failed: ' . $e->getMessage());
+        }
+        update_option('courier_schema_v56_done', '1');
     }
 
     /**

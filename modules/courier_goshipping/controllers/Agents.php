@@ -157,11 +157,44 @@ class Agents extends AdminController
 
             $this->session->set_userdata('show_company_section', $show_company_section);
 
-            // Preserve form input values
+            // Collect all validation errors cleanly
+            $validation_errors = [];
             foreach ($this->input->post() as $key => $value) {
-                $this->session->set_flashdata($key . '_error', form_error($key));
+                $err = form_error($key);
+                if (!empty($err)) {
+                    $clean_err = strip_tags($err);
+                    $validation_errors[$key] = $clean_err;
+                    $this->session->set_flashdata($key . '_error', $clean_err);
+                }
                 $this->session->set_flashdata($key, $value);
             }
+
+            if ($this->input->post('type') === 'individual') {
+                if (empty($_FILES['id_file']['name'])) {
+                    $validation_errors['id_file'] = 'The ID attachment is required.';
+                    $this->session->set_flashdata('id_file_error', 'The ID attachment is required.');
+                }
+                if (empty($_FILES['kra_file']['name'])) {
+                    $validation_errors['kra_file'] = 'The KRA PIN attachment is required.';
+                    $this->session->set_flashdata('kra_file_error', 'The KRA PIN attachment is required.');
+                }
+            } else {
+                if (empty($_FILES['company_id_file']['name'])) {
+                    $validation_errors['company_id_file'] = 'The ID attachment is required.';
+                    $this->session->set_flashdata('company_id_file_error', 'The ID attachment is required.');
+                }
+                if (empty($_FILES['company_kra_file']['name'])) {
+                    $validation_errors['company_kra_file'] = 'The KRA PIN attachment is required.';
+                    $this->session->set_flashdata('company_kra_file_error', 'The KRA PIN attachment is required.');
+                }
+                if (empty($_FILES['corporation_certificate_file']['name'])) {
+                    $validation_errors['corporation_certificate_file'] = 'The Certificate of Corporation attachment is required.';
+                    $this->session->set_flashdata('corporation_certificate_file_error', 'The Certificate of Corporation attachment is required.');
+                }
+            }
+
+            $this->session->set_flashdata('agent_validation_errors', $validation_errors);
+            set_alert('danger', 'Please correct the highlighted fields before submitting.');
 
             redirect('admin/courier_goshipping/agents/main?group=create_agent');
         } else {

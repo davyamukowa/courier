@@ -70,9 +70,51 @@ echo '<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/selec
 
 
     .error-message {
-        color: red; /* Red color for error messages */
-        font-size: 12px; /* Smaller font size for error messages */
-        margin-top: 5px; /* Spacing above the error message */
+        color: #e74c3c;
+        font-size: 12px;
+        margin-top: 5px;
+        font-weight: 600;
+    }
+
+    .cgs-input-error,
+    .custom-input.cgs-input-error,
+    .custom-select.cgs-input-error,
+    .custom-textarea.cgs-input-error,
+    .phone.cgs-input-error,
+    .select2-container.cgs-input-error .select2-selection {
+        border: 2px solid #e74c3c !important;
+        background-color: #fff9f9 !important;
+        box-shadow: 0 0 4px rgba(231, 76, 60, 0.4) !important;
+    }
+    .cgs-field-error-msg {
+        color: #e74c3c !important;
+        font-size: 12px !important;
+        font-weight: 600 !important;
+        margin-top: 4px !important;
+        display: block !important;
+    }
+    .cgs-validation-alert {
+        background: #fde8e8 !important;
+        border-left: 5px solid #e74c3c !important;
+        color: #9b1c1c !important;
+        padding: 14px 18px !important;
+        border-radius: 6px !important;
+        margin-bottom: 20px !important;
+        font-size: 14px !important;
+        box-shadow: 0 2px 6px rgba(231,76,60,0.15) !important;
+    }
+    .cgs-validation-alert h5 {
+        color: #9b1c1c !important;
+        font-weight: 700 !important;
+        margin: 0 0 6px 0 !important;
+        font-size: 15px !important;
+    }
+    .cgs-validation-alert ul {
+        margin: 6px 0 0 18px !important;
+        padding: 0 !important;
+    }
+    .cgs-validation-alert li {
+        margin-bottom: 3px !important;
     }
 
 
@@ -686,6 +728,17 @@ echo '<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/selec
                         </div>
 
                         <hr class="hr-panel-heading"/>
+
+                        <?php if (validation_errors()): ?>
+                            <div class="cgs-validation-alert" id="cgs-server-validation-alert">
+                                <h5><i class="fa fa-exclamation-triangle"></i> Shipment could not be saved. Please correct the highlighted fields below:</h5>
+                                <ul><?php echo validation_errors('<li>', '</li>'); ?></ul>
+                            </div>
+                        <?php endif; ?>
+                        <div id="cgs-client-validation-alert" class="cgs-validation-alert" style="display:none;">
+                            <h5><i class="fa fa-exclamation-triangle"></i> Shipment could not be saved. Please fill in the highlighted fields below:</h5>
+                            <ul id="cgs-client-validation-list"></ul>
+                        </div>
 
                         <!-- Record Shipment -->
                         <section class="custom-section">
@@ -2647,9 +2700,6 @@ function saveLogisticCompany() {
             flatpickr("#pickup_date", {
                 dateFormat: "Y-m-d",
                 minDate: "today",
-                disable: [function (date) {
-                    return (date.getDay() === 6 || date.getDay() === 0);
-                }],
                 disableMobile: true
             });
 
@@ -3149,16 +3199,11 @@ function saveLogisticCompany() {
         setTimeout(function () { if (notice.parentNode) notice.remove(); }, 6000);
     }
 
-    // ---------- wire up ----------
+    // ---------- wire up & validation ----------
 
     document.addEventListener('DOMContentLoaded', function () {
         var form = document.getElementById('create-shipment-form');
         if (!form) return;
-
-        // Clear draft on successful submit
-        form.addEventListener('submit', function () {
-            try { sessionStorage.removeItem(DRAFT_KEY); } catch (e) {}
-        });
 
         // Debounced save on any interaction
         function scheduleSave() {
@@ -3170,6 +3215,222 @@ function saveLogisticCompany() {
 
         // Restore draft on load
         restoreDraft();
+
+        // Server-side validation error highlighting
+        var serverAlert = document.getElementById('cgs-server-validation-alert');
+        if (serverAlert) {
+            serverAlert.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            document.querySelectorAll('.error-message, .text-danger').forEach(function (errEl) {
+                if (!errEl.textContent.trim()) return;
+                var group = errEl.closest('.custom-form-group') || errEl.closest('td') || errEl.parentNode;
+                if (group) {
+                    var inp = group.querySelector('input, select, textarea');
+                    if (inp) inp.classList.add('cgs-input-error');
+                }
+            });
+        }
+
+        function markInvalid(el, message, labelName, errorList) {
+            if (!el) return;
+            el.classList.add('cgs-input-error');
+            var s2 = typeof $ !== 'undefined' ? $(el).data('select2') : null;
+            if (s2 && s2.$container) {
+                s2.$container.addClass('cgs-input-error');
+            }
+
+            var group = el.closest('.custom-form-group') || el.closest('td') || el.parentNode;
+            var existingMsg = group ? group.querySelector('.cgs-field-error-msg') : null;
+            if (!existingMsg && group) {
+                var msgEl = document.createElement('div');
+                msgEl.className = 'cgs-field-error-msg';
+                msgEl.innerHTML = '<i class="fa fa-exclamation-circle"></i> ' + message;
+                var phoneGroup = group.querySelector('.phone-input-group');
+                if (phoneGroup && phoneGroup.nextSibling) {
+                    phoneGroup.parentNode.insertBefore(msgEl, phoneGroup.nextSibling);
+                } else {
+                    group.appendChild(msgEl);
+                }
+            }
+            if (labelName && errorList) {
+                errorList.push(labelName + ': ' + message);
+            }
+        }
+
+        function clearErrors() {
+            document.querySelectorAll('.cgs-input-error').forEach(function (el) {
+                el.classList.remove('cgs-input-error');
+            });
+            document.querySelectorAll('.cgs-field-error-msg').forEach(function (el) {
+                el.remove();
+            });
+            var alertBox = document.getElementById('cgs-client-validation-alert');
+            if (alertBox) alertBox.style.display = 'none';
+        }
+
+        // Real-time error removal as user corrects fields
+        form.addEventListener('input', function (e) {
+            var el = e.target;
+            if (el.classList.contains('cgs-input-error') && el.value.trim()) {
+                el.classList.remove('cgs-input-error');
+                var group = el.closest('.custom-form-group') || el.closest('td') || el.parentNode;
+                var msg = group ? group.querySelector('.cgs-field-error-msg') : null;
+                if (msg) msg.remove();
+            }
+        });
+        form.addEventListener('change', function (e) {
+            var el = e.target;
+            if (el.classList.contains('cgs-input-error') && el.value.trim()) {
+                el.classList.remove('cgs-input-error');
+                if (typeof $ !== 'undefined') {
+                    var s2 = $(el).data('select2');
+                    if (s2 && s2.$container) s2.$container.removeClass('cgs-input-error');
+                }
+                var group = el.closest('.custom-form-group') || el.closest('td') || el.parentNode;
+                var msg = group ? group.querySelector('.cgs-field-error-msg') : null;
+                if (msg) msg.remove();
+            }
+        });
+
+        // Client-side form validation on submit
+        form.addEventListener('submit', function (e) {
+            clearErrors();
+            var errorList = [];
+            var firstInvalid = null;
+
+            function checkField(id, name, isEmail, isPhone) {
+                var el = document.getElementById(id);
+                if (!el) return;
+                var val = el.value.trim();
+                if (!val) {
+                    markInvalid(el, 'This field is required', name, errorList);
+                    if (!firstInvalid) firstInvalid = el;
+                } else if (isEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) {
+                    markInvalid(el, 'Please enter a valid email address', name, errorList);
+                    if (!firstInvalid) firstInvalid = el;
+                } else if (isPhone && val.replace(/\D/g, '').length < 8) {
+                    markInvalid(el, 'Please enter a valid phone number (at least 8 digits)', name, errorList);
+                    if (!firstInvalid) firstInvalid = el;
+                }
+            }
+
+            // 1. Sender
+            var senderType = 'individual';
+            var senderTypeEl = document.querySelector('input[name="sender_type"]:checked');
+            if (senderTypeEl) senderType = senderTypeEl.value;
+
+            if (senderType === 'individual') {
+                checkField('sender_first_name', 'Sender First Name');
+                checkField('sender_last_name', 'Sender Last Name');
+                checkField('sender_phone_number', 'Sender Phone Number', false, true);
+                checkField('sender_email', 'Sender Email', true);
+                checkField('sender_address', 'Sender Address');
+            } else {
+                checkField('company_name', 'Company Name');
+                checkField('contact_name', 'Contact Person Name');
+                checkField('contact_phone', 'Contact Person Phone', false, true);
+                checkField('contact_email', 'Contact Person Email', true);
+                checkField('contact_address', 'Company Address');
+            }
+
+            // 2. Recipient
+            var recipientType = 'individual';
+            var recipientTypeEl = document.querySelector('input[name="recipient_type"]:checked');
+            if (recipientTypeEl) recipientType = recipientTypeEl.value;
+
+            if (recipientType === 'individual') {
+                checkField('recipient_first_name', 'Recipient First Name');
+                checkField('recipient_last_name', 'Recipient Last Name');
+                checkField('recipient_phone_number', 'Recipient Phone Number', false, true);
+                checkField('recipient_email', 'Recipient Email', true);
+                checkField('recipient_address', 'Recipient Address');
+            } else {
+                checkField('recipient_company_name', 'Recipient Company Name');
+                checkField('recipient_contact_name', 'Recipient Contact Name');
+                checkField('recipient_contact_phone', 'Recipient Contact Phone', false, true);
+                checkField('recipient_contact_email', 'Recipient Contact Email', true);
+                checkField('recipient_contact_address', 'Recipient Address');
+            }
+
+            // 3. Shipping Mode
+            var modeSelect = document.getElementById('shipping_mode') || document.querySelector('select[name="shipping_mode"]');
+            if (modeSelect && !modeSelect.value.trim()) {
+                markInvalid(modeSelect, 'Please select a shipping mode', 'Shipping Mode', errorList);
+                if (!firstInvalid) firstInvalid = modeSelect;
+            }
+
+            // 4. Packages Table
+            var pkgRows = document.querySelectorAll('#packageTable tbody tr');
+            if (pkgRows.length > 0) {
+                pkgRows.forEach(function (row, idx) {
+                    var rowNum = idx + 1;
+                    var amtEl = row.querySelector('.amount') || row.querySelector('input[name^="amount"]');
+                    if (amtEl && (!amtEl.value.trim() || parseFloat(amtEl.value) <= 0)) {
+                        markInvalid(amtEl, 'Quantity must be greater than 0', 'Package #' + rowNum + ' Quantity', errorList);
+                        if (!firstInvalid) firstInvalid = amtEl;
+                    }
+                    var descEl = row.querySelector('input[name^="package_description"]');
+                    if (descEl && !descEl.value.trim()) {
+                        markInvalid(descEl, 'Package description is required', 'Package #' + rowNum + ' Description', errorList);
+                        if (!firstInvalid) firstInvalid = descEl;
+                    }
+                    var wEl = row.querySelector('.weight') || row.querySelector('input[name^="weight"]');
+                    if (wEl && (!wEl.value.trim() || parseFloat(wEl.value) <= 0)) {
+                        markInvalid(wEl, 'Weight must be greater than 0', 'Package #' + rowNum + ' Weight', errorList);
+                        if (!firstInvalid) firstInvalid = wEl;
+                    }
+                });
+            }
+
+            // 5. Pickup (if active)
+            var hasPickup = document.getElementById('hasPickup');
+            if (hasPickup && hasPickup.checked) {
+                checkField('pickup_contact_first_name', 'Pickup First Name');
+                checkField('pickup_contact_last_name', 'Pickup Last Name');
+                checkField('pickup_date', 'Pickup Date');
+                checkField('pickup_start_time', 'Pickup Start Time');
+                checkField('pickup_end_time', 'Pickup End Time');
+                checkField('pickup_address', 'Pickup Address');
+                var pVeh = document.getElementById('pickup_vehicle_type');
+                if (pVeh && !pVeh.value.trim()) {
+                    markInvalid(pVeh, 'Please select a vehicle type', 'Pickup Vehicle Type', errorList);
+                    if (!firstInvalid) firstInvalid = pVeh;
+                }
+                var pDriver = document.getElementById('driver_id') || document.getElementById('pickup_driver_id');
+                if (pDriver && !pDriver.value.trim()) {
+                    markInvalid(pDriver, 'Please select a driver', 'Pickup Driver', errorList);
+                    if (!firstInvalid) firstInvalid = pDriver;
+                }
+            }
+
+            if (errorList.length > 0) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                var alertBox = document.getElementById('cgs-client-validation-alert');
+                var listEl = document.getElementById('cgs-client-validation-list');
+                if (alertBox && listEl) {
+                    listEl.innerHTML = '';
+                    errorList.forEach(function (msg) {
+                        var li = document.createElement('li');
+                        li.textContent = msg;
+                        listEl.appendChild(li);
+                    });
+                    alertBox.style.display = 'block';
+                }
+
+                if (firstInvalid) {
+                    firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    try { firstInvalid.focus(); } catch (err) {}
+                } else if (alertBox) {
+                    alertBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+
+                return false;
+            }
+
+            // Preserve draft in sessionStorage so no entries are lost if server error occurs
+            saveDraft();
+        });
     });
 })();
 </script>

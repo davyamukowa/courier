@@ -509,7 +509,18 @@
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams(payload).toString()
-        }).then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); });
+        }).then(function (r) {
+            return r.text().then(function (txt) {
+                var data;
+                try { data = JSON.parse(txt); } catch (e) {
+                    // Tolerate stray PHP output before the JSON body.
+                    var i = txt.indexOf('{"success"');
+                    try { data = i >= 0 ? JSON.parse(txt.slice(i)) : null; } catch (e2) { data = null; }
+                }
+                if (!data) { data = { success: false, message: 'The server had a problem (' + r.status + '). Please try again in a moment.' }; }
+                return { ok: r.ok, data: data };
+            });
+        });
     }
     function get(url, payload) {
         var qs = new URLSearchParams(payload).toString();

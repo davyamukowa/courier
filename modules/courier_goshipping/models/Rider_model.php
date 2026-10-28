@@ -63,8 +63,19 @@ class Rider_model extends App_Model
             return ['success' => false, 'message' => 'Please enter a valid email address, or leave it blank.'];
         }
 
-        if ($this->find_by_phone($phone)) {
-            return ['success' => false, 'message' => 'An account with this phone number already exists. Please log in instead.'];
+        $existing = $this->find_by_phone($phone);
+        if ($existing) {
+            // A signup that inserted the row but then failed/timed out on the
+            // client (e.g. slow staff-link step) leaves an account the rider
+            // never saw succeed — retrying with the same password should just
+            // finish that signup (log them in), not dead-end on "already exists".
+            if (!empty($existing->password_hash) && app_hasher()->CheckPassword((string) $password, $existing->password_hash)) {
+                if ($existing->status !== 'active') {
+                    return ['success' => false, 'message' => 'This account has been suspended. Please contact your dispatcher.'];
+                }
+                return ['success' => true, 'rider' => $existing, 'existing' => true];
+            }
+            return ['success' => false, 'message' => 'An account with this phone number already exists. Please log in, or tap "Forgot password" if you do not remember it.'];
         }
 
         if ($email !== '' && $this->find_by_email($email)) {
@@ -87,7 +98,13 @@ class Rider_model extends App_Model
         }
 
         $rider = $this->find($rider_id);
-        $this->try_link_staff($rider);
+        try {
+            $this->try_link_staff($rider);
+        } catch (\Throwable $e) {
+            // Linking is best-effort — never let it fail a signup that
+            // already succeeded; login() retries the link later.
+            log_message('error', 'Rider signup staff-link failed: ' . $e->getMessage());
+        }
 
         return ['success' => true, 'rider' => $this->find($rider_id)];
     }

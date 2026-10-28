@@ -273,5 +273,220 @@ $(function () {
         if (cid && idx) populateAgentNumber(cid, idx);
     });
     $('#country_id, #company_country_id').change(function () { generateAgentNumber(); });
+
+    /* ── Client-side Validation for Create Agent Form ── */
+    var $agentForm = $('#create-agent-form');
+    if ($agentForm.length) {
+        function clearFieldError($input) {
+            $input.removeClass('cgs-input-error');
+            if ($input.hasClass('select2-hidden-accessible')) {
+                $input.next('.select2-container').removeClass('cgs-input-error');
+            }
+            $input.closest('.custom-form-group').find('.cgs-field-error-msg').remove();
+        }
+
+        function setFieldError($input, msg) {
+            $input.addClass('cgs-input-error');
+            if ($input.hasClass('select2-hidden-accessible')) {
+                $input.next('.select2-container').addClass('cgs-input-error');
+            }
+            var $group = $input.closest('.custom-form-group');
+            $group.find('.cgs-field-error-msg').remove();
+            $group.append('<div class="cgs-field-error-msg"><i class="fa fa-exclamation-circle"></i> ' + msg + '</div>');
+        }
+
+        // Real-time error removal on input, change, and select2 events
+        $agentForm.on('input change', 'input, select, textarea', function () {
+            clearFieldError($(this));
+            if ($agentForm.find('.cgs-input-error').length === 0) {
+                $('#cgs-agent-client-validation-alert').slideUp(200);
+            }
+        });
+        $agentForm.on('select2:select select2:clear', 'select', function () {
+            clearFieldError($(this));
+            if ($agentForm.find('.cgs-input-error').length === 0) {
+                $('#cgs-agent-client-validation-alert').slideUp(200);
+            }
+        });
+
+        $agentForm.on('submit', function (e) {
+            var errors = [];
+            var $firstInvalid = null;
+
+            function addError($field, fieldLabel, errorMsg) {
+                setFieldError($field, errorMsg);
+                errors.push(fieldLabel + ': ' + errorMsg);
+                if (!$firstInvalid) {
+                    $firstInvalid = $field;
+                }
+            }
+
+            // Clear previous errors
+            $agentForm.find('.cgs-input-error').removeClass('cgs-input-error');
+            $agentForm.find('.cgs-field-error-msg').remove();
+
+            var agentType = $('#type').val() || 'individual';
+
+            // Branch / Office
+            var $branch = $('#agent_branch_id');
+            if (!$branch.val()) {
+                addError($branch, 'Branch / Office', 'Please select a branch or office');
+            }
+
+            var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+            if (agentType === 'individual') {
+                var $fn = $('#first_name');
+                if (!$.trim($fn.val()) || $.trim($fn.val()).length < 2) {
+                    addError($fn, 'First Name', 'First Name is required (minimum 2 characters)');
+                }
+
+                var $ln = $('#last_name');
+                if (!$.trim($ln.val()) || $.trim($ln.val()).length < 2) {
+                    addError($ln, 'Last Name', 'Last Name is required (minimum 2 characters)');
+                }
+
+                var $em = $('#email');
+                if (!$.trim($em.val())) {
+                    addError($em, 'Email', 'Email address is required');
+                } else if (!emailRegex.test($.trim($em.val()))) {
+                    addError($em, 'Email', 'Please enter a valid email address');
+                }
+
+                var $phone = $('#phone_number');
+                var phoneVal = $.trim($phone.val()).replace(/[\s\-\(\)\+]/g, '');
+                if (!phoneVal) {
+                    addError($phone, 'Phone Number', 'Phone Number is required');
+                } else if (phoneVal.length < 8) {
+                    addError($phone, 'Phone Number', 'Phone Number must be at least 8 digits');
+                }
+
+                var $idFile = $('#id_file');
+                if (!$idFile[0].files || $idFile[0].files.length === 0) {
+                    addError($idFile, 'Upload ID', 'Please select an ID file to upload');
+                }
+
+                var $kraFile = $('#kra_file');
+                if (!$kraFile[0].files || $kraFile[0].files.length === 0) {
+                    addError($kraFile, 'Upload KRA PIN', 'Please select a KRA PIN file to upload');
+                }
+
+                var $addr = $('#address');
+                if (!$.trim($addr.val())) {
+                    addError($addr, 'Address', 'Address is required');
+                }
+
+                var $user = $('#username');
+                if (!$.trim($user.val()) || $.trim($user.val()).length < 5) {
+                    addError($user, 'Username', 'Username is required (minimum 5 characters)');
+                }
+
+                var $pwd = $('#password');
+                if (!$.trim($pwd.val()) || $.trim($pwd.val()).length < 6) {
+                    addError($pwd, 'Password', 'Password is required (minimum 6 characters)');
+                }
+
+                var $country = $('#country_id');
+                if (!$country.val()) {
+                    addError($country, 'Country', 'Please select a country');
+                }
+
+                var $station = $('#station');
+                if (!$station.val()) {
+                    addError($station, 'Service Point', 'Please select a county or service point');
+                }
+            } else {
+                var $cname = $('#company_name');
+                if (!$.trim($cname.val())) {
+                    addError($cname, 'Company Name', 'Company Name is required');
+                }
+
+                var $contactName = $('#contact_name');
+                if (!$.trim($contactName.val())) {
+                    addError($contactName, 'Contact Person Name', 'Contact Person Name is required');
+                }
+
+                var $cphone = $('#contact_phone_number');
+                var cphoneVal = $.trim($cphone.val()).replace(/[\s\-\(\)\+]/g, '');
+                if (!cphoneVal) {
+                    addError($cphone, 'Contact Person Phone', 'Contact Person Phone is required');
+                } else if (cphoneVal.length < 8) {
+                    addError($cphone, 'Contact Person Phone', 'Phone Number must be at least 8 digits');
+                }
+
+                var $cemail = $('#contact_email');
+                if (!$.trim($cemail.val())) {
+                    addError($cemail, 'Contact Person Email', 'Contact Person Email is required');
+                } else if (!emailRegex.test($.trim($cemail.val()))) {
+                    addError($cemail, 'Contact Person Email', 'Please enter a valid email address');
+                }
+
+                var $cidFile = $('#company_id_file');
+                if (!$cidFile[0].files || $cidFile[0].files.length === 0) {
+                    addError($cidFile, 'Upload ID', 'Please select an ID file to upload');
+                }
+
+                var $ckraFile = $('#company_kra_file');
+                if (!$ckraFile[0].files || $ckraFile[0].files.length === 0) {
+                    addError($ckraFile, 'Upload KRA PIN', 'Please select a KRA PIN file to upload');
+                }
+
+                var $certFile = $('#corporation_certificate_file');
+                if (!$certFile[0].files || $certFile[0].files.length === 0) {
+                    addError($certFile, 'Certificate of Corporation', 'Please select Certificate of Corporation file');
+                }
+
+                var $caddr = $('#company_address');
+                if (!$.trim($caddr.val())) {
+                    addError($caddr, 'Company Address', 'Company Address is required');
+                }
+
+                var $cuser = $('#company_username');
+                if (!$.trim($cuser.val()) || $.trim($cuser.val()).length < 5) {
+                    addError($cuser, 'Company Username', 'Company Username is required (minimum 5 characters)');
+                }
+
+                var $cpwd = $('#company_password');
+                if (!$.trim($cpwd.val()) || $.trim($cpwd.val()).length < 6) {
+                    addError($cpwd, 'Company Password', 'Password is required (minimum 6 characters)');
+                }
+
+                var $ccountry = $('#company_country_id');
+                if (!$ccountry.val()) {
+                    addError($ccountry, 'Country', 'Please select a country');
+                }
+
+                var $cstation = $('#company_station');
+                if (!$cstation.val()) {
+                    addError($cstation, 'Service Point', 'Please select a county or service point');
+                }
+            }
+
+            if (errors.length > 0) {
+                e.preventDefault();
+                var $alert = $('#cgs-agent-client-validation-alert');
+                var $list = $('#cgs-agent-client-error-list');
+                $list.empty();
+                errors.forEach(function (err) {
+                    $list.append('<li>' + err + '</li>');
+                });
+                $alert.slideDown(200);
+
+                if ($firstInvalid && $firstInvalid.length) {
+                    $('html, body').animate({
+                        scrollTop: Math.max(0, $alert.offset().top - 80)
+                    }, 400, function () {
+                        if ($firstInvalid.is(':visible')) {
+                            $firstInvalid.focus();
+                        }
+                    });
+                }
+                return false;
+            }
+
+            $('#cgs-agent-client-validation-alert').hide();
+            return true;
+        });
+    }
 });
 </script>
