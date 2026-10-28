@@ -1048,7 +1048,7 @@
                 quickActionsHtml(d.recipient_phone, destAddress) +
                 '<div class="actions">' +
                 (started
-                    ? '<button class="btn-primary" onclick="openMapModal(' + d.id + ', ' + JSON.stringify(destAddress) + ')">Map</button><button class="btn-success" onclick="openDeliverModal(' + d.id + ')">Delivered</button><button class="btn-danger" onclick="openCancelModal(' + d.id + ')">Cancel</button>'
+                    ? '<button class="btn-primary" onclick="openMapModal(' + d.id + ')">Map</button><button class="btn-success" onclick="openDeliverModal(' + d.id + ')">Delivered</button><button class="btn-danger" onclick="openCancelModal(' + d.id + ')">Cancel</button>'
                     : '<button class="btn-primary" onclick="startDelivery(' + d.id + ', this)">Start Delivery</button>') +
                 '</div>';
             box.appendChild(card);
@@ -1151,6 +1151,12 @@
     }
 
     function openMapModal(id, destAddress) {
+        // Address is looked up here (not passed through the button's onclick
+        // attribute — its quotes used to break the attribute and kill the button).
+        if (destAddress === undefined) {
+            var found = activeDeliveriesCache.filter(function (x) { return x.id === id; })[0];
+            destAddress = found ? (found.recipient_address || '') : '';
+        }
         openModal('map_modal');
         document.getElementById('rider_map_info').textContent = '';
         var navBtn = document.getElementById('rider_map_nav');
@@ -1197,8 +1203,22 @@
                         }).catch(function () {});
                 }
             }, function () {
-                document.getElementById('rider_map').innerHTML = '<div style="padding:20px;color:#5b6b82;font-size:13px;">Could not get your location. Please allow location access.</div>';
-            }, { enableHighAccuracy: true });
+                // No device location (permission denied/unavailable): still show the customer's address.
+                document.getElementById('rider_map_info').textContent = 'Allow location access to see your position and the route.';
+                if (!destAddress) { return; }
+                fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(destAddress))
+                    .then(function (r) { return r.json(); })
+                    .then(function (res) {
+                        if (!res || !res[0]) { return; }
+                        var dLat = parseFloat(res[0].lat), dLng = parseFloat(res[0].lon);
+                        if (!riderMap) {
+                            riderMap = L.map('rider_map').setView([dLat, dLng], 14);
+                            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(riderMap);
+                        } else { riderMap.invalidateSize(); riderMap.setView([dLat, dLng], 14); }
+                        if (riderDestMarker) { riderMap.removeLayer(riderDestMarker); }
+                        riderDestMarker = L.marker([dLat, dLng]).addTo(riderMap).bindPopup('Delivery address').openPopup();
+                    }).catch(function () {});
+            }, { enableHighAccuracy: true, timeout: 15000 });
         });
     }
 

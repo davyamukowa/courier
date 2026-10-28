@@ -786,7 +786,7 @@
                         </div>
 
                         <?php
-                        $show_live_map = !empty($salibay_delivery_link) && (int) $shipment_details['shipment']->status_id >= 5 && (int) $shipment_details['shipment']->status_id < 8;
+                        $show_live_map = (int) $shipment_details['shipment']->status_id >= 5 && (int) $shipment_details['shipment']->status_id < 8;
                         $dest_recipient = $shipment_details['recipient'] ?? null;
                         $dest_address = $dest_recipient
                             ? trim(($dest_recipient->address ?? '') . ', ' . ($shipment_details['recipient_country']->short_name ?? ''))
