@@ -59,7 +59,7 @@ class Rider_app extends App_Controller
         // home-screen shortcut's icon, which the OS snapshots once at
         // install time and never re-fetches; that needs an uninstall +
         // reinstall on the device itself.
-        $cache_name = 'gs-rider-v4';
+        $cache_name = 'gs-rider-v5';
         echo <<<JS
 const CACHE_NAME = '{$cache_name}';
 
@@ -79,6 +79,20 @@ self.addEventListener('activate', function (event) {
 // a rider never acts on stale delivery/pickup data.
 self.addEventListener('fetch', function (event) {
     if (event.request.method !== 'GET' || event.request.url.indexOf('/rider-api/') !== -1) {
+        return;
+    }
+    // Page loads: network first, so a deployed fix reaches riders on the very
+    // next open instead of one open later; cache only as the offline fallback.
+    if (event.request.mode === 'navigate') {
+        event.respondWith(
+            fetch(event.request).then(function (response) {
+                if (response && response.status === 200) {
+                    var copy = response.clone();
+                    caches.open(CACHE_NAME).then(function (cache) { cache.put(event.request, copy); });
+                }
+                return response;
+            }).catch(function () { return caches.match(event.request); })
+        );
         return;
     }
     event.respondWith(

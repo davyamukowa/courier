@@ -1171,10 +1171,14 @@
             var js = document.createElement('script');
             js.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
             js.onload = cb;
+            js.onerror = function () {
+                document.getElementById('rider_map_info').textContent = 'Could not load the map. Check your internet connection, or use the navigation button below.';
+            };
             document.head.appendChild(js);
         }
 
         ensureLeaflet(function () {
+            if (!navigator.geolocation) { document.getElementById('rider_map_info').textContent = 'This device cannot share its location.'; return; }
             navigator.geolocation.getCurrentPosition(function (pos) {
                 var lat = pos.coords.latitude, lng = pos.coords.longitude;
                 if (!riderMap) {
