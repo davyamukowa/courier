@@ -21,7 +21,7 @@ class Rider_app extends App_Controller
      */
     private function app_version()
     {
-        $files = [APPPATH . '../modules/courier_goshipping/views/rider_app/shell.php', __FILE__];
+        $files = [dirname(__DIR__) . '/views/rider_app/shell.php', __FILE__];
         $hash  = '';
         foreach ($files as $f) {
             $hash .= is_file($f) ? md5_file($f) : '';
