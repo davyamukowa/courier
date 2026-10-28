@@ -11,7 +11,7 @@
     <link rel="apple-touch-icon" href="<?php echo site_url('courier_goshipping/rider/icon/192'); ?>">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="GS Rider">
+    <meta name="apple-mobile-web-app-title" content="Salibay Rider">
     <meta name="mobile-web-app-capable" content="yes">
 
     <style>

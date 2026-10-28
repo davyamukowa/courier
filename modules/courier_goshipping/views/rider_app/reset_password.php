@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Reset Password — Go Shipping Rider</title>
+    <title>Reset Password — Salibay Rider</title>
     <style>
         :root {
             --navy: #0a2a52; --navy-deep: #071d3b; --bg: #f4f6f9; --surface: #ffffff;
@@ -48,7 +48,7 @@
     <div class="card">
         <div class="brand-badge">GS</div>
         <h1 id="title">Reset Your Password</h1>
-        <p class="sub" id="subtitle">Choose a new password for your Go Shipping Rider account.</p>
+        <p class="sub" id="subtitle">Choose a new password for your Salibay Rider account.</p>
 
         <form id="reset_form">
             <label for="new_password">New password</label>
