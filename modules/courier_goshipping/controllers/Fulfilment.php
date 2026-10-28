@@ -383,6 +383,178 @@ class Fulfilment extends AdminController
         $this->load->view('courier_goshipping/fulfilment/riders_page', $data);
     }
 
+    /**
+     * Branch-restricted staff only see/open riders linked to a staff member
+     * in one of their own branches — same scoping rule riders() applies.
+     */
+    private function rider_in_scope($rider)
+    {
+        if (courier_staff_can_view_all_branches() || !$this->db->table_exists(db_prefix() . '_courier_staff_branches')) {
+            return true;
+        }
+        if (empty($rider->staff_id)) {
+            return false;
+        }
+        $my_branch_ids = courier_get_staff_branch_ids();
+        return (bool) $this->db->where('staff_id', (int) $rider->staff_id)
+            ->where_in('branch_id', !empty($my_branch_ids) ? $my_branch_ids : [0])
+            ->count_all_results(db_prefix() . '_courier_staff_branches');
+    }
+
+    /** Full per-rider dashboard: profile, edit form, analytics, deliveries, clients, pickups. */
+    public function rider($rider_id = 0)
+    {
+        $prefix = db_prefix();
+        $rider  = $this->db->where('id', (int) $rider_id)->get($prefix . '_courier_riders')->row();
+        if (!$rider || !$this->rider_in_scope($rider)) {
+            set_alert('warning', 'Rider not found.');
+            redirect(admin_url('courier_goshipping/fulfilment/riders'));
+        }
+
+        $staff_id = (int) $rider->staff_id;
+        $staff    = $staff_id ? $this->db->select('firstname, lastname, email, active')->where('staffid', $staff_id)->get($prefix . 'staff')->row() : null;
+
+        $deliveries = [];
+        $pickups    = [];
+        $trip_count = 0;
+        if ($staff_id) {
+            $has_orders = $this->db->table_exists($prefix . 'shopify_orders');
+            $this->db->select('s.id, s.waybill_number, s.tracking_id, s.status_id, s.created_at, ss.description AS status_text, '
+                . 'r.id AS recipient_id, r.first_name, r.last_name, r.phone_number, r.address, '
+                . '(SELECT MIN(h.changed_at) FROM ' . $prefix . '_shipment_status_history h WHERE h.shipment_id = s.id AND h.status_id IN (5,6,7)) AS started_at, '
+                . '(SELECT MAX(h.changed_at) FROM ' . $prefix . '_shipment_status_history h WHERE h.shipment_id = s.id AND h.status_id = 8) AS delivered_at'
+                . ($has_orders ? ', o.shopify_order_number, o.total_price, o.currency' : ', NULL AS shopify_order_number, NULL AS total_price, NULL AS currency'))
+                ->from($prefix . '_shipments s')
+                ->join($prefix . '_shipment_statuses ss', 'ss.id = s.status_id', 'left')
+                ->join($prefix . '_shipment_recipients r', 'r.id = s.recipient_id', 'left');
+            if ($has_orders) {
+                $this->db->join($prefix . 'shopify_orders o', 'o.gs_shipment_id = s.id', 'left');
+            }
+            $deliveries = $this->db->where('s.staff_id', $staff_id)->order_by('s.id', 'desc')->limit(1000)->get()->result();
+
+            if ($this->db->table_exists($prefix . '_pickups')) {
+                $pickups = $this->db->select('p.id, p.pickup_date, p.address, p.status, p.shipment_id, s.waybill_number')
+                    ->from($prefix . '_pickups p')
+                    ->join($prefix . '_shipments s', 's.id = p.shipment_id', 'left')
+                    ->where('p.driver_id', $staff_id)->order_by('p.id', 'desc')->limit(500)->get()->result();
+            }
+            if ($this->db->table_exists($prefix . 'fleet_trips')) {
+                $trip_count = (int) $this->db->where('driver_id', $staff_id)->count_all_results($prefix . 'fleet_trips');
+            }
+        }
+
+        // ── Analytics ───────────────────────────────────────────────────────
+        $total = count($deliveries);
+        $delivered = $cancelled = $salibay = $this_month = 0;
+        $minutes = [];
+        $per_day = [];
+        for ($i = 29; $i >= 0; $i--) {
+            $per_day[date('Y-m-d', strtotime("-$i day"))] = 0;
+        }
+        $by_status = [];
+        $clients   = [];
+        $month_key = date('Y-m');
+        foreach ($deliveries as $d) {
+            $label = $d->status_text ?: 'Unknown';
+            $by_status[$label] = ($by_status[$label] ?? 0) + 1;
+            if (!empty($d->shopify_order_number)) {
+                $salibay++;
+            }
+            $ckey = $d->recipient_id ?: ('x' . $d->id);
+            if (!isset($clients[$ckey])) {
+                $clients[$ckey] = (object) [
+                    'name' => trim($d->first_name . ' ' . $d->last_name), 'phone' => $d->phone_number,
+                    'address' => $d->address, 'orders' => 0, 'delivered' => 0, 'last' => null,
+                ];
+            }
+            $clients[$ckey]->orders++;
+            $when = $d->delivered_at ?: $d->created_at;
+            if ($clients[$ckey]->last === null || $when > $clients[$ckey]->last) {
+                $clients[$ckey]->last = $when;
+            }
+            if ((int) $d->status_id === 8) {
+                $delivered++;
+                $clients[$ckey]->delivered++;
+                if ($d->delivered_at) {
+                    if (substr($d->delivered_at, 0, 7) === $month_key) {
+                        $this_month++;
+                    }
+                    $day = substr($d->delivered_at, 0, 10);
+                    if (isset($per_day[$day])) {
+                        $per_day[$day]++;
+                    }
+                    if ($d->started_at && strtotime($d->delivered_at) > strtotime($d->started_at)) {
+                        $minutes[] = (strtotime($d->delivered_at) - strtotime($d->started_at)) / 60;
+                    }
+                }
+            } elseif ((int) $d->status_id === 9) {
+                $cancelled++;
+            }
+        }
+        uasort($clients, function ($a, $b) {
+            return [$b->orders, $b->delivered] <=> [$a->orders, $a->delivered];
+        });
+
+        $data = $this->build_base_data('riders', 'Rider: ' . $rider->name);
+        $data['rider']      = $rider;
+        $data['staff']      = $staff;
+        $data['deliveries'] = $deliveries;
+        $data['pickups']    = $pickups;
+        $data['clients']    = array_values($clients);
+        $data['by_status']  = $by_status;
+        $data['per_day']    = $per_day;
+        $data['stats']      = [
+            'total'        => $total,
+            'delivered'    => $delivered,
+            'cancelled'    => $cancelled,
+            'active'       => $total - $delivered - $cancelled,
+            'success_rate' => ($delivered + $cancelled) > 0 ? round($delivered / ($delivered + $cancelled) * 100, 1) : null,
+            'avg_minutes'  => $minutes ? round(array_sum($minutes) / count($minutes)) : null,
+            'this_month'   => $this_month,
+            'salibay'      => $salibay,
+            'general'      => $total - $salibay,
+            'pickups'      => count($pickups),
+            'pickups_done' => count(array_filter($pickups, function ($p) { return $p->status !== 'pending'; })),
+            'trips'        => $trip_count,
+            'clients'      => count($clients),
+        ];
+        $this->load->view('courier_goshipping/fulfilment/rider_profile', $data);
+    }
+
+    /** Saves the edit form on the rider dashboard (name, phone, National ID, email, status). */
+    public function update_rider($rider_id)
+    {
+        if (!$this->can_manage_salibay_riders()) {
+            access_denied('Salibay Fulfilment');
+        }
+        $back = admin_url('courier_goshipping/fulfilment/rider/' . (int) $rider_id);
+        if ($this->input->method() !== 'post') {
+            redirect($back);
+        }
+        $this->load->model('Rider_model');
+        $rider = $this->Rider_model->find((int) $rider_id);
+        if (!$rider || !$this->rider_in_scope($rider)) {
+            set_alert('warning', 'Rider not found.');
+            redirect(admin_url('courier_goshipping/fulfilment/riders'));
+        }
+
+        $res = $this->Rider_model->update_profile((int) $rider_id, $this->input->post('name'), $this->input->post('phone'), $this->input->post('national_id'));
+        if ($res['success']) {
+            $email = trim((string) $this->input->post('email'));
+            if ($email !== '') {
+                $res = $this->Rider_model->update_email((int) $rider_id, $email);
+            }
+        }
+        if ($res['success']) {
+            $status = $this->input->post('status') === 'suspended' ? 'suspended' : 'active';
+            $this->db->where('id', (int) $rider_id)->update(db_prefix() . '_courier_riders', ['status' => $status]);
+            set_alert('success', 'Rider updated.');
+        } else {
+            set_alert('danger', $res['message']);
+        }
+        redirect($back);
+    }
+
     public function link_rider($rider_id)
     {
         if (!$this->can_manage_salibay_riders()) {
