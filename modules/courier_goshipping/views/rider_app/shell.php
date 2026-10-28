@@ -232,7 +232,7 @@
         <label for="login_phone">Phone number</label>
         <input type="tel" id="login_phone" placeholder="e.g. 0723434533">
         <label for="login_password">Password</label>
-        <input type="password" id="login_password" placeholder="••••••••">
+        <input type="password" id="login_password" inputmode="numeric" pattern="[0-9]*" autocomplete="current-password" placeholder="PIN">
         <button class="btn-primary" onclick="doLogin()" id="login_btn">Log In</button>
         <button class="link-btn" onclick="showScreen('forgot')">Forgot password?</button>
         <button class="link-btn" onclick="showScreen('register')">Don't have an account? Create one</button>
@@ -254,8 +254,8 @@
         <input type="text" id="reg_national_id" placeholder="e.g. 12345678">
         <label for="reg_email">Email (optional — needed for password reset)</label>
         <input type="text" id="reg_email" placeholder="e.g. john@example.com">
-        <label for="reg_password">Create a password</label>
-        <input type="password" id="reg_password" placeholder="At least 4 characters">
+        <label for="reg_password">Create a 4-digit PIN</label>
+        <input type="password" id="reg_password" inputmode="numeric" pattern="[0-9]*" autocomplete="new-password" placeholder="4-digit PIN (numbers only)">
         <button class="btn-primary" onclick="doRegister()" id="register_btn">Create Account</button>
         <button class="link-btn" onclick="showScreen('login')">Already have an account? Log in</button>
         <div class="error-box" id="register_error"></div>
@@ -446,9 +446,9 @@
         <div class="modal-sheet">
             <h3>Change Password</h3>
             <label for="cp_current_password">Current password</label>
-            <input type="password" id="cp_current_password">
+            <input type="password" id="cp_current_password" inputmode="numeric" pattern="[0-9]*">
             <label for="cp_new_password">New password</label>
-            <input type="password" id="cp_new_password" placeholder="At least 4 characters">
+            <input type="password" id="cp_new_password" inputmode="numeric" pattern="[0-9]*" placeholder="4-digit PIN (numbers only)">
             <button class="btn-success" onclick="submitChangePassword()" id="confirm_change_password_btn">Update Password</button>
             <button class="btn-ghost" onclick="closeModal('change_password_modal')">Cancel</button>
             <div class="error-box" id="change_password_error"></div>
