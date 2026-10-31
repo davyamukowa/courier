@@ -144,6 +144,9 @@ class Pickups extends AdminController
         // zipcode is optional
         $this->form_validation->set_rules('vehicle_type', 'Vehicle Type', 'required');
         $this->form_validation->set_rules('driver_id', 'Driver', 'required');
+
+        // Custom pickup charges (optional, each amount must be a number >= 0)
+        $this->form_validation->set_rules('pickup_charge_amount[]', 'Pickup charge amount', 'trim|numeric|greater_than_equal_to[0]');
     }
 
     public function store()
@@ -157,7 +160,9 @@ class Pickups extends AdminController
 
         if ($this->form_validation->run() == FALSE) {
 
-            // Validation failed; reload the form view with errors
+            // Validation failed; reload the form view with errors. Every posted
+            // value is re-rendered by the view (set_value()/set_select()/
+            // set_radio(), plus the charge lines) so nothing typed is lost.
             $data['errors'] = validation_errors();
             $this->load->view('pickups/create', $data);
         } else {
@@ -178,6 +183,11 @@ class Pickups extends AdminController
                 return;
             }
 
+            $charges = courier_parse_pickup_charges(
+                $this->input->post('pickup_charge_desc'),
+                $this->input->post('pickup_charge_amount')
+            );
+
             //store pickup data
             $pickup_data = [
                 'pickup_date' => strtoupper($this->input->post('pickup_date')),
@@ -194,6 +204,8 @@ class Pickups extends AdminController
                 'staff_id' => get_staff_user_id(),
                 'driver_id' => $this->input->post('driver_id'),
                 'source' => 'system',
+                'charges' => $charges['json'],
+                'charges_total' => $charges['total'],
                 'created_at' => date('Y-m-d H:i:s')
             ];
 

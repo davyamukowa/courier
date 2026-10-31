@@ -6,6 +6,10 @@ $cgs_people_tabs   = [
     'riders' => ['Riders', 'fa-motorcycle', admin_url('courier_goshipping/fulfilment/riders')],
     'agents' => ['Agents', 'fa-handshake-o', admin_url('courier_goshipping/agents/main')],
 ];
+// A country admin has no access to Perfex Setup > Staff: their "Users" tab is their country team.
+if (function_exists('courier_is_country_admin') && courier_is_country_admin()) {
+    $cgs_people_tabs['users'] = ['Country Team', 'fa-user', admin_url('courier_goshipping/country_team')];
+}
 ?>
 <div class="cgs-people-tabs" style="margin-bottom:15px;display:flex;gap:8px;flex-wrap:wrap;">
     <?php foreach ($cgs_people_tabs as $key => $tab) { ?>

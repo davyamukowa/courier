@@ -162,32 +162,43 @@ $full_name    = htmlspecialchars($agent->firstname . ' ' . $agent->lastname);
                     ],
                 ],
                 'courier-waybills' => [
+                    'section'      => 'Documents',
                     'label'        => '<i class="fa fa-file-text-o"></i> Waybills',
                     'capabilities' => [
                         'view_own_waybills' => 'View Own Waybills',
-                        'view_waybills'     => 'View All Waybills (Global)',
+                        'view_waybills'     => 'View All Waybills',
                         'delete_waybills'   => 'Delete Waybills',
                     ],
                 ],
-                'courier-manifests' => [
-                    'label'        => '<i class="fa fa-list-alt"></i> Manifests',
+                'courier-commercial-invoices' => [
+                    'section'      => 'Documents',
+                    'label'        => '<i class="fa fa-file-text"></i> Commercial Invoices',
                     'capabilities' => [
-                        'view_own_manifests' => 'View Own Manifests',
-                        'view_manifests'     => 'View All Manifests (Global)',
-                        'create_manifests'   => 'Create Manifests',
-                        'edit_manifests'     => 'Edit Manifests',
-                        'delete_manifests'   => 'Delete Manifests',
+                        'view_own_commercial_invoices' => 'View Own Commercial Invoices',
+                        'view_all_commercial_invoices' => 'View All Commercial Invoices',
                     ],
                 ],
                 'courier-invoices' => [
-                    'label'        => '<i class="fa fa-credit-card"></i> Invoices & Receipts',
+                    'section'      => 'Documents',
+                    'label'        => '<i class="fa fa-credit-card"></i> Courier Invoices & Receipts',
                     'capabilities' => [
-                        'view_own_invoices' => 'View Own Invoices',
-                        'view_invoices'     => 'View All Invoices (Global)',
+                        'view_own_invoices' => 'View Own Courier Invoices',
+                        'view_invoices'     => 'View All Courier Invoices',
                         'create_invoices'   => 'Create Invoices',
                         'delete_invoices'   => 'Delete Invoices',
                         'view_receipts'     => 'View Receipts',
                         'generate_payment'  => 'Generate Payment',
+                    ],
+                ],
+                'courier-manifests' => [
+                    'section'      => 'Documents',
+                    'label'        => '<i class="fa fa-list-alt"></i> Manifests',
+                    'capabilities' => [
+                        'view_own_manifests' => 'View Own Manifests',
+                        'view_manifests'     => 'View All Manifests',
+                        'create_manifests'   => 'Create Manifests',
+                        'edit_manifests'     => 'Edit Manifests',
+                        'delete_manifests'   => 'Delete Manifests',
                     ],
                 ],
                 'courier-agents' => [
@@ -229,7 +240,22 @@ $full_name    = htmlspecialchars($agent->firstname . ' ' . $agent->lastname);
 
             <?php echo form_open('', ['id' => 'permissions-form']); ?>
                 <div class="row">
-                    <?php foreach ($all_courier_perms as $feature => $group): ?>
+                    <?php $perm_section = null; foreach ($all_courier_perms as $feature => $group): ?>
+                    <?php
+                    $this_section = $group['section'] ?? null;
+                    if ($this_section !== $perm_section):
+                        $perm_section = $this_section;
+                    ?>
+                    <div class="clearfix"></div>
+                    <?php if ($this_section): ?>
+                    <div class="col-md-12" style="margin:10px 0 12px;">
+                        <h4 style="margin:0;padding-bottom:6px;border-bottom:2px solid #e5e7eb;font-weight:700;">
+                            <i class="fa fa-folder-open-o"></i> <?php echo htmlspecialchars($this_section); ?>
+                            <small class="text-muted" style="font-weight:400;"> &mdash; waybills, commercial invoices, courier invoices &amp; manifests (own = records this agent created, all = every record)</small>
+                        </h4>
+                    </div>
+                    <?php endif; ?>
+                    <?php endif; ?>
                     <div class="col-md-6 tw-mb-4">
                         <div class="panel panel-default" style="margin-bottom:0;">
                             <div class="panel-heading" style="font-weight:600;">

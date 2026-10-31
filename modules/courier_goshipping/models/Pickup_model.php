@@ -64,6 +64,9 @@ class Pickup_model extends App_Model
 
     public function add($data): bool
     {
+        if (array_key_exists('charges', $data)) {
+            courier_ensure_pickup_charge_columns();
+        }
         if ($this->db->insert($this->table, $data)) {
             $insert_id = $this->db->insert_id();
             log_message('debug', 'Insert successful. Insert ID: ' . $insert_id);

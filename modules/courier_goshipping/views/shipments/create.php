@@ -625,14 +625,27 @@ echo '<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/selec
                 data:     { country_id: countryId },
                 dataType: 'json',
                 success: function (res) {
-                    var html = '<option value="">Select State</option>';
-                    if (res.states && res.states.length) {
+                    var html = '<option value="">Select State / Town</option>';
+                    var hasStates = res.states && res.states.length;
+                    var hasTowns  = res.towns && res.towns.length;
+                    if (hasStates) {
+                        html += '<optgroup label="States">';
                         res.states.forEach(function (s) {
                             var selected = (preselectValue && (s.id == preselectValue || s.name === preselectValue)) ? ' selected' : '';
                             html += '<option value="' + s.id + '"' + selected + '>' + s.name + '</option>';
                         });
-                    } else {
-                        html = '<option value="">No states available</option>';
+                        html += '</optgroup>';
+                    }
+                    if (hasTowns) {
+                        html += '<optgroup label="Towns / Cities">';
+                        res.towns.forEach(function (t) {
+                            var tn = String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+                            html += '<option value="town:' + tn + '">' + tn + '</option>';
+                        });
+                        html += '</optgroup>';
+                    }
+                    if (!hasStates && !hasTowns) {
+                        html = '<option value="">No states or towns available</option>';
                     }
                     sel.innerHTML = html;
                     if (typeof $ !== 'undefined' && $(sel).data('select2')) $(sel).trigger('change');
@@ -820,7 +833,7 @@ echo '<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/selec
                                                                class="custom-label">Country</label>
                                                         <?php
                                                         // Check if $contact_country_id is set, otherwise default to form validation data
-                                                        $selected_contact_country_id = isset($user_country->country_id) ? $user_country->country_id : set_value('contact_country_id');
+                                                        $selected_contact_country_id = set_value('contact_country_id') ?: (isset($user_country->country_id) ? $user_country->country_id : '');
 
                                                         echo form_dropdown(
                                                             'contact_country_id',
@@ -946,7 +959,8 @@ echo '<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/selec
                                                                class="custom-label">Country</label>
                                                         <?php
 
-                                                        $selected_sender_country_id = isset($user_country->country_id) ? $user_country->country_id : set_value('sender_country_id');
+                                                        // A value already chosen/posted wins; otherwise default to the logged-in user's country.
+                                                        $selected_sender_country_id = set_value('sender_country_id') ?: (isset($user_country->country_id) ? $user_country->country_id : '');
 
                                                         echo form_dropdown(
                                                             'sender_country_id',
@@ -1968,20 +1982,23 @@ echo '<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/selec
                                         <div class="custom-form-group col-md-6 col-sm-12">
                                             <label for="pickup_date" class="custom-label">Pickup Date:</label>
                                             <input type="text" id="pickup_date" name="pickup_date"
-                                                   class="custom-input pickup-required-field" placeholder="Choose Date">
+                                                   class="custom-input pickup-required-field" placeholder="Choose Date"
+                                                   value="<?php echo set_value('pickup_date'); ?>">
                                             <?php echo form_error('pickup_date', '<div class="error-message">', '</div>'); ?>
                                         </div>
                                         <div class="custom-form-group col-md-3 col-sm-12">
                                             <label for="pickup_start_time" class="custom-label">Pickup Start
                                                 Time:</label>
                                             <input type="text" id="pickup_start_time" name="pickup_start_time"
-                                                   class="custom-input pickup_time pickup-required-field" placeholder="Choose Start Time">
+                                                   class="custom-input pickup_time pickup-required-field" placeholder="Choose Start Time"
+                                                   value="<?php echo set_value('pickup_start_time'); ?>">
                                             <?php echo form_error('pickup_start_time', '<div class="error-message">', '</div>'); ?>
                                         </div>
                                         <div class="custom-form-group col-md-3 col-sm-12">
                                             <label for="pickup_end_time" class="custom-label">Pickup End Time:</label>
                                             <input type="text" id="pickup_end_time" name="pickup_end_time"
-                                                   class="custom-input pickup_time pickup-required-field" placeholder="Choose End Time">
+                                                   class="custom-input pickup_time pickup-required-field" placeholder="Choose End Time"
+                                                   value="<?php echo set_value('pickup_end_time'); ?>">
                                             <?php echo form_error('pickup_end_time', '<div class="error-message">', '</div>'); ?>
                                         </div>
                                     </div>
@@ -2038,15 +2055,15 @@ echo '<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/selec
                                                 <div id="address_type" style="display: flex; gap: 20px;">
                                                     <label>
                                                         <input type="radio" name="pickup_address_type"
-                                                               value="zip_code" checked>
+                                                               value="zip_code" <?php echo set_radio('pickup_address_type', 'zip_code', true); ?>>
                                                         Zip code
                                                     </label>
                                                     <label>
                                                         <input type="radio" name="pickup_address_type"
-                                                               value="postal_code"> Postal code
+                                                               value="postal_code" <?php echo set_radio('pickup_address_type', 'postal_code'); ?>> Postal code
                                                     </label>
                                                 </div>
-                                                <?php echo form_input(['id' => 'pickup_zipcode', 'name' => 'pickup_zipcode', 'type' => 'text', 'class' => 'custom-input', 'placeholder' => 'Zipcode', 'value' => set_value('zipcode'), 'autocomplete' => 'off']); ?>
+                                                <?php echo form_input(['id' => 'pickup_zipcode', 'name' => 'pickup_zipcode', 'type' => 'text', 'class' => 'custom-input', 'placeholder' => 'Zipcode', 'value' => set_value('pickup_zipcode'), 'autocomplete' => 'off']); ?>
                                                 <?php echo form_error('pickup_zipcode', '<div class="error-message">', '</div>'); ?>
                                             </div>
                                         </div>
@@ -2056,10 +2073,10 @@ echo '<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/selec
                                             <label for="pickup_vehicle_type" class="custom-label">Vehicle Type</label>
                                             <select name="pickup_vehicle_type" id="vehicle_type"
                                                     class="custom-select">
-                                                <option value="truck">Truck</option>
-                                                <option value="van">Van</option>
-                                                <option value="motorcycle">Motorcycle</option>
-                                                <option value="motorcycle">Other</option>
+                                                <option value="truck" <?php echo set_select('pickup_vehicle_type', 'truck', true); ?>>Truck</option>
+                                                <option value="van" <?php echo set_select('pickup_vehicle_type', 'van'); ?>>Van</option>
+                                                <option value="motorcycle" <?php echo set_select('pickup_vehicle_type', 'motorcycle'); ?>>Motorcycle</option>
+                                                <option value="other" <?php echo set_select('pickup_vehicle_type', 'other'); ?>>Other</option>
                                             </select>
                                             <?php echo form_error('pickup_vehicle_type', '<div class="error-message">', '</div>'); ?>
                                         </div>
@@ -2150,6 +2167,8 @@ echo '<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/selec
                                     </div>
                                 </div>
                                 <!--End of Contact Person-->
+
+                                <?php $this->load->view('courier_goshipping/pickups/_charges'); ?>
                             </div>
                         </section>
 
@@ -2619,10 +2638,20 @@ function saveLogisticCompany() {
                         stateDropdown.empty();
 
                         // Populate dropdown with new data
+                        var $stGrp = $('<optgroup label="States"></optgroup>');
                         $.each(data.states, function (key, value) {
                             var selected = (stateId && value.id == stateId) ? 'selected' : '';
-                            stateDropdown.append('<option value="' + value.id + '" ' + selected + '>' + value.name + '</option>');
+                            $stGrp.append('<option value="' + value.id + '" ' + selected + '>' + value.name + '</option>');
                         });
+                        if (data.states && data.states.length) { stateDropdown.append($stGrp); }
+                        if (data.towns && data.towns.length) {
+                            var $twGrp = $('<optgroup label="Towns / Cities"></optgroup>');
+                            $.each(data.towns, function (i, town) {
+                                $twGrp.append($('<option></option>').val('town:' + town).text(town));
+                            });
+                            stateDropdown.append($twGrp);
+                        }
+                        stateDropdown.trigger('change.select2');
                     },
                     error: function (jqXHR, textStatus, errorThrown) {
                         // Log detailed error information

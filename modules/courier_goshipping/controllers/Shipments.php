@@ -12,7 +12,7 @@ class Shipments extends AdminController
     {
         parent::__construct();
         $method = $this->router->fetch_method();
-        $invoice_methods = ['courier_invoice', 'commercial_invoice', 'list_commercial_invoices'];
+        $invoice_methods = ['courier_invoice', 'commercial_invoice', 'list_commercial_invoices', 'download_commercial_invoice_pdf'];
         if (!in_array($method, $invoice_methods)) {
             if (!is_admin()
                 && !has_permission('courier-shipments', '', 'view_all_shipments')
@@ -587,6 +587,7 @@ class Shipments extends AdminController
             // pickup_zipcode: optional, no rule needed
             $this->form_validation->set_rules('pickup_vehicle_type', 'Vehicle Type', 'required');
             $this->form_validation->set_rules('pickup_driver_id', 'Driver', 'required');
+            $this->form_validation->set_rules('pickup_charge_amount[]', 'Pickup charge amount', 'trim|numeric|greater_than_equal_to[0]');
         }
     }
 
@@ -1017,6 +1018,11 @@ class Shipments extends AdminController
                 throw new Exception('Failed to add pickup contact person.');
             }
 
+            $charges = courier_parse_pickup_charges(
+                $this->input->post('pickup_charge_desc'),
+                $this->input->post('pickup_charge_amount')
+            );
+
             // Store pickup data
             $pickup_data = [
                 'pickup_date'       => strtoupper($this->input->post('pickup_date')),
@@ -1034,6 +1040,8 @@ class Shipments extends AdminController
                 'staff_id'          => get_staff_user_id(),
                 'driver_id'         => $this->input->post('pickup_driver_id'),
                 'source'            => 'shipment',
+                'charges'           => $charges['json'],
+                'charges_total'     => $charges['total'],
                 'created_at'        => date('Y-m-d H:i:s'),
             ];
 
@@ -1442,7 +1450,23 @@ class Shipments extends AdminController
 
     public function getStaffCountry()
     {
+        // 1) The country of the branch this staff member is operating in
+        //    (e.g. logged in at the Dubai branch -> United Arab Emirates).
+        $branch_id = function_exists('courier_get_session_branch_id') ? courier_get_session_branch_id() : null;
+        if ($branch_id) {
+            $branch = $this->db->select('country_id')
+                ->where('id', (int) $branch_id)
+                ->get(db_prefix() . '_courier_branches')
+                ->row();
+            if ($branch && !empty($branch->country_id)) {
+                $branch_country = $this->db->get_where(db_prefix() . 'countries', ['country_id' => (int) $branch->country_id])->row();
+                if ($branch_country) {
+                    return $branch_country;
+                }
+            }
+        }
 
+        // 2) Fallback: the staff profile's country custom field.
         $staff_id = get_staff_user_id();
         $this->db->select('email');
         $this->db->from(db_prefix() . 'staff');
@@ -1531,6 +1555,14 @@ class Shipments extends AdminController
      */
     public function store()
     {
+        // "town:<Name>" picks from the State/Town dropdowns -> real state ids
+        courier_resolve_posted_towns([
+            'sender_country_id'            => 'sender_state_id',
+            'contact_country_id'           => 'contact_state_id',
+            'recipient_country_id'         => 'recipient_state_id',
+            'recipient_contact_country_id' => 'recipient_contact_state_id',
+            'pickup_country_id'            => 'pickup_state_id',
+        ]);
 
         $this->validatePickup();
         $this->validateCompany();
@@ -2839,6 +2871,7 @@ class Shipments extends AdminController
         ];
 
         $mail = mail_template('Courier_waybill_to_customer', 'courier_goshipping', $to_email, $merge);
+        // Receiver: waybill + commercial invoice (no courier invoice).
         courier_attach_waybill_pdfs($mail, (int) $id);
         $sent = $mail->send();
         if ($sent) {
@@ -2846,6 +2879,68 @@ class Shipments extends AdminController
         } else {
             echo json_encode(['success' => false, 'message' => 'Failed to send email. Check Setup > Email Settings and ensure the "Courier Waybill Notification to Customer" template is active.']);
         }
+    }
+
+    /**
+     * Download the waybill as a full-page A4 PDF. Server-side (same generator
+     * as the emailed attachment) so the download and the email always match
+     * and no browser-side PDF library is involved.
+     */
+    public function download_waybill_pdf($id)
+    {
+        $details = $this->Shipment_model->get_shipment_details((int) $id);
+        if (empty($details)) {
+            show_404();
+        }
+        if (!$this->_assert_ownership($details)) {
+            return;
+        }
+
+        $pdf = courier_generate_waybill_pdf((int) $id);
+        if ($pdf === null) {
+            set_alert('danger', 'Could not generate the waybill PDF.');
+            redirect(admin_url('courier_goshipping/shipments/waybill/' . (int) $id));
+            return;
+        }
+        $this->_send_pdf_download($pdf, 'Waybill-' . ($details['shipment']->waybill_number ?: $details['shipment']->tracking_id) . '.pdf');
+    }
+
+    /**
+     * Download the commercial invoice as a full-page A4 PDF (same generator
+     * as the sender's emailed attachment).
+     */
+    public function download_commercial_invoice_pdf($id)
+    {
+        $details = $this->Shipment_model->get_shipment_details((int) $id);
+        if (empty($details)) {
+            show_404();
+        }
+        if (!$this->_can_view_commercial_invoice($details['shipment'])) {
+            access_denied('Courier - Commercial Invoices');
+            return;
+        }
+
+        $pdf = courier_generate_commercial_invoice_pdf((int) $id);
+        if ($pdf === null) {
+            set_alert('danger', 'Could not generate the commercial invoice PDF.');
+            redirect(admin_url('courier_goshipping/shipments/commercial_invoice/' . (int) $id));
+            return;
+        }
+        $this->_send_pdf_download($pdf, 'Commercial-Invoice-' . ($details['shipment']->waybill_number ?: $details['shipment']->tracking_id) . '.pdf');
+    }
+
+    private function _send_pdf_download($pdf, $filename)
+    {
+        $filename = preg_replace('/[^A-Za-z0-9._-]+/', '_', $filename);
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Content-Length: ' . strlen($pdf));
+        header('Cache-Control: private, max-age=0, must-revalidate');
+        echo $pdf;
+        exit;
     }
 
     /**

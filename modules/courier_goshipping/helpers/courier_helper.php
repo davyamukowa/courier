@@ -69,7 +69,17 @@ if (!function_exists('courier_get_staff_branch_ids')) {
             ->get(db_prefix() . '_courier_staff_branches')
             ->result_array();
 
-        return array_map('intval', array_column($rows, 'branch_id'));
+        $ids = array_map('intval', array_column($rows, 'branch_id'));
+
+        // Country admins also reach every branch in their country(ies).
+        if (function_exists('courier_get_admin_country_ids') && !is_admin($staff_id)) {
+            $country_branches = courier_get_country_branch_ids(courier_get_admin_country_ids($staff_id));
+            if (!empty($country_branches)) {
+                $ids = array_values(array_unique(array_merge($ids, $country_branches)));
+            }
+        }
+
+        return $ids;
     }
 }
 
@@ -725,6 +735,7 @@ if (!function_exists('courier_send_shipment_waybill_email')) {
                 '{tracking_link}'  => $tracking_url,
             ]);
 
+            // Receiver: waybill + commercial invoice (no courier invoice).
             courier_attach_waybill_pdfs($mail, (int) $shipment_id);
 
             $sent = $mail->send();
@@ -775,66 +786,95 @@ if (!function_exists('_courier_pdf_party_lines')) {
 }
 
 /**
- * Renders a simple, self-contained TCPDF document from inline-styled HTML —
- * shared by the waybill/commercial-invoice PDF generators below. Deliberately
- * NOT a reuse of the admin waybill.php/commercial_invoice.php views: those are
- * full interactive admin pages (flexbox, box-shadow, watermark image, print
- * JS) that TCPDF's limited HTML/CSS renderer can't reproduce — this builds a
- * lighter, print-safe layout that mirrors the same fields/branding/terms
- * instead, with the logo watermarked behind the content via TCPDF's own
- * alpha-image API (writeHTML's <img> can't do CSS opacity).
+ * Renders a document as ONE full A4 page that mirrors the on-screen
+ * waybill.php / commercial_invoice.php "card" (#waybill-section): a rounded
+ * bordered container that fills the sheet, header + tables inside it, and
+ * (optionally) the logo watermarked behind the content.
  *
- * The on-screen watermark (waybill.css's .watermark) is centered with
- * `position:absolute;top:50%` inside a `position:relative` container, so it
- * automatically lands in the middle of however tall the card actually is.
- * TCPDF has no equivalent — an image drawn before writeHTML() sits at a
- * fixed, content-height-independent spot — so when $watermark_path is given,
- * this renders the HTML once into a throwaway PDF purely to measure where
- * the content actually ends ($pdf->GetY()), then re-renders for real with
- * the watermark centered against that real height instead of a guess.
+ * TCPDF can't run the real pages' flexbox/CSS, so the card frame is drawn
+ * natively (RoundedRect) at a fixed full-page size and the two HTML halves
+ * are flowed into it:
+ *   $top_html     - flows from the top of the card
+ *   $bottom_html  - pinned to the bottom edge of the card (the waybill's
+ *                   Terms & Conditions + footer), so the sheet is always
+ *                   filled top-to-bottom like the printed original, however
+ *                   few package rows there are. If the top half is so long
+ *                   that both can't fit, the bottom half simply follows it.
+ *
+ * $opts: border_color [r,g,b], accent_color [r,g,b]|null (thicker top edge,
+ *        waybill only), watermark_path string|null.
  */
-if (!function_exists('_courier_render_pdf')) {
-    function _courier_render_pdf($html, $title, $watermark_path = null)
+if (!function_exists('_courier_render_card_pdf')) {
+    function _courier_render_card_pdf($top_html, $bottom_html, $title, array $opts = [])
     {
         if (!class_exists('TCPDF', false)) {
             require_once(APPPATH . 'vendor/tecnickcom/tcpdf/tcpdf.php');
         }
 
-        $build = function () use ($title) {
+        $cx = 8; $cy = 8; $cw = 194; $ch = 281;   // card = A4 minus an 8mm sheet margin
+        $pad_x = 7; $pad_top = 7; $pad_bottom = 7;
+        $border = $opts['border_color'] ?? [51, 51, 51];
+        $accent = $opts['accent_color'] ?? null;
+        $wm     = $opts['watermark_path'] ?? null;
+
+        $build = function () use ($title, $cx, $cy, $cw, $pad_x, $pad_top, $pad_bottom) {
             $pdf = new TCPDF('P', 'mm', 'A4', true, 'UTF-8', false);
             $pdf->SetCreator('Go Shipping Cargo');
             $pdf->SetAuthor(get_option('companyname') ?: 'Go Shipping Cargo');
             $pdf->SetTitle($title);
             $pdf->setPrintHeader(false);
             $pdf->setPrintFooter(false);
-            $pdf->SetMargins(12, 12, 12);
-            $pdf->SetAutoPageBreak(true, 12);
+            $pdf->SetMargins($cx + $pad_x, $cy + $pad_top, 210 - ($cx + $cw) + $pad_x);
+            $pdf->SetAutoPageBreak(true, $cy + $pad_bottom);
+            $pdf->SetFont('helvetica', '', 9);
             return $pdf;
         };
 
-        $top_margin    = 12;
-        $content_end_y = 297 - $top_margin; // fallback: treat as a full page
-
-        if ($watermark_path && file_exists($watermark_path)) {
-            $measure = $build();
-            $measure->AddPage();
-            $measure->writeHTML($html, true, false, true, false, '');
-            $content_end_y = $measure->GetY();
+        // Measure both halves so the bottom one can be pinned to the card's foot.
+        $m = $build();
+        $m->AddPage();
+        $m->SetY($cy + $pad_top);
+        $m->writeHTML($top_html, true, false, true, false, '');
+        $top_end = $m->GetY();
+        $bottom_h = 0;
+        if ($bottom_html !== '') {
+            $m->writeHTML($bottom_html, true, false, true, false, '');
+            $bottom_h = $m->GetY() - $top_end;
         }
 
         $pdf = $build();
         $pdf->AddPage();
 
-        if ($watermark_path && file_exists($watermark_path)) {
-            $wm_size = 90;
-            $wm_x = (210 - $wm_size) / 2;
-            $wm_y = max($top_margin, ($top_margin + $content_end_y) / 2 - ($wm_size / 2));
+        // Card frame
+        $pdf->SetLineStyle(['width' => 0.5, 'color' => $border]);
+        $pdf->RoundedRect($cx, $cy, $cw, $ch, 3, '1111', 'D');
+        if ($accent) {
+            $pdf->SetLineStyle(['width' => 1.2, 'color' => $accent, 'cap' => 'butt']);
+            $pdf->Line($cx + 3, $cy, $cx + $cw - 3, $cy);
+        }
+
+        // Watermark: ~60% of the card width, centred in the card (matches
+        // waybill.css .watermark), drawn before the text so it sits behind it.
+        if ($wm && file_exists($wm)) {
+            $size = @getimagesize($wm);
+            $ratio = ($size && !empty($size[0])) ? $size[1] / $size[0] : 1;
+            $wm_w = $cw * 0.6;
+            $wm_h = min($wm_w * $ratio, $ch * 0.6);
+            $wm_w = $wm_h / $ratio;
             $pdf->SetAlpha(0.07);
-            $pdf->Image($watermark_path, $wm_x, $wm_y, $wm_size, $wm_size, '', '', '', false, 300, '', false, false, 0);
+            $pdf->Image($wm, $cx + ($cw - $wm_w) / 2, $cy + ($ch - $wm_h) / 2, $wm_w, $wm_h, '', '', '', false, 300, '', false, false, 0);
             $pdf->SetAlpha(1);
         }
 
-        $pdf->writeHTML($html, true, false, true, false, '');
+        $pdf->SetY($cy + $pad_top);
+        $pdf->writeHTML($top_html, true, false, true, false, '');
+        if ($bottom_html !== '') {
+            $pin_y = $cy + $ch - $pad_bottom - $bottom_h - 1;
+            if ($pin_y > $pdf->GetY()) {
+                $pdf->SetY($pin_y);
+            }
+            $pdf->writeHTML($bottom_html, true, false, true, false, '');
+        }
 
         return $pdf->Output($title . '.pdf', 'S');
     }
@@ -912,43 +952,192 @@ if (!function_exists('_courier_pdf_barcode_path')) {
 }
 
 /**
- * Static Terms & Conditions block shared by the waybill PDF and the admin
- * waybill.php view — kept as one copy here so the two never drift apart.
+ * Static Terms & Conditions block for the waybill PDF — same wording as the
+ * admin waybill.php view's .terms block, two columns under a heavy rule.
  */
 if (!function_exists('_courier_pdf_terms_html')) {
     function _courier_pdf_terms_html()
     {
         return '
-            <div style="margin-top:12px;font-size:10px;font-weight:bold;border-top:2px solid #333;padding-top:4px;">Terms and Conditions</div>
-            <table cellpadding="2" style="width:100%;margin-top:2px;">
+            <div style="border-top:2px solid #333;font-size:2pt;">&nbsp;</div>
+            <div style="font-size:10pt;font-weight:bold;">Terms and Conditions</div>
+            <table cellpadding="2" cellspacing="0" style="width:100%;">
                 <tr>
-                    <td style="width:50%;font-size:7.5px;vertical-align:top;border:none;line-height:1.4;">
-                        <p><b>1. General Conditions:</b> Use of our services implies acceptance of these terms and applicable laws.</p>
-                        <p><b>2. Delivery Times:</b> We estimate delivery times but do not guarantee specific dates. Delays may occur.</p>
-                        <p><b>3. Package Restrictions:</b> Ensure package contents comply with laws. Some items may be restricted or prohibited.</p>
-                        <p><b>4. Shipping Charges:</b> Charges are based on weight, dimensions, and destination. Additional fees may apply.</p>
-                        <p><b>5. Claims and Liability:</b> We are not liable for issues after delivery. Claims must be reported within a specified period.</p>
+                    <td style="width:50%;font-size:8pt;vertical-align:top;line-height:1.35;">
+                        <b>1. General Conditions:</b> Use of our services implies acceptance of these terms and applicable laws.<br>
+                        <b>2. Delivery Times:</b> We estimate delivery times but do not guarantee specific dates. Delays may occur.<br>
+                        <b>3. Package Restrictions:</b> Ensure package contents comply with laws. Some items may be restricted or prohibited.<br>
+                        <b>4. Shipping Charges:</b> Charges are based on weight, dimensions, and destination. Additional fees may apply.<br>
+                        <b>5. Claims and Liability:</b> We are not liable for issues after delivery. Claims must be reported within a specified period.
                     </td>
-                    <td style="width:50%;font-size:7.5px;vertical-align:top;border:none;line-height:1.4;">
-                        <p><b>6. Customs and Duties:</b> You are responsible for customs fees and taxes for international shipments.</p>
-                        <p><b>7. Insurance:</b> Optional insurance covers package value up to a limit. Refer to our policy for details.</p>
-                        <p><b>8. Address Accuracy:</b> Ensure correct address details to avoid delays or issues.</p>
-                        <p><b>9. Changes to Terms:</b> Terms may be updated. Review regularly for any changes.</p>
-                        <p><b>10. Contact Information:</b> For questions or concerns, contact our customer service.</p>
+                    <td style="width:50%;font-size:8pt;vertical-align:top;line-height:1.35;">
+                        <b>6. Customs and Duties:</b> You are responsible for customs fees and taxes for international shipments.<br>
+                        <b>7. Insurance:</b> Optional insurance covers package value up to a limit. Refer to our policy for details.<br>
+                        <b>8. Address Accuracy:</b> Ensure correct address details to avoid delays or issues.<br>
+                        <b>9. Changes to Terms:</b> Terms may be updated. Review regularly for any changes.<br>
+                        <b>10. Contact Information:</b> For questions or concerns, contact our customer service.
                     </td>
                 </tr>
             </table>
-            <div style="font-size:8px;margin-top:4px;">Thank you for using our services. We strive to provide reliable delivery solutions.</div>
+            <div style="font-size:8pt;">Thank you for using our services. We strive to provide reliable delivery solutions.</div>
         ';
     }
 }
 
 /**
- * Generates the waybill as a PDF binary string, for attaching to the
- * "waybill created" customer emails (courier_send_shipment_waybill_email())
- * and the manual "Send by Email" button (Shipments::send_waybill_email()).
- * Returns null (never throws) on any missing data so a PDF failure can never
- * block the email itself from sending without an attachment.
+ * Builds the waybill A4 PDF from already-resolved shipment details. Pure
+ * (no DB/CI access beyond the helpers it is handed) so it can be exercised
+ * on its own. $o: logo_path, barcode_path, company, agent_html, date.
+ * Mirrors waybill.php's #waybill-section row for row: barcode (top right),
+ * header (logo | Waybill Number | date), sender/receiver info table,
+ * tracking + level/mode, courier-company row, Package Details, notes,
+ * agent, round-trip badge, Terms & Conditions, copyright.
+ */
+if (!function_exists('_courier_build_waybill_pdf')) {
+    function _courier_build_waybill_pdf(array $details, array $o)
+    {
+        $shipment  = $details['shipment'];
+        $sender    = $details['sender'] ?? null;
+        $recipient = $details['recipient'] ?? null;
+
+        $sender_lines    = _courier_pdf_party_lines($sender, $details['sender_type'] ?? 'individual', $details['sender_country'] ?? null);
+        $recipient_lines = _courier_pdf_party_lines($recipient, $details['recipient_type'] ?? 'individual', $details['recipient_country'] ?? null);
+        // Same Kenya-local phone formatting as waybill.php.
+        $sender_lines['phone']    = str_replace('+254', '0', $sender_lines['phone']);
+        $recipient_lines['phone'] = str_replace('+254', '0', $recipient_lines['phone']);
+
+        $company  = $o['company'];
+        $tracking = htmlspecialchars((string) ($shipment->tracking_id ?: $shipment->waybill_number));
+
+        $th = 'style="background-color:#f0f0f0;border:1px solid #333;font-size:9pt;font-weight:bold;"';
+        $td = 'style="border:1px solid #333;font-size:9pt;"';
+        $ph = 'style="background-color:#f0f0f0;border:1px solid #333;font-size:8pt;font-weight:bold;text-align:center;"';
+        $pd = 'style="border:1px solid #333;font-size:8.5pt;text-align:center;"';
+
+        $is_fcl = (int) ($shipment->fcl_shipment ?? 0) === 1;
+        $rows = '';
+        $n = 1;
+        foreach (($details['packages'] ?? []) as $p) {
+            if ($is_fcl) {
+                $rows .= '<tr><td ' . $pd . ' width="8%">' . $n . '</td>'
+                    . '<td ' . $pd . ' width="15%">' . htmlspecialchars((string) ($p->quantity ?? '')) . '</td>'
+                    . '<td ' . $pd . ' width="52%">' . htmlspecialchars((string) ($p->description ?? '-')) . '</td>'
+                    . '<td ' . $pd . ' width="25%">' . htmlspecialchars((string) ($p->fcl_option ?? '-')) . '</td></tr>';
+            } else {
+                $rows .= '<tr><td ' . $pd . ' width="5%">' . $n . '</td>'
+                    . '<td ' . $pd . ' width="9%">' . htmlspecialchars((string) ($p->quantity ?? '')) . '</td>'
+                    . '<td ' . $pd . ' width="10%">' . htmlspecialchars((string) ($p->length ?? '-')) . '</td>'
+                    . '<td ' . $pd . ' width="10%">' . htmlspecialchars((string) ($p->width ?? '-')) . '</td>'
+                    . '<td ' . $pd . ' width="10%">' . htmlspecialchars((string) ($p->height ?? '-')) . '</td>'
+                    . '<td ' . $pd . ' width="18%">' . htmlspecialchars((string) ($p->weight_volume ?? '-')) . '</td>'
+                    . '<td ' . $pd . ' width="19%">' . htmlspecialchars((string) ($p->weight ?? '-')) . '</td>'
+                    . '<td ' . $pd . ' width="19%">' . htmlspecialchars((string) ($p->chargeable_weight ?? '-')) . '</td></tr>';
+            }
+            $n++;
+        }
+        if ($rows === '') {
+            $rows = '<tr><td ' . $pd . ' colspan="' . ($is_fcl ? 4 : 8) . '">No package details recorded.</td></tr>';
+        }
+        $pkg_head = $is_fcl
+            ? '<tr><th ' . $ph . ' width="8%">#</th><th ' . $ph . ' width="15%">Quantity</th><th ' . $ph . ' width="52%">Description</th><th ' . $ph . ' width="25%">FCL Option</th></tr>'
+            : '<tr><th ' . $ph . ' width="5%">#</th><th ' . $ph . ' width="9%">Quantity</th><th ' . $ph . ' width="10%">Length (cm)</th><th ' . $ph . ' width="10%">Width (cm)</th><th ' . $ph . ' width="10%">Height (cm)</th><th ' . $ph . ' width="18%">Volumetric Weight (kg)</th><th ' . $ph . ' width="19%">Gross Weight (kg)</th><th ' . $ph . ' width="19%">Chargeable Weight (kg)</th></tr>';
+
+        $si = ($details['sender_type'] ?? 'individual') === 'individual';
+        $ri = ($details['recipient_type'] ?? 'individual') === 'individual';
+
+        $logo = $o['logo_path']
+            ? '<img src="' . $o['logo_path'] . '" height="60" width="60">'
+            : '<span style="font-size:14pt;font-weight:bold;">' . htmlspecialchars($company) . '</span>';
+        $barcode = $o['barcode_path'] ? '<img src="' . $o['barcode_path'] . '" height="38" width="190">' : '';
+
+        $notes = trim((string) ($shipment->special_instructions ?? ''));
+        $notes_html = $notes !== '' ? nl2br(htmlspecialchars($notes)) : '<span style="color:#aaaaaa;">&mdash;</span>';
+
+        $agent_row = $o['agent_html'] !== ''
+            ? '<tr><th ' . $th . ' width="22%">Shipped By (Agent)</th><td ' . $td . ' width="78%">' . $o['agent_html'] . '</td></tr>'
+            : '';
+
+        $round_trip = '';
+        if (!empty($shipment->is_round_trip)) {
+            $round_trip = '<div style="font-size:4pt;">&nbsp;</div>'
+                . '<table cellpadding="5" cellspacing="0" style="width:100%;"><tr>'
+                . '<th style="background-color:#f5f5f5;border:1px solid #333;font-size:9pt;font-weight:bold;">SHIPMENT TYPE &nbsp;<span style="background-color:#28a745;color:#ffffff;font-size:8pt;"> Round Trip </span></th>'
+                . '</tr></table>';
+        }
+
+        $top = '
+            <table cellpadding="0" cellspacing="0" style="width:100%;"><tr><td align="right">' . $barcode . '</td></tr></table>
+            <table cellpadding="3" cellspacing="0" style="width:100%;"><tr>
+                <td width="25%" valign="middle" style="border-bottom:1px solid #000;">' . $logo . '</td>
+                <td width="50%" align="center" valign="middle" style="border-bottom:1px solid #000;font-size:12pt;font-weight:bold;">Waybill Number: ' . $tracking . '</td>
+                <td width="25%" align="right" valign="middle" style="border-bottom:1px solid #000;font-size:12pt;font-weight:bold;">' . htmlspecialchars($o['date']) . '</td>
+            </tr></table>
+            <div style="font-size:8pt;">&nbsp;</div>
+            <table cellpadding="6" cellspacing="0" style="width:100%;">
+                <tr>
+                    <th ' . $th . ' width="17%">' . ($si ? 'Sender Name' : 'Sender') . '</th>
+                    <td ' . $td . ' width="33%">' . htmlspecialchars($sender_lines['name']) . '</td>
+                    <th ' . $th . ' width="17%">' . ($ri ? 'Receiver Name' : 'Receiver') . '</th>
+                    <td ' . $td . ' width="33%">' . htmlspecialchars($recipient_lines['name']) . '</td>
+                </tr>
+                <tr>
+                    <th ' . $th . '>' . ($si ? 'Sender Address' : 'Contact person Address') . '</th>
+                    <td ' . $td . '>' . htmlspecialchars($sender_lines['address']) . '</td>
+                    <th ' . $th . '>' . ($ri ? 'Recipient Address' : 'Contact person Address') . '</th>
+                    <td ' . $td . '>' . htmlspecialchars($recipient_lines['address']) . '</td>
+                </tr>
+                <tr>
+                    <th ' . $th . '>' . ($si ? 'Sender Number' : 'Contact Person Number') . '</th>
+                    <td ' . $td . '>' . htmlspecialchars($sender_lines['phone']) . '</td>
+                    <th ' . $th . '>' . ($ri ? 'Receiver Number' : 'Contact Person Number') . '</th>
+                    <td ' . $td . '>' . htmlspecialchars($recipient_lines['phone']) . '</td>
+                </tr>
+                <tr>
+                    <th ' . $th . '>Tracking Number</th>
+                    <td ' . $td . ' colspan="3">' . $tracking . '</td>
+                </tr>
+                <tr>
+                    <th ' . $th . '>Shipping Level</th>
+                    <td ' . $td . '>' . htmlspecialchars(strtoupper((string) ($shipment->shipping_category ?? '-'))) . '</td>
+                    <th ' . $th . '>Shipping Mode</th>
+                    <td ' . $td . '>' . htmlspecialchars((string) ($shipment->shipping_mode ?? '-')) . '</td>
+                </tr>
+            </table>
+            <div style="font-size:10pt;">&nbsp;</div>
+            <table cellpadding="6" cellspacing="0" style="width:100%;">
+                <tr>
+                    <th ' . $th . ' width="22%">' . (!empty($shipment->company_type) ? htmlspecialchars($shipment->company_type) : 'Courier Company') . '</th>
+                    <td ' . $td . ' width="78%">' . htmlspecialchars($company) . '</td>
+                </tr>
+            </table>
+            <div style="font-size:5pt;">&nbsp;</div>
+            <div style="font-size:11pt;font-weight:bold;">Package Details</div>
+            <div style="font-size:2pt;">&nbsp;</div>
+            <table cellpadding="5" cellspacing="0" style="width:100%;">' . $pkg_head . $rows . '</table>
+            <div style="font-size:4pt;">&nbsp;</div>
+            <table cellpadding="6" cellspacing="0" style="width:100%;">
+                <tr><th ' . $th . ' width="22%">Shipping Notes</th><td ' . $td . ' width="78%">' . $notes_html . '</td></tr>
+                ' . $agent_row . '
+            </table>
+            ' . $round_trip;
+
+        $bottom = _courier_pdf_terms_html()
+            . '<div style="font-size:4pt;">&nbsp;</div>'
+            . '<div style="text-align:center;font-size:10pt;">&copy; ' . date('Y') . ' ' . htmlspecialchars($company) . '. All rights reserved.</div>';
+
+        return _courier_render_card_pdf($top, $bottom, 'Waybill-' . ($shipment->waybill_number ?: $shipment->tracking_id), [
+            'border_color'   => [13, 71, 161],   // #0d47a1
+            'accent_color'   => [198, 40, 40],   // #c62828
+            'watermark_path' => $o['logo_path'],
+        ]);
+    }
+}
+
+/**
+ * Generates the waybill as a PDF binary string — used by the "waybill
+ * created" emails, the manual "Send by Email" button and the "Download PDF"
+ * button, so all three produce the identical document. Returns null (never
+ * throws) on any missing data so a PDF failure can never block an email.
  */
 if (!function_exists('courier_generate_waybill_pdf')) {
     function courier_generate_waybill_pdf($shipment_id)
@@ -961,86 +1150,9 @@ if (!function_exists('courier_generate_waybill_pdf')) {
             if (empty($details) || empty($details['shipment'])) {
                 return null;
             }
-
             $shipment = $details['shipment'];
-            $sender_lines    = _courier_pdf_party_lines($details['sender'] ?? null, $details['sender_type'] ?? 'individual', $details['sender_country'] ?? null);
-            $recipient_lines = _courier_pdf_party_lines($details['recipient'] ?? null, $details['recipient_type'] ?? 'individual', $details['recipient_country'] ?? null);
-            // Same Kenya-local phone formatting as waybill.php — only the
-            // +254 country code is swapped for a leading 0, other countries
-            // keep their full international-format number as-is.
-            $sender_lines['phone']    = str_replace('+254', '0', $sender_lines['phone']);
-            $recipient_lines['phone'] = str_replace('+254', '0', $recipient_lines['phone']);
 
-            $invoice_info     = courier_get_invoice_info($shipment->branch_id ?? null);
-            $logistic_company = $invoice_info['name'] ?: (get_option('companyname') ?: 'Go Shipping Cargo');
-            $waybill_number   = htmlspecialchars($shipment->waybill_number ?: $shipment->tracking_id);
-            $logo_path        = _courier_pdf_logo_path();
-            $barcode_path     = _courier_pdf_barcode_path($shipment->tracking_id ?: $shipment->waybill_number);
-
-            // Inline-style definitions matching waybill.css's .info-table exactly —
-            // #f0f0f0 header bg, #333 borders, 9-9.5px font, plain black text.
-            $th  = 'style="background-color:#f0f0f0;border:1px solid #333;padding:3px 4px;font-size:9.5px;font-weight:bold;text-align:left;"';
-            $td  = 'style="border:1px solid #333;padding:3px 4px;font-size:9.5px;"';
-            $ptd = 'style="border:1px solid #333;padding:3px 4px;font-size:8px;text-align:center;"';
-            $pth = 'style="background-color:#f0f0f0;border:1px solid #333;padding:3px 4px;font-size:8px;font-weight:bold;text-align:center;"';
-            $ptdAccent = $ptd;
-
-
-            $is_fcl = (int) ($shipment->fcl_shipment ?? 0) === 1;
-            $packages_rows = '';
-            $counter = 1;
-            foreach (($details['packages'] ?? []) as $package) {
-                if ($is_fcl) {
-                    $packages_rows .= '<tr>'
-                        . '<td ' . $ptdAccent . ' width="8%">' . $counter . '</td>'
-                        . '<td ' . $ptdAccent . ' width="15%">' . htmlspecialchars((string) ($package->quantity ?? '')) . '</td>'
-                        . '<td ' . $ptd . ' width="52%">' . htmlspecialchars((string) ($package->description ?? '-')) . '</td>'
-                        . '<td ' . $ptd . ' width="25%">' . htmlspecialchars((string) ($package->fcl_option ?? '-')) . '</td>'
-                        . '</tr>';
-                } else {
-                    $packages_rows .= '<tr>'
-                        . '<td ' . $ptdAccent . ' width="6%">' . $counter . '</td>'
-                        . '<td ' . $ptdAccent . ' width="9%">' . htmlspecialchars((string) ($package->quantity ?? '')) . '</td>'
-                        . '<td ' . $ptd . ' width="11%">' . htmlspecialchars((string) ($package->length ?? '-')) . '</td>'
-                        . '<td ' . $ptd . ' width="11%">' . htmlspecialchars((string) ($package->width ?? '-')) . '</td>'
-                        . '<td ' . $ptd . ' width="11%">' . htmlspecialchars((string) ($package->height ?? '-')) . '</td>'
-                        . '<td ' . $ptd . ' width="17%">' . htmlspecialchars((string) ($package->weight_volume ?? '-')) . '</td>'
-                        . '<td ' . $ptd . ' width="17%">' . (isset($package->weight) ? number_format((float) $package->weight, 2) : '-') . '</td>'
-                        . '<td ' . $ptd . ' width="18%">' . htmlspecialchars((string) ($package->chargeable_weight ?? '-')) . '</td>'
-                        . '</tr>';
-                }
-                $counter++;
-            }
-            if ($packages_rows === '') {
-                $packages_rows = '<tr><td ' . $ptd . ' colspan="' . ($is_fcl ? 4 : 8) . '">No package details recorded.</td></tr>';
-            }
-
-            $package_header = $is_fcl
-                ? '<tr>'
-                    . '<th ' . $pth . ' width="8%">#</th>'
-                    . '<th ' . $pth . ' width="15%">Quantity</th>'
-                    . '<th ' . $pth . ' width="52%">Description</th>'
-                    . '<th ' . $pth . ' width="25%">FCL Option</th>'
-                    . '</tr>'
-                : '<tr>'
-                    . '<th ' . $pth . ' width="6%">#</th>'
-                    . '<th ' . $pth . ' width="9%">Qty</th>'
-                    . '<th ' . $pth . ' width="11%">Length (cm)</th>'
-                    . '<th ' . $pth . ' width="11%">Width (cm)</th>'
-                    . '<th ' . $pth . ' width="11%">Height (cm)</th>'
-                    . '<th ' . $pth . ' width="17%">Volumetric Weight (kg)</th>'
-                    . '<th ' . $pth . ' width="17%">Gross Weight (kg)</th>'
-                    . '<th ' . $pth . ' width="18%">Chargeable Weight (kg)</th>'
-                    . '</tr>';
-
-            $logo_cell = $logo_path
-                ? '<img src="' . $logo_path . '" width="60" height="60">'
-                : '<span style="font-size:14px;font-weight:bold;">' . htmlspecialchars($logistic_company) . '</span>';
-            $barcode_cell = $barcode_path ? '<img src="' . $barcode_path . '" width="130" height="30">' : '';
-
-            $notes = trim((string) ($shipment->special_instructions ?? ''));
-            $notes_html = $notes !== '' ? nl2br(htmlspecialchars($notes)) : '<span style="color:#aaa;">—</span>';
-
+            $invoice_info = courier_get_invoice_info($shipment->branch_id ?? null);
 
             // Agent line — same lookup as waybill.php's "Shipped By (Agent)" block
             $agent_html = '';
@@ -1057,118 +1169,13 @@ if (!function_exists('courier_generate_waybill_pdf')) {
                 }
             }
 
-            $company_label = !empty($shipment->company_type) ? htmlspecialchars($shipment->company_type) : 'Courier Company';
-
-            // Resolve sender/recipient labels exactly as waybill.php does (lines 834-843)
-            $is_sender_individual    = ($details['sender_type'] ?? 'individual') === 'individual';
-            $is_recipient_individual = ($details['recipient_type'] ?? 'individual') === 'individual';
-            $sender_label            = $is_sender_individual ? 'Sender Name' : 'Sender';
-            $recipient_label         = $is_recipient_individual ? 'Receiver Name' : 'Receiver';
-            $sender_addr_label       = $is_sender_individual ? 'Sender Address' : 'Contact person Address';
-            $recipient_addr_label    = $is_recipient_individual ? 'Recipient Address' : 'Contact person Address';
-            $sender_phone_label      = $is_sender_individual ? 'Sender Number' : 'Contact Person Number';
-            $recipient_phone_label   = $is_recipient_individual ? 'Receiver Number' : 'Contact Person Number';
-
-            // Round-trip badge row (mirrors waybill.php lines 999-1008)
-            $round_trip_row = '';
-            if (!empty($shipment->is_round_trip)) {
-                $round_trip_row = '
-                <table cellpadding="4" style="width:100%;border-collapse:collapse;margin-top:10px;">
-                    <tr>
-                        <th colspan="4" style="background:#f5f5f5;border:1px solid #333;font-size:9.5px;text-transform:uppercase;letter-spacing:.5px;padding:4px;">
-                            Shipment Type &nbsp;<span style="background:#28a745;color:#fff;padding:1px 6px;font-size:8px;">Round Trip</span>
-                        </th>
-                    </tr>
-                </table>';
-            }
-
-            // Build inner HTML — exactly mirrors waybill.php's #waybill-section layout:
-            // barcode at top-right → header (logo | waybill number | date) + HR →
-            // WAYBILL title → 4-col info table (sender/receiver name+address+phone,
-            // tracking number, shipping level+mode) → company row → Package Details
-            // section with title + package table → notes+agent table → round-trip badge
-            // → T&C → footer copyright.
-            $inner_html = '
-                <table cellpadding="0" style="width:100%;border-collapse:collapse;margin-bottom:5px;">
-                    <tr>
-                        <td style="width:70%;border:none;"></td>
-                        <td style="width:30%;text-align:right;vertical-align:middle;border:none;">' . $barcode_cell . '</td>
-                    </tr>
-                </table>
-                <table cellpadding="0" style="width:100%;border-collapse:collapse;border-bottom:1px solid #000;padding-bottom:5px;">
-                    <tr>
-                        <td style="width:22%;text-align:left;vertical-align:middle;border:none;">' . $logo_cell . '</td>
-                        <td style="width:46%;text-align:center;vertical-align:middle;border:none;">
-                            <span style="font-size:13px;font-weight:bold;">Waybill Number: ' . $waybill_number . '</span>
-                        </td>
-                        <td style="width:32%;text-align:right;vertical-align:middle;border:none;">
-                            <span style="font-size:13px;font-weight:bold;">' . date('d M Y') . '</span>
-                        </td>
-                    </tr>
-                </table>
-                <div style="text-align:center;margin-top:8px;margin-bottom:8px;font-size:16px;font-weight:bold;text-transform:uppercase;">WAYBILL</div>
-                <table cellpadding="4" style="width:100%;border-collapse:collapse;">
-                    <tr>
-                        <th ' . $th . '>' . $sender_label . '</th>
-                        <td ' . $td . '>' . htmlspecialchars($sender_lines['name']) . '</td>
-                        <th ' . $th . '>' . $recipient_label . '</th>
-                        <td ' . $td . '>' . htmlspecialchars($recipient_lines['name']) . '</td>
-                    </tr>
-                    <tr>
-                        <th ' . $th . '>' . $sender_addr_label . '</th>
-                        <td ' . $td . '>' . htmlspecialchars($sender_lines['address']) . '</td>
-                        <th ' . $th . '>' . $recipient_addr_label . '</th>
-                        <td ' . $td . '>' . htmlspecialchars($recipient_lines['address']) . '</td>
-                    </tr>
-                    <tr>
-                        <th ' . $th . '>' . $sender_phone_label . '</th>
-                        <td ' . $td . '>' . htmlspecialchars($sender_lines['phone']) . '</td>
-                        <th ' . $th . '>' . $recipient_phone_label . '</th>
-                        <td ' . $td . '>' . htmlspecialchars($recipient_lines['phone']) . '</td>
-                    </tr>
-                    <tr>
-                        <th ' . $th . '>Tracking Number</th>
-                        <td ' . $td . ' colspan="3">' . $waybill_number . '</td>
-                    </tr>
-                    <tr>
-                        <th ' . $th . '>Shipping Level</th>
-                        <td ' . $td . '>' . htmlspecialchars(strtoupper($shipment->shipping_category ?? '-')) . '</td>
-                        <th ' . $th . '>Shipping Mode</th>
-                        <td ' . $td . '>' . htmlspecialchars((string) ($shipment->shipping_mode ?? '-')) . '</td>
-                    </tr>
-                </table>
-                <div style="height:16px;">&nbsp;</div>
-                <table cellpadding="4" style="width:100%;border-collapse:collapse;">
-                    <tr>
-                        <th ' . $th . '>' . $company_label . '</th>
-                        <td ' . $td . ' colspan="3">' . htmlspecialchars($logistic_company) . '</td>
-                    </tr>
-                </table>
-                <div style="margin-top:10px;font-size:11px;font-weight:bold;">Package Details</div>
-                <table cellpadding="4" style="width:100%;border-collapse:collapse;margin-top:3px;">
-                    ' . $package_header . '
-                    ' . $packages_rows . '
-                </table>
-                <table cellpadding="4" style="width:100%;border-collapse:collapse;margin-top:8px;">
-                    <tr>
-                        <th ' . $th . '>Shipping Notes</th>
-                        <td ' . $td . ' colspan="3">' . $notes_html . '</td>
-                    </tr>
-                    ' . ($agent_html !== '' ? '<tr><th ' . $th . '>Shipped By (Agent)</th><td ' . $td . ' colspan="3">' . $agent_html . '</td></tr>' : '') . '
-                </table>
-                ' . $round_trip_row . '
-                ' . _courier_pdf_terms_html() . '
-                <div style="text-align:center;font-size:9px;margin-top:10px;">&copy; ' . date('Y') . ' ' . htmlspecialchars($logistic_company) . '. All rights reserved.</div>
-            ';
-
-            // Blue/red bordered card — the one deliberate color accent, matching
-            // the inline override waybill.php applies over the plain default
-            // .waybill-container border (see waybill.css's own comment on it).
-            $html = '<table cellpadding="10" style="width:100%;border-collapse:collapse;">
-                <tr><td style="border:2px solid #0d47a1;border-top:4px solid #c62828;">' . $inner_html . '</td></tr>
-            </table>';
-
-            return _courier_render_pdf($html, 'Waybill-' . ($shipment->waybill_number ?: $shipment->tracking_id), $logo_path);
+            return _courier_build_waybill_pdf($details, [
+                'company'      => $invoice_info['name'] ?: (get_option('companyname') ?: 'Go Shipping Cargo'),
+                'logo_path'    => _courier_pdf_logo_path(),
+                'barcode_path' => _courier_pdf_barcode_path($shipment->tracking_id ?: $shipment->waybill_number),
+                'agent_html'   => $agent_html,
+                'date'         => date('F j, Y'),
+            ]);
         } catch (\Throwable $e) {
             log_message('error', 'Waybill PDF generation crashed: ' . $e->getMessage());
             return null;
@@ -1177,13 +1184,105 @@ if (!function_exists('courier_generate_waybill_pdf')) {
 }
 
 /**
- * Generates the commercial invoice as a PDF binary string — attached
- * alongside the waybill PDF on a plain Go Shipping shipment's email only.
- * Salibay/Shopify orders never get this attachment: those are marketplace
- * orders with no customs "commercial value" declaration of our own to send,
- * per explicit instruction (see modules/courier_goshipping/CLAUDE.md — Salibay
- * shipments only ever get the waybill). Returns null (never throws) on any
- * missing data.
+ * Builds the commercial invoice A4 PDF. Mirrors commercial_invoice.php:
+ * just the "COMMERCIAL INVOICE" title and date in the header (no company
+ * address / contact / PIN lines), sender/receiver table, items table with
+ * total, and the declaration. $o: currency, date.
+ */
+if (!function_exists('_courier_build_commercial_invoice_pdf')) {
+    function _courier_build_commercial_invoice_pdf(array $details, array $o)
+    {
+        $shipment  = $details['shipment'];
+        $sender    = $details['sender'] ?? null;
+        $recipient = $details['recipient'] ?? null;
+
+        // Names/addresses exactly as commercial_invoice.php shows them
+        // (company parties show the contact person only; no country in the
+        // address — origin/destination get their own row).
+        $sender_lines    = _courier_pdf_party_lines($sender, $details['sender_type'] ?? 'individual', null);
+        $recipient_lines = _courier_pdf_party_lines($recipient, $details['recipient_type'] ?? 'individual', null);
+        $sender_name = ($details['sender_type'] ?? 'individual') === 'individual'
+            ? trim(($sender->first_name ?? '') . ' ' . ($sender->last_name ?? ''))
+            : (string) ($sender->contact_person_name ?? '');
+        $recipient_name = ($details['recipient_type'] ?? 'individual') === 'individual'
+            ? trim(($recipient->first_name ?? '') . ' ' . ($recipient->last_name ?? ''))
+            : (string) ($recipient->recipient_contact_person_name ?? '');
+
+        $origin      = strtoupper($details['sender_country']->short_name ?? '');
+        $destination = strtoupper($details['recipient_country']->short_name ?? '');
+
+        $th = 'style="background-color:#f0f0f0;border:1px solid #333;font-size:10pt;font-weight:bold;"';
+        $td = 'style="border:1px solid #333;font-size:10pt;"';
+        $tb = 'style="border:1px solid #333;font-size:10pt;font-weight:bold;"';
+
+        $items = !empty($details['commercial_details']) ? $details['commercial_details'] : ($details['packages'] ?? []);
+        $rows = '';
+        $n = 1;
+        $total = 0;
+        foreach ($items as $item) {
+            $val = $item->declared_value ?? ($item->price ?? '-');
+            $rows .= '<tr>'
+                . '<td ' . $td . ' width="8%">' . $n . '</td>'
+                . '<td ' . $td . ' width="16%">' . htmlspecialchars((string) ($item->quantity ?? 1)) . '</td>'
+                . '<td ' . $td . ' width="54%">' . htmlspecialchars((string) ($item->description ?? '')) . '</td>'
+                . '<td ' . $td . ' width="22%">' . htmlspecialchars((string) $val) . '</td>'
+                . '</tr>';
+            $total += is_numeric($val) ? (float) $val : 0;
+            $n++;
+        }
+        if ($rows === '') {
+            $rows = '<tr><td ' . $td . ' colspan="4">No commercial value items recorded.</td></tr>';
+        }
+
+        $top = '
+            <table cellpadding="3" cellspacing="0" style="width:100%;"><tr>
+                <td width="25%" style="border-bottom:1px solid #000;">&nbsp;</td>
+                <td width="50%" align="center" valign="middle" style="border-bottom:1px solid #000;font-size:15pt;font-weight:bold;">COMMERCIAL INVOICE</td>
+                <td width="25%" align="right" valign="middle" style="border-bottom:1px solid #000;font-size:12pt;font-weight:bold;">' . htmlspecialchars($o['date']) . '</td>
+            </tr></table>
+            <div style="font-size:12pt;">&nbsp;</div>
+            <table cellpadding="7" cellspacing="0" style="width:100%;">
+                <tr><th ' . $th . ' width="50%">SENDER</th><th ' . $th . ' width="50%">RECEIVER</th></tr>
+                <tr><td ' . $tb . '>' . htmlspecialchars(strtoupper($sender_name)) . '</td><td ' . $tb . '>' . htmlspecialchars(strtoupper($recipient_name)) . '</td></tr>
+                <tr><td ' . $td . '>' . htmlspecialchars($sender_lines['address']) . '</td><td ' . $td . '>' . htmlspecialchars($recipient_lines['address']) . '</td></tr>
+                <tr><td ' . $td . '>TEL : ' . htmlspecialchars($sender_lines['phone']) . '</td><td ' . $td . '>TEL : ' . htmlspecialchars($recipient_lines['phone']) . '</td></tr>
+                ' . (($origin !== '' || $destination !== '')
+                    ? '<tr><td ' . $tb . '>' . ($origin !== '' ? 'ORIGIN COUNTRY : ' . htmlspecialchars($origin) : '') . '</td>'
+                        . '<td ' . $tb . '>' . ($destination !== '' ? 'DESTINATION COUNTRY : ' . htmlspecialchars($destination) : '') . '</td></tr>'
+                    : '') . '
+            </table>
+            <div style="font-size:14pt;">&nbsp;</div>
+            <table cellpadding="7" cellspacing="0" style="width:100%;">
+                <tr>
+                    <th ' . $th . ' width="8%">#</th>
+                    <th ' . $th . ' width="16%">QUANTITY</th>
+                    <th ' . $th . ' width="54%">DESCRIPTION</th>
+                    <th ' . $th . ' width="22%">AMOUNT (' . htmlspecialchars($o['currency']) . ')</th>
+                </tr>
+                ' . $rows . '
+                <tr>
+                    <td ' . $td . '></td>
+                    <td ' . $tb . '>TOTAL</td>
+                    <td ' . $td . '></td>
+                    <td ' . $td . '>' . htmlspecialchars((string) $total) . '</td>
+                </tr>
+            </table>
+            <div style="font-size:8pt;">&nbsp;</div>
+            <div style="font-size:12pt;font-weight:bold;text-decoration:underline;">DECLARATION</div>
+            <div style="font-size:12pt;line-height:1.35;">I declare that this invoice shows the actual value/price of the goods described and that all particulars are true and correct and that the goods are of no commercial value, the value used is only for commercial purposes.</div>
+        ';
+
+        return _courier_render_card_pdf($top, '', 'Commercial-Invoice-' . ($shipment->waybill_number ?: $shipment->tracking_id), [
+            'border_color' => [51, 51, 51],
+        ]);
+    }
+}
+
+/**
+ * Generates the commercial invoice as a PDF binary string. Only ever sent to
+ * the SENDER (and offered to staff for download) — never to the receiver.
+ * Salibay/Shopify orders get no commercial invoice attachment (see
+ * modules/courier_goshipping/CLAUDE.md). Returns null (never throws).
  */
 if (!function_exists('courier_generate_commercial_invoice_pdf')) {
     function courier_generate_commercial_invoice_pdf($shipment_id)
@@ -1196,147 +1295,24 @@ if (!function_exists('courier_generate_commercial_invoice_pdf')) {
             if (empty($details) || empty($details['shipment'])) {
                 return null;
             }
-
             $shipment = $details['shipment'];
-            // No country baked into the address here (unlike the waybill) —
-            // origin/destination are shown as their own labeled row below,
-            // matching commercial_invoice.php.
-            $sender_lines    = _courier_pdf_party_lines($details['sender'] ?? null, $details['sender_type'] ?? 'individual', null);
-            $recipient_lines = _courier_pdf_party_lines($details['recipient'] ?? null, $details['recipient_type'] ?? 'individual', null);
 
-            $invoice_info     = courier_get_invoice_info($shipment->branch_id ?? null);
-            $logistic_company = $invoice_info['name'] ?: (get_option('companyname') ?: 'Go Shipping Cargo');
-            $waybill_number   = htmlspecialchars($shipment->waybill_number ?: $shipment->tracking_id);
-            $origin_country      = strtoupper($details['sender_country']->short_name ?? '');
-            $destination_country = strtoupper($details['recipient_country']->short_name ?? '');
-
-            $currency_symbol = 'USD';
+            $currency = 'USD';
             if (!empty($shipment->invoice_id)) {
                 $inv = $CI->db->select('currency')->where('id', $shipment->invoice_id)->get(db_prefix() . 'invoices')->row();
                 if ($inv && $inv->currency && ($currency_obj = get_currency($inv->currency))) {
-                    $currency_symbol = $currency_obj->name;
+                    $currency = $currency_obj->name;
                 }
             } elseif (!empty($shipment->currency_name)) {
-                $currency_symbol = $shipment->currency_name;
+                $currency = $shipment->currency_name;
             } elseif (function_exists('get_base_currency') && ($base_currency = get_base_currency())) {
-                $currency_symbol = $base_currency->name;
+                $currency = $base_currency->name;
             }
 
-            // Matches waybill.css exactly (#f0f0f0 header bg, #333 borders,
-            // plain black text) — commercial_invoice.php keeps the plain
-            // default border (no blue/red accent — that's waybill-only).
-            $th      = 'style="background-color:#f0f0f0;border:1px solid #333;padding:6px 8px;font-size:9px;font-weight:bold;text-align:left;"';
-            $td      = 'style="border:1px solid #333;padding:6px 8px;font-size:9px;"';
-            $tdBold  = 'style="border:1px solid #333;padding:6px 8px;font-size:10px;font-weight:bold;"';
-            $tdTotal = 'style="border:1px solid #333;padding:6px 8px;font-size:9px;font-weight:bold;background-color:#f0f0f0;"';
-
-            $items = !empty($details['commercial_details']) ? $details['commercial_details'] : ($details['packages'] ?? []);
-            $rows  = '';
-            $counter = 1;
-            $total   = 0;
-            foreach ($items as $item) {
-                $qty  = $item->quantity ?? 1;
-                $desc = $item->description ?? '';
-                $val  = $item->declared_value ?? ($item->price ?? '-');
-                $rows .= '<tr>'
-                    . '<td ' . $td . '>' . $counter . '</td>'
-                    . '<td ' . $td . '>' . htmlspecialchars((string) $qty) . '</td>'
-                    . '<td ' . $td . '>' . htmlspecialchars((string) $desc) . '</td>'
-                    . '<td ' . $td . ' align="right">' . htmlspecialchars((string) $val) . '</td>'
-                    . '</tr>';
-                if (is_numeric($val)) {
-                    $total += (float) $val;
-                }
-                $counter++;
-            }
-            if ($rows === '') {
-                $rows = '<tr><td ' . $td . ' colspan="4">No commercial value items recorded.</td></tr>';
-            }
-
-            // No logo, no watermark — commercial_invoice.php never renders
-            // either (confirmed: its $ci_logo_url is computed but unused,
-            // and it has no <img class="watermark"> in its markup at all,
-            // unlike waybill.php). Keeping this document plain text/tables
-            // only, matching the real page exactly.
-
-            // Build company info header lines exactly as commercial_invoice.php
-            // does (lines 307-318): address → Tel/Email → PIN.
-            $ci_company_header = '<span style="font-size:16px;font-weight:bold;">COMMERCIAL INVOICE</span>';
-            if (!empty($invoice_info['address'])) {
-                $ci_company_header .= '<br><span style="font-size:11px;color:#555;">' . htmlspecialchars(str_replace("\n", ' | ', trim($invoice_info['address']))) . '</span>';
-            }
-            if (!empty($invoice_info['phone']) || !empty($invoice_info['email'])) {
-                $ci_phone_email = '';
-                if (!empty($invoice_info['phone'])) {
-                    $ci_phone_email .= 'Tel: ' . htmlspecialchars($invoice_info['phone']);
-                }
-                if (!empty($invoice_info['email'])) {
-                    $ci_phone_email .= (!empty($invoice_info['phone']) ? ' &nbsp;|&nbsp; ' : '') . htmlspecialchars($invoice_info['email']);
-                }
-                $ci_company_header .= '<br><span style="font-size:11px;color:#555;">' . $ci_phone_email . '</span>';
-            }
-            if (!empty($invoice_info['pin'])) {
-                $ci_company_header .= '<br><span style="font-size:11px;color:#555;">PIN: ' . htmlspecialchars($invoice_info['pin']) . '</span>';
-            }
-
-            $html = '
-                <table cellpadding="0" style="width:100%;border-collapse:collapse;">
-                    <tr>
-                        <td style="width:20%;border:none;"></td>
-                        <td style="width:60%;text-align:center;vertical-align:middle;border:none;">
-                            ' . $ci_company_header . '
-                        </td>
-                        <td style="width:20%;text-align:right;vertical-align:middle;border:none;font-size:9px;font-weight:bold;">' . date('d M Y') . '</td>
-                    </tr>
-                </table>
-                <table cellpadding="4" style="width:100%;border-collapse:collapse;margin-top:10px;">
-                    <tr>
-                        <th ' . $th . ' width="50%">SENDER</th>
-                        <th ' . $th . ' width="50%">RECEIVER</th>
-                    </tr>
-                    <tr>
-                        <td ' . $tdBold . '>' . htmlspecialchars(strtoupper($sender_lines['name'])) . '</td>
-                        <td ' . $tdBold . '>' . htmlspecialchars(strtoupper($recipient_lines['name'])) . '</td>
-                    </tr>
-                    <tr>
-                        <td ' . $td . '>' . htmlspecialchars($sender_lines['address']) . '</td>
-                        <td ' . $td . '>' . htmlspecialchars($recipient_lines['address']) . '</td>
-                    </tr>
-                    <tr>
-                        <td ' . $td . '>TEL: ' . htmlspecialchars($sender_lines['phone']) . '</td>
-                        <td ' . $td . '>TEL: ' . htmlspecialchars($recipient_lines['phone']) . '</td>
-                    </tr>
-                    ' . (($origin_country !== '' || $destination_country !== '')
-                        ? '<tr>'
-                            . '<td ' . $tdBold . '>' . ($origin_country !== '' ? 'ORIGIN COUNTRY: ' . htmlspecialchars($origin_country) : '') . '</td>'
-                            . '<td ' . $tdBold . '>' . ($destination_country !== '' ? 'DESTINATION COUNTRY: ' . htmlspecialchars($destination_country) : '') . '</td>'
-                            . '</tr>'
-                        : '') . '
-                </table>
-                <table cellpadding="4" style="width:100%;border-collapse:collapse;margin-top:10px;">
-                    <tr>
-                        <th ' . $th . ' width="8%">#</th>
-                        <th ' . $th . ' width="15%">QTY</th>
-                        <th ' . $th . '>DESCRIPTION</th>
-                        <th ' . $th . ' width="22%">AMOUNT (' . htmlspecialchars($currency_symbol) . ')</th>
-                    </tr>
-                    ' . $rows . '
-                    <tr>
-                        <td ' . $tdTotal . '></td>
-                        <td ' . $tdTotal . '>TOTAL</td>
-                        <td ' . $tdTotal . '></td>
-                        <td ' . $tdTotal . ' align="right">' . number_format($total, 2) . '</td>
-                    </tr>
-                </table>
-                <div style="margin-top:14px;font-size:10px;font-weight:bold;text-decoration:underline;">DECLARATION</div>
-                <div style="font-size:9px;margin-top:4px;line-height:1.4;">
-                    I declare that this invoice shows the actual value/price of the goods described and that all particulars are true and
-                    correct, and that the goods are of no commercial value &mdash; the value used is only for customs purposes.
-                </div>
-                <div style="text-align:center;font-size:9px;margin-top:16px;">&copy; ' . date('Y') . ' ' . htmlspecialchars($logistic_company) . '. All rights reserved.</div>
-            ';
-
-            return _courier_render_pdf($html, 'Commercial-Invoice-' . ($shipment->waybill_number ?: $shipment->tracking_id));
+            return _courier_build_commercial_invoice_pdf($details, [
+                'currency' => $currency,
+                'date'     => date('F j, Y'),
+            ]);
         } catch (\Throwable $e) {
             log_message('error', 'Commercial invoice PDF generation crashed: ' . $e->getMessage());
             return null;
@@ -1345,18 +1321,213 @@ if (!function_exists('courier_generate_commercial_invoice_pdf')) {
 }
 
 /**
- * Attaches the waybill PDF (always) and, only for a plain non-Salibay
- * shipment, the commercial invoice PDF too, onto a not-yet-sent
- * App_mail_template instance. Salibay/Shopify orders are marketplace orders
- * with no commercial-value declaration of our own — see
- * modules/courier_goshipping/CLAUDE.md's "How to tell Salibay shipment from
- * general shipment" section for why the gs_shipment_id existence check is
- * the only correct way to make that call. Never throws: a PDF generation
- * failure just means the email goes out without that attachment, exactly
- * like every other notification helper in this file.
+ * Builds the courier (billing) invoice A4 PDF — mirrors courier_invoice.php:
+ * header (logo/company | INVOICE + VAT badge | invoice meta), Bill To / From,
+ * shipment reference, line items, totals, amount due, payment terms and the
+ * Issued By / Received By signature lines. $o: items, info (invoice info
+ * array), logo_path, currency, inv_number, date, due, total_paid.
+ * SENDER-only document — never attached to the receiver's email.
+ */
+if (!function_exists('_courier_build_courier_invoice_pdf')) {
+    function _courier_build_courier_invoice_pdf(array $details, array $o)
+    {
+        $s    = $details['shipment'];
+        $info = $o['info'];
+        $cur  = htmlspecialchars($o['currency']);
+        $e    = function ($v) { return htmlspecialchars((string) $v); };
+
+        $items = array_values(array_filter($o['items'], function ($it) {
+            return !((float) $it->rate == 0 && strtoupper(trim((string) $it->description)) === 'PACKAGING');
+        }));
+        $subtotal = 0;
+        foreach ($items as $it) {
+            $subtotal += (float) $it->qty * (float) $it->rate;
+        }
+        $vat_on   = !empty($s->vat_applicable);
+        $vat_rate = $vat_on ? (float) $s->vat_rate : 0;
+        $vat_amt  = $vat_on ? round($subtotal * ($vat_rate / 100), 2) : 0;
+        $total    = $subtotal + $vat_amt;
+        $paid     = (float) $o['total_paid'];
+        $balance  = round(max(0, $total - $paid), 2);
+
+        $sender = $details['sender'] ?? null;
+        $si     = ($details['sender_type'] ?? 'individual') === 'individual';
+        $bill_name = $si
+            ? trim(($sender->first_name ?? '') . ' ' . ($sender->last_name ?? ''))
+            : ($sender->company_name ?? '') . ' (' . ($sender->contact_person_name ?? '') . ')';
+        $zip_raw   = $si ? ($sender->zipcode ?? '') : ($sender->contact_zipcode ?? '');
+        $zip       = preg_match('/^\+\d+$/', trim($zip_raw)) ? '' : trim($zip_raw);
+        $addr_b    = $si ? trim($sender->address ?? '') : trim($sender->contact_address ?? '');
+        $bill_addr = $addr_b . ($zip ? ', ' . $zip : '');
+        $snd_country = $details['sender_country']->short_name ?? '';
+        $bill_phone  = $si ? ($sender->phone_number ?? '') : ($sender->contact_person_phone_number ?? '');
+        $bill_email  = $si ? ($sender->email ?? '') : ($sender->contact_person_email ?? '');
+        $bill_pin    = $sender->kra_pin ?? '';
+
+        $recipient   = $details['recipient'] ?? null;
+        $ri          = ($details['recipient_type'] ?? 'individual') === 'individual';
+        $rec_addr    = trim($ri ? ($recipient->address ?? '') : ($recipient->recipient_contact_address ?? ''));
+        $rec_country = $details['recipient_country']->short_name ?? '';
+
+        $th = 'style="background-color:#f0f0f0;border:1px solid #333;font-size:9pt;font-weight:bold;"';
+        $td = 'style="border:1px solid #333;font-size:9pt;"';
+
+        $rows = '';
+        $n = 1;
+        foreach ($items as $it) {
+            $ld = trim(strip_tags(html_entity_decode(str_replace(['&nbsp;', '&NBSP;'], ' ', (string) ($it->long_description ?? '')), ENT_QUOTES | ENT_HTML5, 'UTF-8')));
+            $rows .= '<tr>'
+                . '<td ' . $td . ' width="6%">' . $n++ . '</td>'
+                . '<td ' . $td . ' width="44%">' . $e($it->description) . ($ld !== '' ? '<br><span style="font-size:7.5pt;color:#777777;">' . nl2br($e($ld)) . '</span>' : '') . '</td>'
+                . '<td ' . $td . ' width="14%" align="right">' . number_format((float) $it->qty, 2) . '</td>'
+                . '<td ' . $td . ' width="16%" align="right">' . number_format((float) $it->rate, 2) . '</td>'
+                . '<td ' . $td . ' width="20%" align="right"><b>' . number_format((float) $it->qty * (float) $it->rate, 2) . '</b></td>'
+                . '</tr>';
+        }
+        if ($rows === '') {
+            $rows = '<tr><td ' . $td . ' colspan="5" align="center">Shipping service &mdash; ' . $e($s->shipping_mode ?? '') . '</td></tr>';
+        }
+
+        $from = '';
+        foreach (['name' => '<b>%s</b>', 'address' => '%s', 'phone' => 'Tel: %s', 'email' => '%s', 'website' => '%s', 'pin' => 'PIN: %s'] as $k => $fmt) {
+            if (!empty($info[$k])) {
+                $from .= sprintf($fmt, nl2br($e(trim($info[$k])))) . '<br>';
+            }
+        }
+        $bill = '<b>' . $e($bill_name) . '</b><br>'
+            . ($bill_addr !== '' ? $e($bill_addr) . ($snd_country ? ', ' . $e($snd_country) : '') . '<br>' : '')
+            . ($bill_phone ? 'Tel: ' . $e($bill_phone) . '<br>' : '')
+            . ($bill_email ? $e($bill_email) . '<br>' : '')
+            . ($bill_pin ? '<b>KRA PIN:</b> ' . $e($bill_pin) . '<br>' : '');
+
+        $status = $paid > 0 ? ($balance <= 0 ? 'PAID' : 'PARTIALLY PAID') : '';
+        $logo   = $o['logo_path'] ? '<img src="' . $o['logo_path'] . '" height="50" width="50"><br>' : '';
+        $terms  = trim((string) ($s->payment_terms ?? ''));
+        $name   = $info['name'] ?: 'Our Company';
+
+        $top = '
+            <table cellpadding="3" cellspacing="0" style="width:100%;"><tr>
+                <td width="32%" valign="middle">' . $logo . '<b style="font-size:11pt;">' . $e($name) . '</b></td>
+                <td width="30%" align="center" valign="middle"><span style="font-size:20pt;font-weight:bold;">INVOICE</span><br>
+                    <span style="font-size:8pt;font-weight:bold;">' . ($vat_on ? 'VAT INCLUSIVE (' . $vat_rate . '%)' : 'VAT EXEMPT') . '</span></td>
+                <td width="38%" align="right" valign="middle" style="font-size:9pt;line-height:1.5;">
+                    <b>Invoice #:</b> ' . $e($o['inv_number']) . '<br>
+                    <b>Invoice Date:</b> ' . $e($o['date']) . '<br>
+                    <b>Due Date:</b> ' . $e($o['due']) . '<br>
+                    <b>AWB / Waybill:</b> ' . $e($s->waybill_number)
+                    . ($status ? '<br><b style="color:#c62828;">' . $status . '</b>' : '') . '</td>
+            </tr></table>
+            <div style="border-top:1px solid #000;font-size:2pt;">&nbsp;</div>
+            <table cellpadding="7" cellspacing="0" style="width:100%;"><tr>
+                <td width="50%" style="border:1px solid #333;font-size:9pt;line-height:1.5;"><span style="font-size:8pt;font-weight:bold;color:#555555;">BILL TO</span><br>' . $bill . '</td>
+                <td width="50%" style="border:1px solid #333;font-size:9pt;line-height:1.5;"><span style="font-size:8pt;font-weight:bold;color:#555555;">FROM</span><br>' . $from . '</td>
+            </tr></table>
+            <div style="font-size:8pt;">&nbsp;</div>
+            <table cellpadding="5" cellspacing="0" style="width:100%;">
+                <tr><th ' . $th . ' colspan="4">Shipment Reference</th></tr>
+                <tr><td ' . $td . ' width="18%"><b>Shipping Mode</b></td><td ' . $td . ' width="32%">' . $e(strtoupper((string) ($s->shipping_mode ?? ''))) . '</td>
+                    <td ' . $td . ' width="18%"><b>Category</b></td><td ' . $td . ' width="32%">' . $e(strtoupper((string) ($s->shipping_category ?? ''))) . '</td></tr>
+                <tr><td ' . $td . '><b>Origin</b></td><td ' . $td . '>' . $e($addr_b . ($snd_country ? ', ' . $snd_country : '')) . '</td>
+                    <td ' . $td . '><b>Destination</b></td><td ' . $td . '>' . $e($rec_addr . ($rec_country ? ', ' . $rec_country : '')) . '</td></tr>
+            </table>
+            <div style="font-size:8pt;">&nbsp;</div>
+            <table cellpadding="6" cellspacing="0" style="width:100%;">
+                <tr><th ' . $th . ' width="6%">#</th><th ' . $th . ' width="44%">Description</th><th ' . $th . ' width="14%" align="right">Qty / Wt</th>
+                    <th ' . $th . ' width="16%" align="right">Unit Rate</th><th ' . $th . ' width="20%" align="right">Amount (' . $cur . ')</th></tr>
+                ' . $rows . '
+            </table>
+            <div style="font-size:6pt;">&nbsp;</div>
+            <table cellpadding="0" cellspacing="0" style="width:100%;"><tr><td width="55%"></td><td width="45%">
+                <table cellpadding="5" cellspacing="0" style="width:100%;">
+                    <tr><td ' . $td . '>Subtotal</td><td ' . $td . ' align="right">' . number_format($subtotal, 2) . '</td></tr>
+                    <tr><td ' . $td . '>' . ($vat_on ? 'VAT @ ' . $vat_rate . '%' : 'VAT') . '</td><td ' . $td . ' align="right">' . ($vat_on ? number_format($vat_amt, 2) : 'Exempt') . '</td></tr>
+                    ' . ($paid > 0 ? '<tr><td ' . $td . '>Paid</td><td ' . $td . ' align="right">' . number_format($paid, 2) . '</td></tr>' : '') . '
+                    <tr><td style="border:1px solid #333;font-size:10pt;font-weight:bold;background-color:#f0f0f0;">' . ($paid > 0 ? 'BALANCE DUE' : 'AMOUNT DUE') . '</td>
+                        <td style="border:1px solid #333;font-size:10pt;font-weight:bold;background-color:#f0f0f0;" align="right">' . $cur . ' ' . number_format($paid > 0 ? $balance : $total, 2) . '</td></tr>
+                </table></td></tr></table>
+            <div style="font-size:8pt;">&nbsp;</div>
+            <table cellpadding="8" cellspacing="0" style="width:100%;"><tr><td align="center" style="border:1px solid #333;">
+                <span style="font-size:9pt;color:#555555;">Total Amount Due by ' . $e($o['due']) . '</span><br>
+                <b style="font-size:18pt;">' . $cur . ' ' . number_format($total, 2) . '</b>
+                <span style="font-size:8pt;color:#888888;"> ' . ($vat_on ? '(includes VAT ' . $vat_rate . '%)' : '(VAT exempt)') . '</span>
+            </td></tr></table>'
+            . ($terms !== '' ? '<div style="font-size:6pt;">&nbsp;</div><table cellpadding="7" cellspacing="0" style="width:100%;"><tr><td style="background-color:#f5f5f5;font-size:8.5pt;"><b>Payment Terms:</b> ' . nl2br($e($terms)) . '</td></tr></table>' : '');
+
+        $bottom = '
+            <table cellpadding="4" cellspacing="0" style="width:100%;"><tr>
+                <td width="46%" align="center" style="border-top:1px solid #333;font-size:9pt;"><b>Issued By</b><br><span style="font-size:7.5pt;color:#999999;">Authorized Signature &amp; Stamp</span></td>
+                <td width="8%"></td>
+                <td width="46%" align="center" style="border-top:1px solid #333;font-size:9pt;"><b>Received By</b><br><span style="font-size:7.5pt;color:#999999;">Name, Signature &amp; Date</span></td>
+            </tr></table>
+            <div style="text-align:center;font-size:8pt;color:#999999;">&copy; ' . date('Y') . ' ' . $e($name) . ' &mdash; All rights reserved.</div>';
+
+        return _courier_render_card_pdf($top, $bottom, 'Invoice-' . ($s->waybill_number ?: $s->tracking_id), [
+            'border_color'   => [51, 51, 51],
+            'watermark_path' => $o['logo_path'],
+        ]);
+    }
+}
+
+/**
+ * Generates the courier invoice PDF (null if the shipment has no invoice or
+ * on any failure — never throws). Sender-only attachment.
+ */
+if (!function_exists('courier_generate_courier_invoice_pdf')) {
+    function courier_generate_courier_invoice_pdf($shipment_id)
+    {
+        try {
+            $CI = &get_instance();
+            $CI->load->model('courier_goshipping/Shipment_model');
+            $details = $CI->Shipment_model->get_shipment_details((int) $shipment_id);
+            if (empty($details) || empty($details['shipment']) || empty($details['shipment']->invoice_id)) {
+                return null;
+            }
+            $s      = $details['shipment'];
+            $inv_id = (int) $s->invoice_id;
+
+            $items = $CI->db->get_where(db_prefix() . 'itemable', ['rel_id' => $inv_id, 'rel_type' => 'invoice'])->result();
+            $inv   = $CI->db->get_where(db_prefix() . 'invoices', ['id' => $inv_id])->row();
+
+            $base_date = ($inv && !empty($inv->date) && $inv->date !== '0000-00-00') ? $inv->date : ($s->created_at ?? date('Y-m-d'));
+            $due_date  = ($inv && !empty($inv->duedate) && $inv->duedate !== '0000-00-00') ? $inv->duedate : date('Y-m-d', strtotime($base_date . ' +14 days'));
+
+            $currency = 'USD';
+            if ($inv && $inv->currency && ($c = get_currency($inv->currency))) {
+                $currency = $c->name;
+            }
+
+            $paid_row = $CI->db->select_sum('amount')->where('invoiceid', $inv_id)->get(db_prefix() . 'invoicepaymentrecords')->row();
+
+            return _courier_build_courier_invoice_pdf($details, [
+                'items'      => $items,
+                'info'       => courier_get_invoice_info($s->branch_id ?? null),
+                'logo_path'  => _courier_pdf_logo_path(),
+                'currency'   => $currency,
+                'inv_number' => 'INV-' . strtoupper($s->waybill_number),
+                'date'       => date('F j, Y', strtotime($base_date)),
+                'due'        => date('F j, Y', strtotime($due_date)),
+                'total_paid' => (float) ($paid_row->amount ?? 0),
+            ]);
+        } catch (\Throwable $e) {
+            log_message('error', 'Courier invoice PDF generation crashed: ' . $e->getMessage());
+            return null;
+        }
+    }
+}
+
+/**
+ * Attaches the shipment PDFs onto a not-yet-sent App_mail_template instance:
+ *  - waybill PDF (always)
+ *  - commercial invoice PDF (plain non-Salibay shipments) — goes to BOTH the
+ *    receiver and the sender
+ *  - courier (billing) invoice PDF — only when $include_courier_invoice is
+ *    true, i.e. the SENDER's email; the receiver never gets it
+ * Salibay/Shopify orders only ever get the waybill (marketplace orders with no
+ * commercial-value declaration or billing invoice of our own — see
+ * modules/courier_goshipping/CLAUDE.md). Never throws.
  */
 if (!function_exists('courier_attach_waybill_pdfs')) {
-    function courier_attach_waybill_pdfs($mail, $shipment_id)
+    function courier_attach_waybill_pdfs($mail, $shipment_id, $include_courier_invoice = false)
     {
         try {
             $waybill_pdf = courier_generate_waybill_pdf($shipment_id);
@@ -1371,13 +1542,25 @@ if (!function_exists('courier_attach_waybill_pdfs')) {
             $CI = &get_instance();
             $is_salibay = $CI->db->table_exists(db_prefix() . 'shopify_orders')
                 && $CI->db->where('gs_shipment_id', (int) $shipment_id)->get(db_prefix() . 'shopify_orders')->row();
+            if ($is_salibay) {
+                return;
+            }
 
-            if (!$is_salibay) {
-                $commercial_invoice_pdf = courier_generate_commercial_invoice_pdf($shipment_id);
-                if ($commercial_invoice_pdf !== null) {
+            $commercial_invoice_pdf = courier_generate_commercial_invoice_pdf($shipment_id);
+            if ($commercial_invoice_pdf !== null) {
+                $mail->add_attachment([
+                    'attachment' => $commercial_invoice_pdf,
+                    'filename'   => 'Commercial-Invoice-' . $shipment_id . '.pdf',
+                    'type'       => 'application/pdf',
+                ]);
+            }
+
+            if ($include_courier_invoice) {
+                $invoice_pdf = courier_generate_courier_invoice_pdf($shipment_id);
+                if ($invoice_pdf !== null) {
                     $mail->add_attachment([
-                        'attachment' => $commercial_invoice_pdf,
-                        'filename'   => 'Commercial-Invoice-' . $shipment_id . '.pdf',
+                        'attachment' => $invoice_pdf,
+                        'filename'   => 'Invoice-' . $shipment_id . '.pdf',
                         'type'       => 'application/pdf',
                     ]);
                 }
@@ -1510,7 +1693,8 @@ if (!function_exists('courier_send_sender_tracking_email')) {
                 '{company_name}'   => $company_name,
             ]);
 
-            courier_attach_waybill_pdfs($mail, (int) $shipment_id);
+            // Sender: waybill + commercial invoice + courier invoice.
+            courier_attach_waybill_pdfs($mail, (int) $shipment_id, true);
 
             $sent = $mail->send();
 
@@ -2040,3 +2224,338 @@ if (!function_exists('courier_lookup_origin_fcl_rate')) {
 
 
 
+
+/**
+ * Pickup charges: a pickup can carry any number of staff-entered, custom
+ * charge lines (description + amount). Stored as JSON in tbl_pickups.charges
+ * with the sum in charges_total. Columns are created lazily (deploys are a
+ * plain file copy — install.php never re-runs), guarded by an option flag.
+ */
+if (!function_exists('courier_ensure_pickup_charge_columns')) {
+    function courier_ensure_pickup_charge_columns()
+    {
+        if (get_option('courier_pickup_charges_cols_done')) {
+            return;
+        }
+        $CI    = &get_instance();
+        $table = db_prefix() . '_pickups';
+        if (!$CI->db->table_exists($table)) {
+            return;
+        }
+        if (!$CI->db->field_exists('charges', $table)) {
+            $CI->db->query("ALTER TABLE `{$table}` ADD `charges` TEXT NULL DEFAULT NULL");
+        }
+        if (!$CI->db->field_exists('charges_total', $table)) {
+            $CI->db->query("ALTER TABLE `{$table}` ADD `charges_total` DECIMAL(15,2) NOT NULL DEFAULT 0");
+        }
+        if ($CI->db->field_exists('charges', $table) && $CI->db->field_exists('charges_total', $table)) {
+            if (get_option('courier_pickup_charges_cols_done') === '') {
+                add_option('courier_pickup_charges_cols_done', '1');
+            } else {
+                update_option('courier_pickup_charges_cols_done', '1');
+            }
+        }
+    }
+}
+
+/**
+ * Turns the posted pickup_charge_desc[] / pickup_charge_amount[] arrays into
+ * ['rows' => [['description' => , 'amount' => ], ...], 'json' => string|null,
+ * 'total' => float]. Fully blank lines are dropped; a line with an amount but
+ * no description is kept under a generic label. Amounts are validated by the
+ * callers' form_validation rule, so non-numeric values are skipped here.
+ */
+if (!function_exists('courier_parse_pickup_charges')) {
+    function courier_parse_pickup_charges($descs, $amounts)
+    {
+        $rows  = [];
+        $total = 0.0;
+        if (is_array($descs) || is_array($amounts)) {
+            $descs   = is_array($descs) ? $descs : [];
+            $amounts = is_array($amounts) ? $amounts : [];
+            $count   = max(count($descs), count($amounts));
+            $descs   = array_values($descs);
+            $amounts = array_values($amounts);
+            for ($i = 0; $i < $count && count($rows) < 30; $i++) {
+                $desc = trim((string) ($descs[$i] ?? ''));
+                $raw  = trim((string) ($amounts[$i] ?? ''));
+                if ($desc === '' && $raw === '') {
+                    continue;
+                }
+                if ($raw !== '' && !is_numeric($raw)) {
+                    continue;
+                }
+                $amount = $raw === '' ? 0.0 : round((float) $raw, 2);
+                if ($amount < 0) {
+                    continue;
+                }
+                $rows[] = [
+                    'description' => mb_substr($desc !== '' ? $desc : 'Pickup charge', 0, 120),
+                    'amount'      => $amount,
+                ];
+                $total += $amount;
+            }
+        }
+        return [
+            'rows'  => $rows,
+            'json'  => $rows ? json_encode($rows) : null,
+            'total' => round($total, 2),
+        ];
+    }
+}
+
+/**
+ * Towns / cities for a country, from the free countriesnow.space API (the
+ * same service the module already uses for POD towns), fetched server-side
+ * and cached for 30 days per country so the shipment form isn't slowed down
+ * or blocked by CORS. Returns a sorted array of names ([] on any failure —
+ * failures are cached only briefly so a temporary outage self-heals).
+ */
+if (!function_exists('courier_get_country_towns')) {
+    function courier_get_country_towns($country_id)
+    {
+        $CI = &get_instance();
+        $country = $CI->db->get_where(db_prefix() . 'countries', ['country_id' => (int) $country_id])->row();
+        if (!$country || trim((string) $country->short_name) === '') {
+            return [];
+        }
+        $name = trim($country->short_name);
+
+        @$CI->load->driver('cache', ['adapter' => 'file']);
+        $cache_key = 'courier_towns_' . md5(strtolower($name));
+        if (isset($CI->cache)) {
+            $cached = @$CI->cache->get($cache_key);
+            if (is_array($cached)) {
+                return $cached;
+            }
+        }
+
+        $towns = [];
+        $ok    = false;
+        if (function_exists('curl_init')) {
+            $ch = curl_init('https://countriesnow.space/api/v0.1/countries/cities/q?country=' . urlencode($name));
+            curl_setopt_array($ch, [
+                CURLOPT_HTTPHEADER     => ['Accept: application/json'],
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT        => 8,
+                CURLOPT_CONNECTTIMEOUT => 4,
+                CURLOPT_SSL_VERIFYPEER => false,
+            ]);
+            $raw  = curl_exec($ch);
+            curl_close($ch);
+            $json = $raw ? json_decode($raw, true) : null;
+            if (is_array($json) && empty($json['error']) && isset($json['data']) && is_array($json['data'])) {
+                $ok = true;
+                foreach ($json['data'] as $t) {
+                    $t = trim((string) $t);
+                    if ($t !== '') {
+                        $towns[$t] = $t;
+                    }
+                }
+                $towns = array_values($towns);
+                sort($towns, SORT_NATURAL | SORT_FLAG_CASE);
+            }
+        }
+
+        if (isset($CI->cache)) {
+            @$CI->cache->save($cache_key, $towns, $ok ? 30 * 86400 : 600);
+        }
+        return $towns;
+    }
+}
+
+/**
+ * The shipment form's "State / Town" dropdowns offer API towns alongside the
+ * local states, posted as "town:<Name>". tbl_*.state_id columns are INTs, so
+ * before validation/saving each such value is swapped for the id of a
+ * matching tbl_country_states row for that country — created on first use.
+ * Every existing flow then keeps working unchanged. Call before validation.
+ */
+if (!function_exists('courier_resolve_posted_towns')) {
+    function courier_resolve_posted_towns(array $pairs)
+    {
+        $CI    = &get_instance();
+        $table = db_prefix() . '_country_states';
+        foreach ($pairs as $country_field => $state_field) {
+            $val = $CI->input->post($state_field);
+            if (!is_string($val) || strpos($val, 'town:') !== 0) {
+                continue;
+            }
+            $town       = trim(mb_substr($val, 5));
+            $country_id = (int) $CI->input->post($country_field);
+            if ($town === '' || $country_id <= 0) {
+                $_POST[$state_field] = '';
+                continue;
+            }
+            $row = $CI->db->where('country_id', $country_id)->where('name', $town)->get($table)->row();
+            if ($row) {
+                $id = (int) $row->id;
+            } else {
+                $c = $CI->db->get_where(db_prefix() . 'countries', ['country_id' => $country_id])->row();
+                $CI->db->insert($table, [
+                    'name'         => $town,
+                    'country_id'   => $country_id,
+                    'country_code' => (string) ($c->iso2 ?? ''),
+                ]);
+                $id = (int) $CI->db->insert_id();
+            }
+            $_POST[$state_field] = $id ?: '';
+        }
+    }
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+ * COUNTRY ADMINS
+ *
+ * Tiers: the super user (a Perfex administrator) sees every country; a
+ * *country admin* is an ordinary (non-administrator) staff member linked to
+ * one or more countries in tbl_courier_country_admins. Their reach is the set
+ * of branches (tbl_courier_branches.country_id) in those countries, and it is
+ * enforced by the SAME branch isolation the module already has:
+ * courier_get_staff_branch_ids() includes every branch of their country, so
+ * shipments/pickups/manifests/agents/... are scoped with no per-page changes.
+ * Country admins can add staff + agents for their country only (Country_team /
+ * Agents controllers) and never get Perfex admin rights.
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+if (!function_exists('courier_ensure_country_admins_table')) {
+    function courier_ensure_country_admins_table()
+    {
+        static $checked = false;
+        if ($checked) {
+            return;
+        }
+        $checked = true;
+        $CI    = &get_instance();
+        $table = db_prefix() . '_courier_country_admins';
+        if (!$CI->db->table_exists($table)) {
+            $CI->db->query('CREATE TABLE IF NOT EXISTS `' . $table . '` (
+                `id`         INT NOT NULL AUTO_INCREMENT,
+                `staff_id`   INT NOT NULL,
+                `country_id` INT NOT NULL,
+                `created_by` INT NULL,
+                `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `uq_cca` (`staff_id`, `country_id`),
+                INDEX `idx_cca_country` (`country_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;');
+        }
+    }
+}
+
+/** Country ids this staff member administers ([] for everyone else; never throws). */
+if (!function_exists('courier_get_admin_country_ids')) {
+    function courier_get_admin_country_ids($staff_id = null)
+    {
+        static $cache = [];
+        $staff_id = (int) ($staff_id ?: get_staff_user_id());
+        if ($staff_id <= 0) {
+            return [];
+        }
+        if (isset($cache[$staff_id])) {
+            return $cache[$staff_id];
+        }
+        $CI = &get_instance();
+        courier_ensure_country_admins_table();
+        $ids = [];
+        if ($CI->db->table_exists(db_prefix() . '_courier_country_admins')) {
+            $rows = $CI->db->select('country_id')->where('staff_id', $staff_id)
+                ->get(db_prefix() . '_courier_country_admins')->result_array();
+            $ids = array_map('intval', array_column($rows, 'country_id'));
+        }
+        return $cache[$staff_id] = $ids;
+    }
+}
+
+/** True for a country admin who is NOT a super user. */
+if (!function_exists('courier_is_country_admin')) {
+    function courier_is_country_admin($staff_id = null)
+    {
+        $staff_id = $staff_id ?: get_staff_user_id();
+        return !is_admin($staff_id) && !empty(courier_get_admin_country_ids($staff_id));
+    }
+}
+
+/** Branch ids located in the given countries. */
+if (!function_exists('courier_get_country_branch_ids')) {
+    function courier_get_country_branch_ids(array $country_ids)
+    {
+        if (empty($country_ids)) {
+            return [];
+        }
+        $CI   = &get_instance();
+        $rows = $CI->db->select('id')->where_in('country_id', array_map('intval', $country_ids))
+            ->get(db_prefix() . '_courier_branches')->result_array();
+        return array_map('intval', array_column($rows, 'id'));
+    }
+}
+
+/** Whether a staff member is inside the current country admin's reach (has a branch in their country). */
+if (!function_exists('courier_staff_in_admin_scope')) {
+    function courier_staff_in_admin_scope($target_staff_id)
+    {
+        $branches = courier_get_country_branch_ids(courier_get_admin_country_ids());
+        if (empty($branches)) {
+            return false;
+        }
+        $CI = &get_instance();
+        return $CI->db->where('staff_id', (int) $target_staff_id)->where_in('branch_id', $branches)
+            ->count_all_results(db_prefix() . '_courier_staff_branches') > 0;
+    }
+}
+
+/** Roles a country admin may assign when creating staff/agents. */
+if (!function_exists('courier_country_admin_allowed_roles')) {
+    function courier_country_admin_allowed_roles()
+    {
+        $CI    = &get_instance();
+        $roles = $CI->db->get(db_prefix() . 'roles')->result();
+        return array_values(array_filter($roles, function ($r) {
+            $n = (string) $r->name;
+            return $n !== 'Courier: Country Admin' && (strpos($n, 'Courier: ') === 0 || strpos($n, 'Fleet: ') === 0);
+        }));
+    }
+}
+
+/** The "Courier: Country Admin" role (created on first use). */
+if (!function_exists('courier_ensure_country_admin_role')) {
+    function courier_ensure_country_admin_role()
+    {
+        $CI   = &get_instance();
+        $role = $CI->db->where('name', 'Courier: Country Admin')->get(db_prefix() . 'roles')->row();
+        if ($role) {
+            return (int) $role->roleid;
+        }
+        $perms = [
+            'courier-shipments'           => ['view_branch_shipments', 'create_shipments', 'edit_shipments'],
+            'courier-pickups'             => ['view_branch_pickups', 'create_pickups', 'edit_pickups'],
+            'courier-waybills'            => ['view_own_waybills'],
+            'courier-commercial-invoices' => ['view_branch_commercial_invoices'],
+            'courier-manifests'           => ['view_branch_manifests', 'create_manifests', 'edit_manifests'],
+            'courier-invoices'            => ['view_branch_invoices', 'view_receipts', 'generate_payment'],
+            'courier-agents'              => ['view_agents', 'create_agents', 'edit_agents', 'delete_agents'],
+            'courier-companies'           => ['view_companies'],
+        ];
+        $CI->db->insert(db_prefix() . 'roles', ['name' => 'Courier: Country Admin', 'permissions' => serialize($perms)]);
+        return (int) $CI->db->insert_id();
+    }
+}
+
+/** Copies a role's permission set onto a staff member (additive, never removes). */
+if (!function_exists('courier_grant_role_permissions')) {
+    function courier_grant_role_permissions($staff_id, $role_id)
+    {
+        $CI    = &get_instance();
+        $role  = $CI->db->where('roleid', (int) $role_id)->get(db_prefix() . 'roles')->row();
+        $perms = ($role && $role->permissions) ? unserialize($role->permissions) : [];
+        foreach ($perms as $feature => $caps) {
+            foreach ($caps as $cap) {
+                $exists = $CI->db->where(['staff_id' => (int) $staff_id, 'feature' => $feature, 'capability' => $cap])
+                    ->count_all_results(db_prefix() . 'staff_permissions');
+                if (!$exists) {
+                    $CI->db->insert(db_prefix() . 'staff_permissions', ['staff_id' => (int) $staff_id, 'feature' => $feature, 'capability' => $cap]);
+                }
+            }
+        }
+    }
+}

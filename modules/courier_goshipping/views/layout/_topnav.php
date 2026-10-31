@@ -37,7 +37,8 @@ $cgs_can_view_invoices  = $cgs_admin || has_permission('courier-invoices', '', '
 $cgs_can_view_settings  = $cgs_admin || has_permission('courier-settings', '', 'view_settings');
 
 $cgs_can_view_documents_menu = $cgs_can_view_manifests || $cgs_can_view_waybills || $cgs_can_view_invoices || $cgs_can_view_quotes;
-$cgs_can_view_network_menu   = $cgs_can_view_pickups || $cgs_can_view_companies || $cgs_can_view_agents || $cgs_can_view_branches || $cgs_can_view_quotes;
+$cgs_is_country_admin        = function_exists('courier_is_country_admin') && courier_is_country_admin();
+$cgs_can_view_network_menu   = $cgs_admin || $cgs_is_country_admin || $cgs_can_view_pickups || $cgs_can_view_companies || $cgs_can_view_agents || $cgs_can_view_branches || $cgs_can_view_quotes;
 $cgs_can_view_reporting_menu = $cgs_can_view_shipments || $cgs_can_view_manifests;
 ?>
 <div id="wrapper">
@@ -161,6 +162,12 @@ $cgs_can_view_reporting_menu = $cgs_can_view_shipments || $cgs_can_view_manifest
                     <?php endif; ?>
                     <?php if ($cgs_can_view_agents): ?>
                     <a href="<?php echo $base . '/agents/main'; ?>"><i class="fa fa-users cgs-icon-swatch cgs-icon-swatch--teal"></i><span>Agents</span></a>
+                    <?php endif; ?>
+                    <?php if ($cgs_is_country_admin): ?>
+                    <a href="<?php echo $base . '/country_team'; ?>"><i class="fa fa-user-plus cgs-icon-swatch cgs-icon-swatch--blue"></i><span>Country Team</span></a>
+                    <?php endif; ?>
+                    <?php if ($cgs_admin): ?>
+                    <a href="<?php echo $base . '/country_admins'; ?>"><i class="fa fa-flag cgs-icon-swatch cgs-icon-swatch--indigo"></i><span>Country Admins</span></a>
                     <?php endif; ?>
                     <?php if ($cgs_can_view_branches): ?>
                     <a href="<?php echo $base . '/branches/main'; ?>"><i class="fa fa-globe cgs-icon-swatch cgs-icon-swatch--red"></i><span>Branches / Offices</span></a>
@@ -294,3 +301,109 @@ $cgs_can_view_reporting_menu = $cgs_can_view_shipments || $cgs_can_view_manifest
         <?php endif; ?>
     </div><!-- /.cgs-topnav__nav -->
 </nav>
+<script>
+/* Form keep-alive: when a form POST comes back from the server with validation
+ * errors, put back everything the user had typed/selected so a missed field
+ * never wipes the rest. Server-side set_value() stays the primary mechanism;
+ * this is the safety net for any field a view forgot to repopulate. Only
+ * restores a draft saved <2 min ago, only on the page that is the POST
+ * response (same path as the form action) and only when the page shows an
+ * error — a normal visit or a successful save never restores anything. */
+(function () {
+    if (window.__cgsFormKeep) { return; }
+    window.__cgsFormKeep = true;
+    var PFX = 'cgs_formkeep:', TTL = 2 * 60 * 1000;
+    try { sessionStorage.setItem('__cgs_t', '1'); sessionStorage.removeItem('__cgs_t'); } catch (e) { return; }
+
+    function actionPath(f) {
+        try { return new URL(f.getAttribute('action') || location.href, location.href).pathname; } catch (e) { return ''; }
+    }
+    function keyOf(f) { return PFX + actionPath(f) + '#' + (f.id || ''); }
+    function skip(el) {
+        var t = (el.type || '').toLowerCase();
+        return !el.name || el.disabled || /^(hidden|password|file|submit|button|image|reset)$/.test(t) || /csrf|token/i.test(el.name);
+    }
+    function snapshot(f) {
+        var d = [];
+        Array.prototype.forEach.call(f.elements, function (el) {
+            if (skip(el)) { return; }
+            var t = (el.type || '').toLowerCase();
+            if (t === 'checkbox' || t === 'radio') { d.push({ n: el.name, v: el.value, c: el.checked ? 1 : 0, k: 'c' }); }
+            else if (el.tagName === 'SELECT' && el.multiple) {
+                d.push({ n: el.name, v: Array.prototype.filter.call(el.options, function (o) { return o.selected; }).map(function (o) { return o.value; }), k: 'm' });
+            } else { d.push({ n: el.name, v: el.value, k: 'v' }); }
+        });
+        return d;
+    }
+
+    document.addEventListener('submit', function (e) {
+        var f = e.target;
+        if (!f || !f.tagName || f.tagName !== 'FORM' || (f.method || '').toLowerCase() !== 'post' || e.defaultPrevented) { return; }
+        try { sessionStorage.setItem(keyOf(f), JSON.stringify({ t: Date.now(), d: snapshot(f) })); } catch (x) {}
+    }, false);
+
+    function refresh(el) {
+        try {
+            if (el._flatpickr) { el._flatpickr.setDate(el.value, false); }
+            if (window.jQuery) { window.jQuery(el).trigger('change.select2'); }
+        } catch (x) {}
+    }
+
+    function restore(f, saved) {
+        var byName = {};
+        saved.d.forEach(function (s) { (byName[s.n] = byName[s.n] || []).push(s); });
+        var used = {}, pending = [];
+        Array.prototype.forEach.call(f.elements, function (el) {
+            if (skip(el)) { return; }
+            var list = byName[el.name]; if (!list) { return; }
+            var t = (el.type || '').toLowerCase();
+            if (t === 'checkbox' || t === 'radio') {
+                var s = list.filter(function (x) { return x.k === 'c' && x.v === el.value; })[0];
+                if (s) { var want = !!s.c; if (el.checked !== want) { el.checked = want; } }
+                return;
+            }
+            var i = used[el.name] || 0; used[el.name] = i + 1;
+            var sv = list.filter(function (x) { return x.k !== 'c'; })[i];
+            if (!sv) { return; }
+            if (sv.k === 'm' && el.tagName === 'SELECT') {
+                Array.prototype.forEach.call(el.options, function (o) { o.selected = sv.v.indexOf(o.value) !== -1; });
+                refresh(el);
+            } else if (el.tagName === 'SELECT') {
+                var has = Array.prototype.some.call(el.options, function (o) { return o.value === sv.v; });
+                if (has) { if (el.value !== sv.v) { el.value = sv.v; refresh(el); } }
+                else if (sv.v !== '') { pending.push([el, sv.v]); }
+            } else if (el.value !== sv.v && sv.v !== '') {
+                el.value = sv.v; refresh(el);
+            }
+        });
+        // selects filled by AJAX (e.g. states after a country is chosen)
+        [1200, 3000].forEach(function (ms) {
+            setTimeout(function () {
+                pending.forEach(function (p) {
+                    var el = p[0], has = Array.prototype.some.call(el.options, function (o) { return o.value === p[1]; });
+                    if (has && el.value !== p[1]) { el.value = p[1]; refresh(el); }
+                });
+            }, ms);
+        });
+    }
+
+    window.addEventListener('load', function () {
+        setTimeout(function () {
+            try {
+                var hasError = document.querySelector('.error-message:not(:empty), .cgs-field-error-msg, #cgs-pickup-server-alert, .alert-danger, .has-error');
+                Array.prototype.forEach.call(document.forms, function (f) {
+                    if ((f.method || '').toLowerCase() !== 'post') { return; }
+                    var key = keyOf(f), raw = null;
+                    try { raw = sessionStorage.getItem(key); } catch (x) {}
+                    if (!raw) { return; }
+                    var saved = JSON.parse(raw);
+                    // single use either way, so a draft can never come back later
+                    try { sessionStorage.removeItem(key); } catch (x) {}
+                    if (!hasError || location.pathname !== actionPath(f) || !saved || Date.now() - saved.t > TTL) { return; }
+                    restore(f, saved);
+                });
+            } catch (x) {}
+        }, 60);
+    });
+})();
+</script>

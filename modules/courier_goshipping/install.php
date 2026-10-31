@@ -541,6 +541,30 @@ if (get_option('courier_waybill_prefix') === 'GOSH') {
 $CI->db->query("ALTER TABLE `" . db_prefix() . "_pickups`
     MODIFY COLUMN `signature_url` TEXT NULL DEFAULT NULL");
 
+// Custom pickup charges (JSON lines + running total) — also self-healed lazily by
+// courier_ensure_pickup_charge_columns() since deploys never re-run this file.
+if (!$CI->db->field_exists('charges', db_prefix() . '_pickups')) {
+    $CI->db->query('ALTER TABLE `' . db_prefix() . '_pickups` ADD `charges` TEXT NULL DEFAULT NULL');
+}
+if (!$CI->db->field_exists('charges_total', db_prefix() . '_pickups')) {
+    $CI->db->query('ALTER TABLE `' . db_prefix() . '_pickups` ADD `charges_total` DECIMAL(15,2) NOT NULL DEFAULT 0');
+
+}
+
+// Country admins (also self-healed lazily by courier_ensure_country_admins_table())
+if (!$CI->db->table_exists(db_prefix() . '_courier_country_admins')) {
+    $CI->db->query('CREATE TABLE IF NOT EXISTS `' . db_prefix() . '_courier_country_admins` (
+        `id` INT NOT NULL AUTO_INCREMENT,
+        `staff_id` INT NOT NULL,
+        `country_id` INT NOT NULL,
+        `created_by` INT NULL,
+        `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `uq_cca` (`staff_id`, `country_id`),
+        INDEX `idx_cca_country` (`country_id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;');
+}
+
 // ── Drop blocking UNIQUE constraints from existing installs ──────────────────
 // The email/phone UNIQUE keys prevent the same staff or company from creating
 // more than one pickup/shipment. Drop them if still present.

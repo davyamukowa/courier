@@ -34,10 +34,12 @@
                     <a href="<?php echo admin_url('courier_goshipping/agents/main'); ?>" class="cgs-btn cgs-btn--outline">
                         <i class="fa fa-list"></i> List of Agents
                     </a>
+                    <?php if (!(function_exists('courier_is_country_admin') && courier_is_country_admin())): ?>
                     <button id="sync-permissions-btn" class="cgs-btn cgs-btn--outline" type="button">
                         <i class="fa fa-refresh" id="sync-icon"></i>
                         <span id="sync-text"> Sync Permissions</span>
                     </button>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>

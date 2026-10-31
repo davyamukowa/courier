@@ -270,6 +270,8 @@ echo '<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/selec
 
                                 </div>
                                 <!--End of Recipient Information-->
+
+                                <?php $this->load->view('courier_goshipping/pickups/_charges'); ?>
                             </div>
                         </section>
                         <button type="submit" class="cgs-btn cgs-btn--primary">Add pickup</button>

@@ -275,28 +275,13 @@
                                     Print Commercial Invoice
                                 </a>
                                 <a style="text-decoration:none;border:2px solid #1565c0;background:#1565c0;color:#fff;" class="custom-button"
-                                   href="javascript:void(0);" onclick="downloadCiPdf();">
+                                   href="<?php echo admin_url('courier_goshipping/shipments/download_commercial_invoice_pdf/' . (int) $shipment_details['shipment']->id); ?>">
                                     <i style="margin-right:4px;" class="fa fa-file-pdf-o" aria-hidden="true"></i>
                                     Download PDF
                                 </a>
                             </div>
                         </div>
-                        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-                        <script>
-                        function downloadCiPdf() {
-                            html2pdf().set({
-                                margin:[10,10,10,10],
-                                filename:'commercial-invoice-<?php echo htmlspecialchars($shipment_details['shipment']->waybill_number ?? ''); ?>.pdf',
-                                image:{type:'jpeg',quality:0.98},
-                                html2canvas:{scale:2,useCORS:true},
-                                jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}
-                            }).from(document.getElementById('waybill-section')).save();
-                        }
-                        </script>
-
-
                         <?php
-                        $_ci_inv       = courier_get_invoice_info($shipment_details['shipment']->branch_id ?? null);
                         $ci_logo_file  = get_option('company_logo_dark') ?: get_option('company_logo');
                         $ci_logo_url   = !empty($ci_logo_file) ? base_url('uploads/company/' . $ci_logo_file) : '';
                         ?>
@@ -305,14 +290,6 @@
                                 <div></div>
                                 <div style="text-align:center;">
                                     <h3 style="font-weight:bold;margin:0;">COMMERCIAL INVOICE</h3>
-                                    <?php if ($_ci_inv['address']): ?><div style="font-size:11px;color:#555;"><?php echo htmlspecialchars(str_replace("\n",' | ',trim($_ci_inv['address']))); ?></div><?php endif; ?>
-                                    <?php if ($_ci_inv['phone'] || $_ci_inv['email']): ?>
-                                    <div style="font-size:11px;color:#555;">
-                                        <?php if ($_ci_inv['phone']): ?>Tel: <?php echo htmlspecialchars($_ci_inv['phone']); ?><?php endif; ?>
-                                        <?php if ($_ci_inv['email']): ?> &nbsp;|&nbsp; <?php echo htmlspecialchars($_ci_inv['email']); ?><?php endif; ?>
-                                    </div>
-                                    <?php endif; ?>
-                                    <?php if ($_ci_inv['pin']): ?><div style="font-size:11px;color:#555;">PIN: <?php echo htmlspecialchars($_ci_inv['pin']); ?></div><?php endif; ?>
                                 </div>
                                 <div class="date"><?php echo $current_date ?></div>
                             </div>
@@ -357,17 +334,13 @@
                                 </tr>
                                 <tr>
                                     <?php if ($shipment_details['sender_type'] === 'individual'): ?>
-                                        <td
-                                        ">TEL : <?php echo $shipment_details['sender']->phone_number; ?></td>
+                                        <td>TEL : <?php echo $shipment_details['sender']->phone_number; ?></td>
                                     <?php else: ?>
-                                        <td
-                                        ">TEL : <?php echo $shipment_details['sender']->contact_person_phone_number; ?></td>
+                                        <td>TEL : <?php echo $shipment_details['sender']->contact_person_phone_number; ?></td>
                                     <?php endif; ?>
                                     <?php if ($shipment_details['recipient_type'] === 'individual'): ?>
-                                        <td
                                         <td>TEL : <?php echo $shipment_details['recipient']->phone_number; ?></td>
                                     <?php else: ?>
-                                        <td
                                         <td>TEL : <?php echo $shipment_details['recipient']->recipient_contact_person_phone_number; ?></td>
                                     <?php endif; ?>
                                 </tr>

@@ -4,6 +4,42 @@ defined('BASEPATH') or exit('No direct script access allowed');
 
 class Agents extends AdminController
 {
+    /** True when the current user is a country admin (not a super user). */
+    private $is_country_admin = false;
+
+    /**
+     * Country-admin scope guard: an agent is reachable only if its branch (or
+     * its staff account's branch) is in the admin's country. No-op for everyone
+     * else, so super users and existing agent managers behave exactly as before.
+     */
+    private function agent_in_scope($agent)
+    {
+        if (!$this->is_country_admin) {
+            return true;
+        }
+        $branches = courier_get_country_branch_ids(courier_get_admin_country_ids());
+        if (!empty($agent->branch_id) && in_array((int) $agent->branch_id, $branches, true)) {
+            return true;
+        }
+        return !empty($agent->staff_id) && courier_staff_in_admin_scope($agent->staff_id);
+    }
+
+    private function guard_agent_scope($agent)
+    {
+        if (!$this->agent_in_scope($agent)) {
+            set_alert('danger', 'That agent is outside your country.');
+            redirect('admin/courier_goshipping/agents/main');
+        }
+    }
+
+    /** Super-user-only (global) operations. */
+    private function deny_country_admin()
+    {
+        if ($this->is_country_admin) {
+            set_alert('danger', 'This action is for the super user only.');
+            redirect('admin/courier_goshipping/agents/main');
+        }
+    }
 
     public function __construct()
     {
@@ -12,6 +48,8 @@ class Agents extends AdminController
             access_denied('Courier - Agents');
         }
         $this->load->helper('courier_goshipping/courier'); // Load the helper specific to the courier module
+        // Country admins (non-super users) are limited to agents of their own country.
+        $this->is_country_admin = courier_is_country_admin();
         $this->load->model('Agent_model');
         $this->load->model('Shipment_model');
         courier_load_model('CourierBranch_model');
@@ -38,6 +76,16 @@ class Agents extends AdminController
                 // rather than silently inherited from the creator's session.
                 $data['branches'] = $this->CourierBranch_model->get();
                 $data['default_branch_id'] = courier_get_session_branch_id();
+                if ($this->is_country_admin) {
+                    $my_countries = courier_get_admin_country_ids();
+                    $data['countries'] = array_values(array_filter($data['countries'], function ($c) use ($my_countries) {
+                        return in_array((int) $c->country_id, $my_countries, true);
+                    }));
+                    $data['branches'] = array_values(array_filter($data['branches'], function ($b) use ($my_countries) {
+                        return in_array((int) $b->country_id, $my_countries, true);
+                    }));
+                    $data['roles'] = courier_country_admin_allowed_roles();
+                }
                 $data['group_content'] = $this->load->view('agents/create', $data, true);
                 break;
 
@@ -121,6 +169,24 @@ class Agents extends AdminController
 
     public function store()
     {
+        if ($this->is_country_admin) {
+            $my_countries = courier_get_admin_country_ids();
+            $my_branches  = courier_get_country_branch_ids($my_countries);
+            foreach (['country_id', 'company_country_id'] as $cf) {
+                $posted = (int) $this->input->post($cf);
+                if (!in_array($posted, $my_countries, true)) {
+                    $_POST[$cf] = (string) $my_countries[0];   // forced to their own country
+                }
+            }
+            if (!in_array((int) $this->input->post('agent_branch_id'), $my_branches, true)) {
+                set_alert('danger', 'Choose a branch in your country.');
+                redirect('admin/courier_goshipping/agents/main?group=create_agent');
+            }
+            $allowed_role_ids = array_map('intval', array_column(courier_country_admin_allowed_roles(), 'roleid'));
+            if ($this->input->post('role_id') && !in_array((int) $this->input->post('role_id'), $allowed_role_ids, true)) {
+                $_POST['role_id'] = '';   // falls back to "Courier: Agent"
+            }
+        }
         $this->set_validation_rules();
 
         $file_error = false;
@@ -337,6 +403,7 @@ class Agents extends AdminController
 
     public function sync_role_permissions()
     {
+        $this->deny_country_admin();
         // Syncing logic
         $this->db->where('name', 'Courier: Agent');
         $courier_agent_role = $this->db->get(db_prefix() . 'roles')->row();
@@ -425,6 +492,7 @@ public function agent_number()
         $agent = $this->db->get(db_prefix() . '_agents')->row();
 
         if ($agent) {
+            $this->guard_agent_scope($agent);
             $staff_id = $agent->staff_id;
 
             // Begin a transaction to ensure atomic operations
@@ -464,6 +532,14 @@ public function agent_number()
         $agent_id = $this->input->post('agent_id');
         $status = $this->input->post('status');
 
+        if ($this->is_country_admin) {
+            $target = $this->db->where('id', (int) $agent_id)->get(db_prefix() . '_agents')->row();
+            if (!$target || !$this->agent_in_scope($target)) {
+                echo json_encode(['success' => false]);
+                return;
+            }
+        }
+
         $this->db->where('id', $agent_id);
         $success = $this->db->update(db_prefix().'_agents', ['status' => $status]);
 
@@ -477,6 +553,7 @@ public function agent_number()
             set_alert('danger', 'Agent not found.');
             redirect('admin/courier_goshipping/agents/main');
         }
+        $this->guard_agent_scope($agent);
 
         $data['agent']       = $agent;
         $data['stats']       = $this->Agent_model->get_stats($agent->staff_id);
@@ -503,6 +580,7 @@ public function agent_number()
             set_alert('danger', 'Agent not found.');
             redirect('admin/courier_goshipping/agents/main');
         }
+        $this->guard_agent_scope($agent);
 
         $data['agent']     = $agent;
         $data['countries'] = $this->Shipment_model->get_countries();
@@ -522,6 +600,7 @@ public function agent_number()
             set_alert('danger', 'Agent not found.');
             redirect('admin/courier_goshipping/agents/main');
         }
+        $this->guard_agent_scope($agent);
 
         $data = [
             'firstname'       => $this->input->post('firstname'),
@@ -571,6 +650,7 @@ public function agent_number()
             set_alert('danger', 'Agent not found.');
             redirect('admin/courier_goshipping/agents/main');
         }
+        $this->guard_agent_scope($agent);
 
         $new_password = $this->input->post('new_password');
         if (strlen($new_password) < 6) {
@@ -594,6 +674,7 @@ public function agent_number()
             set_alert('danger', 'Agent not found.');
             redirect('admin/courier_goshipping/agents/main');
         }
+        $this->guard_agent_scope($agent);
 
         $reason = $this->input->post('reason') ?: null;
         $this->Agent_model->update_agent($id, [
@@ -616,6 +697,7 @@ public function agent_number()
             set_alert('danger', 'Agent not found.');
             redirect('admin/courier_goshipping/agents/main');
         }
+        $this->guard_agent_scope($agent);
 
         $this->Agent_model->update_agent($id, [
             'status'           => '1',
@@ -640,6 +722,11 @@ public function agent_number()
             return;
         }
 
+        if (!$this->agent_in_scope($agent)) {
+            echo json_encode(['success' => false, 'message' => 'That agent is outside your country.']);
+            return;
+        }
+
         $staff_id    = $agent->staff_id;
         // Use raw $_POST to avoid CI3 XSS sanitizer mangling hyphenated array keys
         $permissions = isset($_POST['permissions']) && is_array($_POST['permissions']) ? $_POST['permissions'] : [];
@@ -647,6 +734,7 @@ public function agent_number()
         // Delete all existing courier permissions for this staff member
         $courier_features = [
             'courier-shipments', 'courier-pickups', 'courier-waybills',
+            'courier-commercial-invoices',
             'courier-manifests', 'courier-invoices', 'courier-agents',
             'courier-companies', 'courier-settings',
         ];
@@ -657,12 +745,15 @@ public function agent_number()
         // Whitelist: only allow known courier features and alphanumeric/underscore capabilities
         $allowed_features = [
             'courier-shipments', 'courier-pickups', 'courier-waybills',
+            'courier-commercial-invoices',
             'courier-manifests', 'courier-invoices', 'courier-agents',
             'courier-companies', 'courier-settings',
         ];
 
         foreach ($permissions as $feature => $capabilities) {
             if (!in_array($feature, $allowed_features, true)) continue;
+            // Global settings are super-user territory; a country admin can't hand them out.
+            if ($this->is_country_admin && $feature === 'courier-settings') continue;
             if (!is_array($capabilities)) continue;
             foreach ($capabilities as $capability) {
                 $capability = preg_replace('/[^a-z0-9_]/', '', (string)$capability);
@@ -680,6 +771,7 @@ public function agent_number()
 
     public function reset_permissions()
     {
+        $this->deny_country_admin();
         $default_permissions = [
             'courier-shipments' => ['view_own_shipments', 'create_shipments'],
             'courier-waybills'  => ['view_own_waybills'],

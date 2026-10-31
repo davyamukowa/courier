@@ -259,6 +259,23 @@
                             <?php echo htmlspecialchars($pickup['pickup_zip'] ?? ''); ?>
                         </span>
                     </div>
+
+                    <?php
+                    $_pk_charges = !empty($pickup['charges']) ? json_decode($pickup['charges'], true) : [];
+                    if (!empty($_pk_charges) && is_array($_pk_charges)):
+                    ?>
+                    <h4 style="margin:18px 0 6px; font-size:13px; font-weight:700; text-transform:uppercase; color:#777;"><i class="fa fa-money"></i> Pickup Charges</h4>
+                    <?php foreach ($_pk_charges as $_pc): ?>
+                    <div class="stat-row">
+                        <span class="stat-label"><?php echo htmlspecialchars($_pc['description'] ?? ''); ?></span>
+                        <span class="stat-value"><?php echo number_format((float) ($_pc['amount'] ?? 0), 2); ?></span>
+                    </div>
+                    <?php endforeach; ?>
+                    <div class="stat-row" style="font-weight:700;">
+                        <span class="stat-label">Total</span>
+                        <span class="stat-value"><?php echo number_format((float) ($pickup['charges_total'] ?? 0), 2); ?></span>
+                    </div>
+                    <?php endif; ?>
                 </div>
             </div>
 

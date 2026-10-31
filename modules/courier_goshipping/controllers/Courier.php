@@ -137,7 +137,17 @@ class Courier extends AdminController
             $this->db->where('country_id', $country_id);
             $query  = $this->db->get(db_prefix() . '_country_states');
             $states = $query->result_array();
-            echo json_encode(['states' => $states, 'country_code' => $this->getCountryCode($country_id)]);
+
+            // Towns/cities from the API, minus anything already listed as a state
+            $known = [];
+            foreach ($states as $st) {
+                $known[mb_strtolower(trim($st['name']))] = true;
+            }
+            $towns = array_values(array_filter(courier_get_country_towns($country_id), function ($t) use ($known) {
+                return !isset($known[mb_strtolower($t)]);
+            }));
+
+            echo json_encode(['states' => $states, 'towns' => $towns, 'country_code' => $this->getCountryCode($country_id)]);
         } else {
             echo json_encode(['states' => [], 'country_code' => null]);
         }

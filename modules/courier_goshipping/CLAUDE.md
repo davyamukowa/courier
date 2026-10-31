@@ -135,6 +135,31 @@ left in place rather than deleted in case something else still references it) �
 replaced with `courier_send_shipment_waybill_email()` so Salibay orders get the identical
 detailed waybill email a manually created shipment gets, per explicit instruction.
 
+## Waybill / commercial invoice PDFs — one generator, full A4, sender-only invoice
+
+`courier_generate_waybill_pdf()` / `courier_generate_commercial_invoice_pdf()` (`helpers/courier_helper.php`) are the
+single source for the emailed attachments AND the admin "Download PDF" buttons (`Shipments::download_waybill_pdf()` /
+`download_commercial_invoice_pdf()` — server-side; the old html2pdf/html2canvas browser path was removed because it broke).
+Both render one full A4 page via `_courier_render_card_pdf()` (bordered card, terms pinned to the foot). Who gets what:
+**receiver** = waybill + commercial invoice; **sender** = waybill + commercial invoice + courier (billing) invoice
+(`courier_attach_waybill_pdfs($mail, $id, true)` — only `courier_send_sender_tracking_email()` passes `true`). Salibay orders
+get the waybill only. The commercial invoice header is just the title + date — no company address/contact/PIN lines.
+
+## Country admins (super user vs one admin per country)
+
+- **Super user** = a Perfex administrator: sees every country, agent and staff member, and appoints country admins at
+  `admin/courier_goshipping/country_admins` (`Country_admins.php`, `is_admin()` only).
+- **Country admin** = an ordinary non-administrator staff member linked to a country in `tbl_courier_country_admins`
+  (self-healing table; helpers `courier_get_admin_country_ids()`, `courier_is_country_admin()` in `courier_helper.php`).
+  They get the `Courier: Country Admin` role (created on first appointment) — never Perfex admin rights.
+- **Scope = branches of their country.** `courier_get_staff_branch_ids()` adds every branch (`tbl_courier_branches.country_id`)
+  in the admin's country, so the module's existing branch isolation scopes shipments/pickups/manifests/agents with no per-page
+  changes. A country therefore needs at least one branch before it can have an admin.
+- **What they can do:** `Country_team.php` (add/edit/deactivate/reset-password staff of their country; only module roles
+  `Courier: *` / `Fleet: *` can be assigned) and `Agents.php` (create/manage agents of their country). `Agents.php` guards every
+  by-id action with `guard_agent_scope()` and forces country/branch/role on create; `sync_role_permissions`/`reset_permissions`
+  and granting `courier-settings` are super-user only. All guards are no-ops for non-country-admins.
+
 ## Pushing status back to Shopify — `push_shopify_fulfillment_status()`
 
 `Shopify_connector_model::push_shopify_fulfillment_status($shipment_id, $status_id)` is the
