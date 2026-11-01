@@ -2587,3 +2587,24 @@ if (!function_exists('courier_record_staff_creator')) {
         }
     }
 }
+
+/**
+ * A country admin can hand out "View All" — but it must mean all of THEIR
+ * country, not every country. The module's global ("all") view capabilities
+ * are therefore swapped for their branch-level equivalents (the branch tier is
+ * the whole country for a country admin's staff/agents too). Capabilities
+ * with no global twin pass through unchanged.
+ */
+if (!function_exists('courier_country_scope_capability')) {
+    function courier_country_scope_capability($capability)
+    {
+        static $map = [
+            'view_manifests'               => 'view_branch_manifests',
+            'view_invoices'                => 'view_branch_invoices',
+            'view_all_commercial_invoices' => 'view_branch_commercial_invoices',
+            'view_all_shipments'           => 'view_branch_shipments',
+            'view_all_pickups'             => 'view_branch_pickups',
+        ];
+        return $map[$capability] ?? $capability;
+    }
+}

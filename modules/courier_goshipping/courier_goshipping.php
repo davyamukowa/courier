@@ -100,6 +100,7 @@ class Courier_Logistic_System {
         hooks()->add_action('admin_init', [$this, 'run_db_upgrades_v54']);
         hooks()->add_action('admin_init', [$this, 'run_db_upgrades_v55']);
         hooks()->add_action('admin_init', [$this, 'run_db_upgrades_v56']);
+        hooks()->add_action('admin_init', [$this, 'run_db_upgrades_v57']);
         hooks()->add_action('admin_init', [$this, 'run_scheduled_log_pruning']);
         // Register email templates (idempotent — skips if slug already exists)
         hooks()->add_action('admin_init', [$this, 'register_email_templates']);
@@ -756,6 +757,7 @@ class Courier_Logistic_System {
                 'courier-pickups'   => ['view_own_pickups', 'create_pickups'],
                 'courier-waybills'  => ['view_own_waybills'],
                 'courier-invoices'  => ['view_own_invoices', 'generate_payment', 'view_receipts'],
+                'courier-manifests' => ['view_own_manifests'],
             ]);
             $CI->db->query('INSERT INTO ' . db_prefix() . 'roles (name, permissions) VALUES ("Courier: Agent", ' . $CI->db->escape($default_perms) . ')');
         }
@@ -965,6 +967,7 @@ class Courier_Logistic_System {
             'courier-pickups'   => ['view_own_pickups', 'create_pickups'],
             'courier-waybills'  => ['view_own_waybills'],
             'courier-invoices'  => ['view_own_invoices', 'generate_payment', 'view_receipts'],
+            'courier-manifests' => ['view_own_manifests'],
         ];
 
         $role = $CI->db->where('name', 'Courier: Agent')->get(db_prefix() . 'roles')->row();
@@ -2305,6 +2308,39 @@ class Courier_Logistic_System {
     }
 
     /**
+     * v57: every agent sees their OWN manifest — add `view_own_manifests` to the
+     * "Courier: Agent" role and to every staff member holding that role.
+     * Additive only: nothing is removed, and existing individual permissions
+     * (including a "view all" a super user granted) are left as they are.
+     */
+    public function run_db_upgrades_v57() {
+        if (get_option('courier_schema_v57_done')) return;
+        $CI = &get_instance();
+
+        $role = $CI->db->where('name', 'Courier: Agent')->get(db_prefix() . 'roles')->row();
+        if ($role) {
+            $perms = $role->permissions ? unserialize($role->permissions) : [];
+            if (!is_array($perms)) {
+                $perms = [];
+            }
+            if (empty($perms['courier-manifests']) || !in_array('view_own_manifests', $perms['courier-manifests'], true)) {
+                $perms['courier-manifests'] = array_values(array_unique(array_merge($perms['courier-manifests'] ?? [], ['view_own_manifests'])));
+                $CI->db->where('roleid', $role->roleid)->update(db_prefix() . 'roles', ['permissions' => serialize($perms)]);
+            }
+            $staff = $CI->db->select('staffid')->where('role', $role->roleid)->get(db_prefix() . 'staff')->result();
+            foreach ($staff as $st) {
+                $has = $CI->db->where(['staff_id' => $st->staffid, 'feature' => 'courier-manifests', 'capability' => 'view_own_manifests'])
+                    ->count_all_results(db_prefix() . 'staff_permissions');
+                if (!$has) {
+                    $CI->db->insert(db_prefix() . 'staff_permissions', ['staff_id' => $st->staffid, 'feature' => 'courier-manifests', 'capability' => 'view_own_manifests']);
+                }
+            }
+        }
+
+        update_option('courier_schema_v57_done', '1');
+    }
+
+    /**
      * Prunes old, purely-diagnostic rows that grow unbounded with order
      * volume and are never needed once they age out — NOT the same as
      * shipment_status_history/courier_sourcing_events, which are real
@@ -3236,7 +3272,7 @@ class Courier_Logistic_System {
         // Waybills
         $config['capabilities'] = [
             'view_own_waybills' => 'View (Own)',
-            'view_waybills'   => 'View (Global)',
+            'view_waybills'   => 'View (All)',
             'delete_waybills' => 'Delete',
         ];
         register_staff_capabilities('courier-waybills', $config, 'Courier - Waybills');
@@ -3245,7 +3281,7 @@ class Courier_Logistic_System {
         $config['capabilities'] = [
             'view_own_commercial_invoices'    => 'View (Own)',
             'view_branch_commercial_invoices' => 'View (Branch)',
-            'view_all_commercial_invoices'    => 'View (Global)',
+            'view_all_commercial_invoices'    => 'View (All)',
             'edit_commercial_invoices'        => 'Edit',
             'delete_commercial_invoices'      => 'Delete',
         ];
@@ -3255,7 +3291,7 @@ class Courier_Logistic_System {
         $config['capabilities'] = [
             'view_own_manifests'    => 'View (Own)',
             'view_branch_manifests' => 'View (Branch)',
-            'view_manifests'        => 'View (Global)',
+            'view_manifests'        => 'View (All)',
             'create_manifests' => 'Create',
             'edit_manifests'   => 'Edit',
             'delete_manifests' => 'Delete',
@@ -3266,7 +3302,7 @@ class Courier_Logistic_System {
         $config['capabilities'] = [
             'view_own_invoices'    => 'View (Own)',
             'view_branch_invoices' => 'View (Branch)',
-            'view_invoices'        => 'View (Global)',
+            'view_invoices'        => 'View (All)',
             'create_invoices'  => 'Create',
             'delete_invoices'  => 'Delete',
             'view_receipts'    => 'View Receipts',

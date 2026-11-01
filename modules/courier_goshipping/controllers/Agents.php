@@ -759,6 +759,10 @@ public function agent_number()
             foreach ($capabilities as $capability) {
                 $capability = preg_replace('/[^a-z0-9_]/', '', (string)$capability);
                 if (!$capability) continue;
+                // A country admin's "View All" means all of THEIR country, never global.
+                if ($this->is_country_admin) {
+                    $capability = courier_country_scope_capability($capability);
+                }
                 $this->db->insert(db_prefix() . 'staff_permissions', [
                     'staff_id'   => $staff_id,
                     'feature'    => $feature,
@@ -777,6 +781,7 @@ public function agent_number()
             'courier-shipments' => ['view_own_shipments', 'create_shipments'],
             'courier-waybills'  => ['view_own_waybills'],
             'courier-invoices'  => ['view_own_invoices', 'generate_payment', 'view_receipts'],
+            'courier-manifests' => ['view_own_manifests'],
         ];
 
         $this->db->where('name', 'Courier: Agent');

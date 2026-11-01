@@ -39,7 +39,9 @@ class Cargo_manifest extends AdminController
 
     private function can_generate()
     {
-        return is_admin() || staff_can('create_manifests', 'courier-manifests');
+        // Own-scope users (e.g. agents) can generate a manifest of their OWN shipments —
+        // the row query is already restricted to them in resolve().
+        return is_admin() || staff_can('create_manifests', 'courier-manifests') || $this->scope()['level'] === 'own';
     }
 
     /** ['level' => global|branch|own, 'branch_ids' => null|int[]] for the current user. */
