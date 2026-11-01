@@ -43,6 +43,20 @@ class Country_team extends AdminController
         return $staff;
     }
 
+    /**
+     * Document permissions a country admin can set on their staff: View Own, or
+     * View All — where "all" is scoped to THEIR country (the branch-level
+     * capability), never every country.
+     */
+    private function doc_perm_map()
+    {
+        return [
+            'courier-manifests'           => ['label' => 'Manifests',          'own' => 'view_own_manifests',           'all' => 'view_branch_manifests',           'global' => 'view_manifests'],
+            'courier-commercial-invoices' => ['label' => 'Commercial Invoices', 'own' => 'view_own_commercial_invoices', 'all' => 'view_branch_commercial_invoices', 'global' => 'view_all_commercial_invoices'],
+            'courier-invoices'            => ['label' => 'Courier Invoices',    'own' => 'view_own_invoices',            'all' => 'view_branch_invoices',            'global' => 'view_invoices'],
+        ];
+    }
+
     private function country_branches()
     {
         return $this->db->select('id, name')->where_in('id', $this->branch_ids ?: [0])
@@ -159,6 +173,24 @@ class Country_team extends AdminController
             ->order_by('is_default', 'desc')->get(db_prefix() . '_courier_staff_branches')->row();
         $member->branch_id = $branch ? (int) $branch->branch_id : 0;
 
+        $granted = [];
+        foreach ($this->db->where('staff_id', $member->staffid)->get(db_prefix() . 'staff_permissions')->result() as $r) {
+            $granted[$r->feature][] = $r->capability;
+        }
+        $perm_state = [];
+        foreach ($this->doc_perm_map() as $feature => $m) {
+            $has = $granted[$feature] ?? [];
+            $perm_state[$feature] = [
+                'label' => $m['label'],
+                'own'   => in_array($m['own'], $has, true),
+                'all'   => in_array($m['all'], $has, true) || in_array($m['global'], $has, true),
+            ];
+        }
+        $data['doc_perms'] = $perm_state;
+        $data['country_name'] = implode(', ', array_column(
+            $this->db->select('short_name')->where_in('country_id', $this->country_ids)->get(db_prefix() . 'countries')->result_array(),
+            'short_name'
+        ));
         $data['title']    = 'Edit staff';
         $data['member']   = $member;
         $data['roles']    = courier_country_admin_allowed_roles();
@@ -203,6 +235,29 @@ class Country_team extends AdminController
 
         set_alert('success', 'Staff member updated.');
         redirect(admin_url('courier_goshipping/country_team'));
+    }
+
+    public function save_permissions($id)
+    {
+        $member = $this->scoped_staff($id);
+        $posted = $this->input->post('perm');   // perm[feature][] = own|all
+        $posted = is_array($posted) ? $posted : [];
+        $p      = db_prefix();
+
+        foreach ($this->doc_perm_map() as $feature => $m) {
+            // Only this feature's own/all(branch) rows are touched; nothing else of theirs changes.
+            $this->db->where('staff_id', $member->staffid)->where('feature', $feature)
+                ->where_in('capability', [$m['own'], $m['all']])->delete($p . 'staff_permissions');
+            $choice = isset($posted[$feature]) && is_array($posted[$feature]) ? $posted[$feature] : [];
+            if (in_array('own', $choice, true)) {
+                $this->db->insert($p . 'staff_permissions', ['staff_id' => $member->staffid, 'feature' => $feature, 'capability' => $m['own']]);
+            }
+            if (in_array('all', $choice, true)) {
+                $this->db->insert($p . 'staff_permissions', ['staff_id' => $member->staffid, 'feature' => $feature, 'capability' => $m['all']]);
+            }
+        }
+        set_alert('success', 'Permissions saved.');
+        redirect(admin_url('courier_goshipping/country_team/edit/' . $member->staffid));
     }
 
     public function toggle_active($id)

@@ -61,6 +61,30 @@ $sel_branch = (int) $val('branch_id', $editing ? $member->branch_id : 0);
         <button type="submit" class="cgs-btn cgs-btn--primary"><i class="fa fa-save"></i> <?php echo $editing ? 'Save changes' : 'Create staff'; ?></button>
         <?php echo form_close(); ?>
 
+        <?php if ($editing && !empty($doc_perms)): ?>
+        <hr>
+        <h4 style="margin:0 0 4px;"><i class="fa fa-folder-open-o"></i> Documents permissions</h4>
+        <p class="text-muted" style="margin:0 0 12px;">
+            <strong>View own</strong> = only the records this person created. <strong>View all</strong> = every record in
+            <?php echo htmlspecialchars($country_name ?? 'your country'); ?> (never other countries).
+        </p>
+        <?php echo form_open(admin_url('courier_goshipping/country_team/save_permissions/' . (int) $member->staffid)); ?>
+        <table class="table" style="max-width:560px;">
+            <thead><tr><th>Document</th><th class="text-center">View own</th><th class="text-center">View all</th></tr></thead>
+            <tbody>
+            <?php foreach ($doc_perms as $feature => $dp): ?>
+                <tr>
+                    <td><strong><?php echo htmlspecialchars($dp['label']); ?></strong></td>
+                    <td class="text-center"><input type="checkbox" name="perm[<?php echo $feature; ?>][]" value="own" <?php echo $dp['own'] ? 'checked' : ''; ?>></td>
+                    <td class="text-center"><input type="checkbox" name="perm[<?php echo $feature; ?>][]" value="all" <?php echo $dp['all'] ? 'checked' : ''; ?>></td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+        <button type="submit" class="cgs-btn cgs-btn--primary"><i class="fa fa-save"></i> Save permissions</button>
+        <?php echo form_close(); ?>
+        <?php endif; ?>
+
         <?php if ($editing): ?>
         <hr>
         <?php echo form_open(admin_url('courier_goshipping/country_team/reset_password/' . (int) $member->staffid), ['class' => 'form-inline']); ?>
