@@ -263,7 +263,13 @@ $full_name    = htmlspecialchars($agent->firstname . ' ' . $agent->lastname);
                             </div>
                             <div class="panel-body" style="padding:12px 16px;">
                                 <?php foreach ($group['capabilities'] as $cap => $label): ?>
-                                    <?php $checked = !empty($current_perms[$feature]) && in_array($cap, $current_perms[$feature]); ?>
+                                    <?php
+                                    $checked = !empty($current_perms[$feature]) && in_array($cap, $current_perms[$feature]);
+                                    // A country admin's "View All" is stored as the country-scoped (branch) capability.
+                                    if (!$checked && !empty($current_perms[$feature]) && function_exists('courier_is_country_admin') && courier_is_country_admin()) {
+                                        $checked = in_array(courier_country_scope_capability($cap), $current_perms[$feature]);
+                                    }
+                                    ?>
                                     <div class="tw-flex tw-items-center tw-mb-1" style="margin-bottom:6px;">
                                         <label style="margin:0;font-weight:normal;cursor:pointer;display:flex;align-items:center;gap:8px;">
                                             <input type="checkbox"
