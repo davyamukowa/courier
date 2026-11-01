@@ -62,7 +62,7 @@ $cm_pill = function ($status) {
         <td colspan="7" style="text-align:right;">TOTAL &mdash; <?php echo (int) $totals['count']; ?> shipment<?php echo $totals['count'] == 1 ? '' : 's'; ?></td>
         <td class="cm-num">
             <?php foreach ($totals['amounts'] as $cur => $amt): ?>
-                <div><?php echo htmlspecialchars($cur); ?> <?php echo number_format($amt, 2); ?></div>
+                <div><?php echo $cur === '—' ? '' : htmlspecialchars($cur) . ' '; ?><?php echo number_format($amt, 2); ?></div>
             <?php endforeach; ?>
         </td>
         <td class="cm-num"><?php echo number_format($totals['kg'], 2); ?> kg<span class="cm-sub"><?php echo number_format($totals['cbm'], 3); ?> CBM</span></td>

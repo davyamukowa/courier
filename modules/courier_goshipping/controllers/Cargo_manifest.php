@@ -106,7 +106,7 @@ class Cargo_manifest extends AdminController
             return (is_string($d) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $d)) ? $d : $fallback;
         };
         $f = [
-            'date_from' => $valid_date($src['date_from'] ?? '', date('Y-m-d', strtotime('-90 days'))),
+            'date_from' => $valid_date($src['date_from'] ?? '', date('Y-01-01')),
             'date_to'   => $valid_date($src['date_to'] ?? '', date('Y-m-d')),
             'type'      => isset($src['type'], Manifest_doc_model::type_labels()[$src['type']]) ? $src['type'] : '',
             'user'      => (string) ($src['user'] ?? 'all'),
@@ -256,6 +256,28 @@ class Cargo_manifest extends AdminController
             'can_generate'  => $this->can_generate(),
         ];
         $this->load->view('cargo_manifest/index', $data);
+    }
+
+    /** CSV of the CURRENT filtered table (no manifest number is consumed). */
+    public function export()
+    {
+        $ctx  = $this->resolve($this->input->get() ?: []);
+        $rows = $this->docs->get_rows($ctx['query']);
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="cargo-manifest_' . $ctx['f']['date_from'] . '_to_' . $ctx['f']['date_to'] . '.csv"');
+        $out = fopen('php://output', 'w');
+        fwrite($out, "\xEF\xBB\xBF");
+        fputcsv($out, ['Cargo Manifest', $ctx['f']['date_from'] . ' to ' . $ctx['f']['date_to'], $ctx['labels']['type'], $ctx['labels']['user'], $ctx['labels']['agent']]);
+        fputcsv($out, ['#', 'Waybill / BL', 'Shipper', 'Consignee', 'Origin Country', 'Destination', 'Shipment Type', 'Amount', 'Currency', 'Weight (kg)', 'CBM', 'Status']);
+        foreach ($rows as $i => $r) {
+            fputcsv($out, [$i + 1, $r['waybill'], $r['shipper'], $r['consignee'], $r['origin'],
+                trim(($r['dest_town'] ? $r['dest_town'] . ', ' : '') . $r['dest']), $r['type'], $r['amount'], $r['currency'], $r['kg'], $r['cbm'], $r['status']]);
+        }
+        fclose($out);
+        exit;
     }
 
     public function generate()

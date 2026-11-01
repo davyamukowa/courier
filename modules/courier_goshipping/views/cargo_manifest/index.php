@@ -108,7 +108,11 @@ $qs   = http_build_query(array_filter($f, function ($v) { return $v !== '' && $v
     </div>
 
     <!-- Table -->
-    <div class="cm-card">
+    <div class="cm-card cm-print">
+        <div class="cm-printhead">
+            <strong>Cargo Manifest</strong> &middot; <?php echo htmlspecialchars(date('d M Y', strtotime($f['date_from'])) . ' – ' . date('d M Y', strtotime($f['date_to']))); ?>
+            &middot; <?php echo htmlspecialchars($labels['type'] . ' · ' . $labels['user'] . ' · ' . $labels['agent']); ?>
+        </div>
         <div class="cm-card__head">
             <h3><i class="fa fa-table"></i> Shipments in this manifest
                 <span class="cm-chips">
@@ -118,14 +122,18 @@ $qs   = http_build_query(array_filter($f, function ($v) { return $v !== '' && $v
                     <?php foreach ($totals['amounts'] as $cur => $amt): ?><span><b><?php echo htmlspecialchars($cur); ?> <?php echo number_format($amt, 2); ?></b></span><?php endforeach; ?>
                 </span>
             </h3>
+            <div class="cm-noprint" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+            <button type="button" class="cm-btn cm-btn--ghost" onclick="window.print();"><i class="fa fa-print"></i> Print</button>
+            <a class="cm-btn cm-btn--ghost" href="<?php echo $base . '/export?' . http_build_query(array_filter($f, function ($v) { return $v !== '' && $v !== 0; })); ?>"><i class="fa fa-download"></i> Download CSV</a>
             <?php if ($can_generate && !empty($rows)): ?>
-                <?php echo form_open($base . '/generate', ['onsubmit' => "return confirm('Generate a manifest with these " . (int) $totals['count'] . " shipments?');"]); ?>
+                <?php echo form_open($base . '/generate', ['onsubmit' => "var b=this.querySelector('button');b.disabled=true;b.innerHTML='Generating…';return true;", 'style' => 'margin:0;']); ?>
                 <?php foreach (['date_from', 'date_to', 'type', 'user', 'agent', 'country_id'] as $k): ?>
                     <input type="hidden" name="<?php echo $k; ?>" value="<?php echo htmlspecialchars((string) $f[$k]); ?>">
                 <?php endforeach; ?>
                 <button type="submit" class="cm-btn cm-btn--accent"><i class="fa fa-check-circle"></i> Generate Manifest</button>
                 <?php echo form_close(); ?>
             <?php endif; ?>
+            </div>
         </div>
         <?php $this->load->view('courier_goshipping/cargo_manifest/_rows', ['rows' => $rows, 'totals' => $totals]); ?>
     </div>

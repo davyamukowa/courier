@@ -79,7 +79,9 @@
     .cm-sign { display:flex; gap:40px; margin-top:42px; }
     .cm-sign div { flex:1; border-top:1px solid #0f172a; padding-top:6px; font-size:11px; color:var(--cm-muted); }
 
+    .cm-printhead { display:none; }
     @media print {
+        .cm-printhead { display:block; padding:0 0 8px; font-size:13px; }
         body * { visibility:hidden; }
         .cm-print, .cm-print * { visibility:visible; }
         .cm-print { position:absolute; left:0; top:0; width:100%; }
