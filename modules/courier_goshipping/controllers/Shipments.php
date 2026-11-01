@@ -120,6 +120,9 @@ class Shipments extends AdminController
                     && !staff_can('view_own_manifests', 'courier-manifests')) {
                     access_denied('Courier - Manifests');
                 }
+                // The manifest was redesigned: Cargo_manifest is the page now.
+                redirect(admin_url('courier_goshipping/cargo_manifest'));
+                return;
                 $mf_can_all = is_admin() || staff_can('view_manifests', 'courier-manifests');
 
                 $data['title'] = 'Manifests';

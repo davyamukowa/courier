@@ -2559,3 +2559,31 @@ if (!function_exists('courier_grant_role_permissions')) {
         }
     }
 }
+
+/**
+ * Remembers which user created a staff member / agent, so the manifest (and
+ * other reports) can offer "users I created" / "agents I created" — most useful
+ * for country admins. Safe to call repeatedly; never throws.
+ */
+if (!function_exists('courier_record_staff_creator')) {
+    function courier_record_staff_creator($staff_id, $created_by = null)
+    {
+        static $ready = false;
+        $CI    = &get_instance();
+        $table = db_prefix() . '_courier_staff_creators';
+        if (!$ready) {
+            $CI->db->query('CREATE TABLE IF NOT EXISTS `' . $table . '` (
+                `staff_id`   INT NOT NULL,
+                `created_by` INT NOT NULL,
+                `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`staff_id`),
+                INDEX `idx_csc_creator` (`created_by`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;');
+            $ready = true;
+        }
+        $created_by = (int) ($created_by ?: get_staff_user_id());
+        if ((int) $staff_id > 0 && $created_by > 0) {
+            $CI->db->query('INSERT IGNORE INTO `' . $table . '` (staff_id, created_by) VALUES (' . (int) $staff_id . ', ' . $created_by . ')');
+        }
+    }
+}

@@ -289,6 +289,7 @@ class Agents extends AdminController
 
             $this->db->insert(db_prefix() . 'staff', $data);
             $staff_id = $this->db->insert_id();
+            courier_record_staff_creator($staff_id);
 
             // Use the role selected in the form (defaults to "Courier: Agent")
             $role_id = (int)$this->input->post('role_id');

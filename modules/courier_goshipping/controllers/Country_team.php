@@ -145,6 +145,7 @@ class Country_team extends AdminController
         }
 
         courier_grant_role_permissions($staff_id, $role_id);
+        courier_record_staff_creator($staff_id);
         $this->db->insert($p . '_courier_staff_branches', ['staff_id' => $staff_id, 'branch_id' => $branch_id, 'is_default' => 1]);
 
         set_alert('success', 'Staff member added.');

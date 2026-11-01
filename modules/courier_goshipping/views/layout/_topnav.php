@@ -125,7 +125,7 @@ $cgs_can_view_reporting_menu = $cgs_can_view_shipments || $cgs_can_view_manifest
                 <div class="cgs-dropdown-menu__group">
                     <p class="cgs-dropdown-menu__label">Documents</p>
                     <?php if ($cgs_can_view_manifests): ?>
-                    <a href="<?php echo $base . '/shipments/main?group=manifests'; ?>"><i class="fa fa-file cgs-icon-swatch cgs-icon-swatch--teal"></i><span>Manifests</span></a>
+                    <a href="<?php echo $base . '/cargo_manifest'; ?>"><i class="fa fa-file cgs-icon-swatch cgs-icon-swatch--teal"></i><span>Manifests</span></a>
                     <?php endif; ?>
                     <?php if ($cgs_can_view_waybills): ?>
                     <?php // Was hardcoded to ?type=domestic, which silently
@@ -193,7 +193,7 @@ $cgs_can_view_reporting_menu = $cgs_can_view_shipments || $cgs_can_view_manifest
                     <a href="<?php echo $base . '/shipments?type=domestic'; ?>"><i class="fa fa-filter cgs-icon-swatch cgs-icon-swatch--emerald"></i><span>Status Analytics</span></a>
                     <?php endif; ?>
                     <?php if ($cgs_can_view_manifests): ?>
-                    <a href="<?php echo $base . '/shipments/main?group=manifests'; ?>"><i class="fa fa-area-chart cgs-icon-swatch cgs-icon-swatch--indigo"></i><span>Manifest Performance</span></a>
+                    <a href="<?php echo $base . '/cargo_manifest'; ?>"><i class="fa fa-area-chart cgs-icon-swatch cgs-icon-swatch--indigo"></i><span>Manifest Performance</span></a>
                     <?php endif; ?>
                 </div>
             </div>
