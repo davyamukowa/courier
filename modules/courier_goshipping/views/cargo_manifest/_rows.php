@@ -13,7 +13,7 @@ $cm_pill = function ($status) {
     return '';
 };
 ?>
-<div class="cm-table-wrap">
+<div class="cm-table-wrap cm-sheet">
 <table class="cm-table">
     <thead>
     <tr>
@@ -30,6 +30,9 @@ $cm_pill = function ($status) {
     </tr>
     </thead>
     <tbody>
+    <?php if (empty($rows)): ?>
+        <tr><td></td><td colspan="9" class="cm-empty-row">No shipments match these filters &mdash; widen the date range or clear a filter.</td></tr>
+    <?php endif; ?>
     <?php foreach ($rows as $i => $r): ?>
         <tr>
             <td><?php echo $i + 1; ?></td>

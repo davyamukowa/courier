@@ -106,7 +106,7 @@ class Cargo_manifest extends AdminController
             return (is_string($d) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $d)) ? $d : $fallback;
         };
         $f = [
-            'date_from' => $valid_date($src['date_from'] ?? '', date('Y-m-01')),
+            'date_from' => $valid_date($src['date_from'] ?? '', date('Y-m-d', strtotime('-90 days'))),
             'date_to'   => $valid_date($src['date_to'] ?? '', date('Y-m-d')),
             'type'      => isset($src['type'], Manifest_doc_model::type_labels()[$src['type']]) ? $src['type'] : '',
             'user'      => (string) ($src['user'] ?? 'all'),

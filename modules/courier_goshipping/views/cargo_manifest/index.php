@@ -107,21 +107,17 @@ $qs   = http_build_query(array_filter($f, function ($v) { return $v !== '' && $v
         </div>
     </div>
 
-    <!-- Summary -->
-    <div class="cm-kpis">
-        <div class="cm-kpi"><small>Shipments</small><strong><?php echo (int) $totals['count']; ?></strong></div>
-        <div class="cm-kpi"><small>Total weight</small><strong><?php echo number_format($totals['kg'], 2); ?> kg</strong></div>
-        <div class="cm-kpi"><small>Total volume</small><strong><?php echo number_format($totals['cbm'], 3); ?> CBM</strong></div>
-        <div class="cm-kpi"><small>Amount</small><strong style="font-size:15px;">
-            <?php if (empty($totals['amounts'])): ?>—<?php endif; ?>
-            <?php foreach ($totals['amounts'] as $cur => $amt): ?><div><?php echo htmlspecialchars($cur); ?> <?php echo number_format($amt, 2); ?></div><?php endforeach; ?>
-        </strong></div>
-    </div>
-
     <!-- Table -->
     <div class="cm-card">
         <div class="cm-card__head">
-            <h3><i class="fa fa-list"></i> Shipments in this manifest</h3>
+            <h3><i class="fa fa-table"></i> Shipments in this manifest
+                <span class="cm-chips">
+                    <span><b><?php echo (int) $totals['count']; ?></b> shipments</span>
+                    <span><b><?php echo number_format($totals['kg'], 2); ?></b> kg</span>
+                    <span><b><?php echo number_format($totals['cbm'], 3); ?></b> CBM</span>
+                    <?php foreach ($totals['amounts'] as $cur => $amt): ?><span><b><?php echo htmlspecialchars($cur); ?> <?php echo number_format($amt, 2); ?></b></span><?php endforeach; ?>
+                </span>
+            </h3>
             <?php if ($can_generate && !empty($rows)): ?>
                 <?php echo form_open($base . '/generate', ['onsubmit' => "return confirm('Generate a manifest with these " . (int) $totals['count'] . " shipments?');"]); ?>
                 <?php foreach (['date_from', 'date_to', 'type', 'user', 'agent', 'country_id'] as $k): ?>
@@ -131,11 +127,7 @@ $qs   = http_build_query(array_filter($f, function ($v) { return $v !== '' && $v
                 <?php echo form_close(); ?>
             <?php endif; ?>
         </div>
-        <?php if (empty($rows)): ?>
-            <div class="cm-empty"><i class="fa fa-inbox"></i>No shipments match these filters.<br>Try a wider date range or clear a filter.</div>
-        <?php else: ?>
-            <?php $this->load->view('courier_goshipping/cargo_manifest/_rows', ['rows' => $rows, 'totals' => $totals]); ?>
-        <?php endif; ?>
+        <?php $this->load->view('courier_goshipping/cargo_manifest/_rows', ['rows' => $rows, 'totals' => $totals]); ?>
     </div>
 </div>
 
